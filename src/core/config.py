@@ -1,0 +1,56 @@
+from functools import lru_cache
+
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+class Settings(BaseSettings):
+    model_config = SettingsConfigDict(
+        env_file=".envs/.env.dev",
+        env_file_encoding="utf-8",
+        case_sensitive=True,
+        extra="ignore",
+    )
+
+    APP_ENV: str = "development"
+    DATABASE_URL: str = "postgresql+asyncpg://ravenbase:ravenbase@localhost:5432/ravenbase"
+    REDIS_URL: str = "redis://localhost:6379"
+
+    CLERK_SECRET_KEY: str = ""
+    CLERK_WEBHOOK_SECRET: str = ""
+    CLERK_FRONTEND_API: str = ""
+
+    OPENAI_API_KEY: str = ""
+    ANTHROPIC_API_KEY: str = ""
+    GEMINI_API_KEY: str = ""
+
+    QDRANT_URL: str = ""
+    QDRANT_API_KEY: str = ""
+
+    NEO4J_URI: str = ""
+    NEO4J_USER: str = "neo4j"
+    NEO4J_PASSWORD: str = ""
+
+    SUPABASE_URL: str = ""
+    SUPABASE_SERVICE_ROLE_KEY: str = ""
+    STORAGE_BUCKET: str = "ravenbase-sources"
+
+    STRIPE_SECRET_KEY: str = ""
+    STRIPE_WEBHOOK_SECRET: str = ""
+    RESEND_API_KEY: str = ""
+    RESEND_WEBHOOK_SECRET: str = ""
+
+    CLOUDFLARE_ORIGIN_SECRET: str = ""
+
+    ENABLE_PII_MASKING: bool = False
+    CONFLICT_SIMILARITY_THRESHOLD: float = 0.87
+    MAX_CONCURRENT_INGEST_JOBS: int = 3
+    MAX_DAILY_LLM_SPEND_USD: float = 50.0
+    ADMIN_USER_IDS: str = ""
+
+
+@lru_cache
+def get_settings() -> Settings:
+    return Settings()
+
+
+settings = get_settings()
