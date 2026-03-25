@@ -9,7 +9,7 @@ from src.core.logging import configure_logging
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(app: FastAPI):  # noqa: ARG001
     configure_logging()
     yield
 

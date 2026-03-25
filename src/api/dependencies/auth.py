@@ -1,5 +1,6 @@
 import jwt
 from fastapi import Header, HTTPException
+
 from src.core.config import settings
 
 _clerk_jwks_client: jwt.PyJWKClient | None = None
@@ -30,13 +31,13 @@ async def require_user(authorization: str | None = Header(None)) -> dict:
             options={"verify_exp": True},
         )
         return {"user_id": payload["sub"], "email": payload.get("email", "")}
-    except jwt.ExpiredSignatureError:
+    except jwt.ExpiredSignatureError as err:
         raise HTTPException(
             status_code=403,
             detail={"code": "TOKEN_EXPIRED", "message": "Token has expired"},
-        )
+        ) from err
     except Exception:
         raise HTTPException(
             status_code=403,
             detail={"code": "INVALID_TOKEN", "message": "Invalid or expired token"},
-        )
+        ) from None
