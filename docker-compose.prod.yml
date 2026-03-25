@@ -1,0 +1,16 @@
+version: "3.9"
+
+services:
+  api:
+    image: ${API_IMAGE:-ravenbase-api:latest}
+    env_file:
+      - .envs/.env.production
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+
+  worker:
+    image: ${WORKER_IMAGE:-ravenbase-worker:latest}
+    env_file:
+      - .envs/.env.production
+    restart: unless-stopped
