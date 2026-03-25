@@ -494,6 +494,9 @@ that uses a library you haven't worked with recently.
 □ Did I use structlog (not print)?
 □ Did I run make quality && make test?
 □ Are all acceptance criteria met?
+□ Did I update docs/stories/epics.md → changed this story's 🔲 to ✅?
+□ Did I increment docs/.bmad/story-counter.txt by 1?
+□ Did I update docs/.bmad/project-status.md with current sprint and next story?
 □ Did I append an entry to docs/.bmad/journal.md? (all 6 fields filled, stats table updated)
-□ Did I include docs/.bmad/journal.md in the completion commit?
+□ Did I commit ALL FOUR files in one commit: epics.md + project-status.md + story-counter.txt + journal.md?
 ```
