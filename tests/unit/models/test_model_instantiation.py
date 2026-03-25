@@ -2,6 +2,7 @@
 import uuid
 
 from src.models.profile import SystemProfile
+from src.models.source import Source, SourceAuthorityWeight, SourceStatus
 from src.models.user import User
 
 
@@ -30,3 +31,27 @@ def test_system_profile_default_fields() -> None:
     assert profile.icon is None
     assert profile.color is None
     assert isinstance(profile.id, uuid.UUID)
+
+
+def test_source_default_fields() -> None:
+    uid = uuid.uuid4()
+    source = Source(
+        user_id=uid,
+        original_filename="notes.pdf",
+        file_type="pdf",
+        mime_type="application/pdf",
+        storage_path="uploads/notes.pdf",
+        sha256_hash="abc123",
+        file_size_bytes=1024,
+    )
+    assert source.status == SourceStatus.PENDING
+    assert source.chunk_count is None
+    assert source.node_count is None
+    assert source.profile_id is None
+    assert isinstance(source.id, uuid.UUID)
+
+
+def test_source_authority_weight_defaults() -> None:
+    uid = uuid.uuid4()
+    saw = SourceAuthorityWeight(user_id=uid, source_type="pdf")
+    assert saw.weight == 5
