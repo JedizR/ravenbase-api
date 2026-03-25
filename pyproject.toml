@@ -1,0 +1,70 @@
+[project]
+name = "ravenbase-api"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.32.0",
+    "sqlmodel>=0.0.22",
+    "alembic>=1.14.0",
+    "arq>=0.26.0",
+    "redis>=5.2.0",
+    "qdrant-client>=1.12.0",
+    "neo4j>=5.28.0",
+    "docling>=2.14.0",
+    "openai>=1.55.0",
+    "anthropic>=0.40.0",
+    "litellm>=1.30.0",
+    "google-generativeai>=0.8.0",
+    "svix>=1.40.0",
+    "python-magic>=0.4.27",
+    "supabase>=2.10.0",
+    "httpx>=0.27.0",
+    "PyJWT>=2.9.0",
+    "cryptography>=43.0.0",
+    "stripe>=10.0.0",
+    "resend>=2.5.0",
+    "structlog>=24.4.0",
+    "sentry-sdk[fastapi]>=2.19.0",
+    "pydantic-settings>=2.6.0",
+    "presidio-analyzer>=2.2.355",
+    "presidio-anonymizer>=2.2.355",
+    "sse-starlette>=2.1.0",
+    "bleach>=6.1.0",
+    "aiofiles>=24.1.0",
+]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.8.0",
+    "pyright>=1.1.391",
+    "pre-commit>=4.0.0",
+    "pytest>=8.3.0",
+    "pytest-asyncio>=0.24.0",
+    "pytest-cov>=6.0.0",
+    "pytest-mock>=3.14.0",
+    "pytest-xdist>=3.6.0",
+    "httpx>=0.27.0",
+    "aiosqlite>=0.20.0",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "UP", "B", "C4", "PLC", "ARG"]
+ignore = ["E501"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["ARG"]
+
+[tool.pyright]
+pythonVersion = "3.12"
+typeCheckingMode = "standard"
+include = ["src"]
+exclude = ["tests"]
