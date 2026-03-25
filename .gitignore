@@ -1,8 +1,14 @@
 .worktrees/
 .envs/.env.dev
 .envs/.env.production
+.env.local
 __pycache__/
 .venv/
 *.pyc
 .pytest_cache/
+.coverage
 htmlcov/
+dist/
+.DS_Store
+.idea/
+.vscode/
