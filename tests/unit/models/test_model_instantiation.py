@@ -1,6 +1,7 @@
 # tests/unit/models/test_model_instantiation.py
 import uuid
 
+from src.models.profile import SystemProfile
 from src.models.user import User
 
 
@@ -19,3 +20,13 @@ def test_user_default_fields() -> None:
     assert user.notify_account_deletion is True
     assert user.referred_by_user_id is None
     assert isinstance(user.id, uuid.UUID)
+
+
+def test_system_profile_default_fields() -> None:
+    uid = uuid.uuid4()
+    profile = SystemProfile(user_id=uid, name="Work")
+    assert profile.is_default is False
+    assert profile.description is None
+    assert profile.icon is None
+    assert profile.color is None
+    assert isinstance(profile.id, uuid.UUID)
