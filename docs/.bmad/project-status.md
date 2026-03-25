@@ -8,26 +8,24 @@
 ## Current State
 
 **Phase:** A — Backend (Sprints 1–17)
-**Current sprint:** 1
-**Status:** Not started — no code exists yet
+**Current sprint:** 2
+**Status:** In progress — 1 of 37 stories complete
 
-**Next story to implement:** STORY-001
-**Story file:** `docs/stories/EPIC-01-foundation/STORY-001.md`
+**Next story to implement:** STORY-002
+**Story file:** `docs/stories/EPIC-01-foundation/STORY-002.md`
 
 ---
 
 ## Last Completed Story
 
-None. Development has not started.
+**STORY-001 — API and Web repo scaffolding** (2026-03-25)
+Both repos scaffolded from scratch: FastAPI app with `/health` endpoint, full Python package structure, Docker Compose (dev/prod), ARQ worker stub, Alembic config, and Next.js 15 App Router with brand components, Tailwind v4 design tokens, and shadcn/ui.
 
 ---
 
 ## Context for Next Session
 
-First story. Both repos (`ravenbase-api/` and `ravenbase-web/`) have been created with
-docs/ copied in but no application code exists yet. Start from scratch.
-
-The STORY-001 Agent Implementation Brief at the bottom of its story file is your starting point.
+STORY-001 is merged to main on both repos. All quality gates pass (ruff 0 errors, pyright 0 errors, 1 pytest passing, Next.js build clean). STORY-002 adds the PostgreSQL schema and Alembic migrations — start by reading `docs/stories/EPIC-01-foundation/STORY-002.md` and `docs/architecture/`.
 
 ---
 

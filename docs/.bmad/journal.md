@@ -14,7 +14,7 @@
 |---|---|
 | Total stories complete | 1 / 37 |
 | Current phase | Phase A — Backend (Sprints 1–17) |
-| Current sprint | 1 |
+| Current sprint | 2 |
 | Active repo | ravenbase-api |
 | Project started | 2026-03-25 |
 | Last entry | 2026-03-25 |
@@ -61,12 +61,12 @@ revisited in a later story. If none, write "None."
 > Sprints 1 covers STORY-001 and STORY-002.
 
 ### STORY-001 — API and Web Repo Scaffolding
-**Date:** 2026-03-25 | **Sprint:** 1 | **Phase:** A | **Repo:** ravenbase-api
+**Date:** 2026-03-25 | **Sprint:** 1 | **Phase:** A | **Repo:** ravenbase-api + ravenbase-web
 **Quality gate:** ✅ clean
-**Commit:** `8596f20`
+**Commit:** `4fee9e9`
 
 **What was built:**
-Scaffolded ravenbase-api with full directory structure, config files, FastAPI /health endpoint, ARQ worker stub, Alembic config, and test fixtures. Created pyproject.toml with all approved dependencies, uv.lock committed to git, Makefile with quality and test targets, and three Docker Compose configurations (dev, override, prod).
+Scaffolded both ravenbase-api and ravenbase-web from scratch. API: FastAPI app with `/health` endpoint, full Python package structure, pyproject.toml + uv.lock, Makefile, three Docker Compose configs, ARQ worker stub, Alembic config, and test fixtures. Web: Next.js 15 App Router with Tailwind v4 design tokens, three Google fonts, brand components (RavenbaseLogo 5 sizes + RavenbaseLockup), shadcn/ui Button, error pages, and admin/dashboard route groups.
 
 **Key decisions:**
 - CORS set to localhost:3000 for dev and ravenbase.app for prod, respecting deployment environments
