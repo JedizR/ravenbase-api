@@ -1,3 +1,4 @@
+.worktrees/
 .envs/.env.dev
 .envs/.env.production
 __pycache__/
