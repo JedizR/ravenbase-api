@@ -12,12 +12,12 @@
 
 | Field | Value |
 |---|---|
-| Total stories complete | 0 / 37 |
+| Total stories complete | 1 / 37 |
 | Current phase | Phase A — Backend (Sprints 1–17) |
 | Current sprint | 1 |
 | Active repo | ravenbase-api |
-| Project started | _fill in on first entry_ |
-| Last entry | _fill in on first entry_ |
+| Project started | 2026-03-25 |
+| Last entry | 2026-03-25 |
 
 > **Update this table** after every story entry. Increment stories complete,
 > update current sprint and phase when they change.
@@ -60,7 +60,27 @@ revisited in a later story. If none, write "None."
 > Backend scaffolding: repos, Docker, databases, ARQ worker, health endpoint.
 > Sprints 1 covers STORY-001 and STORY-002.
 
-_No entries yet. First entry will be STORY-001._
+### STORY-001 — API and Web Repo Scaffolding
+**Date:** 2026-03-25 | **Sprint:** 1 | **Phase:** A | **Repo:** ravenbase-api
+**Quality gate:** ✅ clean
+**Commit:** `8596f20`
+
+**What was built:**
+Scaffolded ravenbase-api with full directory structure, config files, FastAPI /health endpoint, ARQ worker stub, Alembic config, and test fixtures. Created pyproject.toml with all approved dependencies, uv.lock committed to git, Makefile with quality and test targets, and three Docker Compose configurations (dev, override, prod).
+
+**Key decisions:**
+- CORS set to localhost:3000 for dev and ravenbase.app for prod, respecting deployment environments
+- Used lifespan context manager pattern (FastAPI 0.93+) for ARQ pool and database lifecycle
+- structlog configured with environment branching: ConsoleRenderer in dev, JSONRenderer in prod
+- Alembic initialized in autogenerate mode for schema migrations
+
+**Gotchas:**
+- uv.lock must be committed to git (not .gitignore'd) to ensure reproducible dependency resolution
+- FastAPI lifespan pattern requires Python 3.10+ async context manager syntax
+- CORS middleware order matters; must be applied before route registration
+
+**Tech debt noted:**
+None.
 
 ---
 
