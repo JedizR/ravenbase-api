@@ -2,18 +2,40 @@ from __future__ import annotations
 
 import json
 import uuid
+from typing import Any
 
 import structlog
 
 from src.adapters.llm_router import LLMRouter
 from src.adapters.neo4j_adapter import Neo4jAdapter
 from src.adapters.qdrant_adapter import QdrantAdapter
-from src.schemas.graph import ExtractionResult
+from src.schemas.graph import ExtractionResult, GraphEdge, GraphNode, GraphResponse
 from src.services.base import BaseService
 
 logger = structlog.get_logger()
 
 _CONFIDENCE_THRESHOLD = 0.6
+
+# Lookup tables for graph node ID and label extraction (STORY-010)
+_NODE_ID_KEYS: dict[str, str] = {
+    "Concept": "concept_id",
+    "Memory": "memory_id",
+    "Source": "source_id",
+    "Conflict": "conflict_id",
+    "MetaDocument": "doc_id",
+    "SystemProfile": "profile_id",
+    "User": "user_id",
+}
+
+_NODE_LABEL_KEYS: dict[str, str] = {
+    "Concept": "name",
+    "Memory": "content",
+    "Source": "original_filename",
+    "Conflict": "classification",
+    "MetaDocument": "title",
+    "SystemProfile": "name",
+    "User": "email",
+}
 
 # RULE 10: user content wrapped in XML boundary tags
 ENTITY_EXTRACTION_PROMPT = """\
@@ -212,3 +234,250 @@ class GraphService(BaseService):
             self._neo4j.cleanup()
         if self._qdrant:
             self._qdrant.cleanup()
+
+    # ------------------------------------------------------------------
+    # Graph Explorer read methods (STORY-010)
+    # ------------------------------------------------------------------
+
+    async def get_nodes_for_explorer(
+        self,
+        tenant_id: str,
+        profile_id: str | None,
+        node_types: list[str] | None,
+        limit: int,
+    ) -> GraphResponse:
+        """Return all graph nodes + edges for the Graph Explorer UI.
+
+        Cypher returns labels/types as scalars so run_query() dicts carry full metadata.
+        Empty graph returns GraphResponse(nodes=[], edges=[]) — never 404.
+        RULE 2: tenant_id is a query parameter, never interpolated.
+        """
+        log = logger.bind(tenant_id=tenant_id, profile_id=profile_id)
+        log.info("graph_service.get_nodes_for_explorer.started")
+
+        query = (
+            "MATCH (n) "
+            "WHERE n.tenant_id = $tenant_id "
+            # Profile filter applies to Memory nodes only — Concept nodes are
+            # tenant-scoped but not profile-scoped. Future story can refine.
+            # STORY-009 writes profile_id as a property on Memory nodes.
+            "  AND ($profile_id IS NULL OR n.profile_id = $profile_id) "
+            "OPTIONAL MATCH (n)-[r]-(m) "
+            "WHERE m.tenant_id = $tenant_id "
+            "RETURN "
+            "  labels(n)[0] AS n_type, "
+            "  properties(n) AS n_props, "
+            "  type(r) AS r_type, "
+            "  properties(r) AS r_props, "
+            "  labels(m)[0] AS m_type, "
+            "  properties(m) AS m_props "
+            "LIMIT $limit"
+        )
+        rows = await self._get_neo4j().run_query(
+            query,
+            tenant_id=tenant_id,
+            profile_id=profile_id,
+            limit=limit,
+        )
+        result = GraphService._rows_to_graph_response(rows, node_types)
+        log.info(
+            "graph_service.get_nodes_for_explorer.completed",
+            node_count=len(result.nodes),
+            edge_count=len(result.edges),
+        )
+        return result
+
+    async def get_neighborhood(
+        self,
+        node_id: str,
+        tenant_id: str,
+        hops: int,
+        limit: int,
+    ) -> GraphResponse:
+        """Return the N-hop neighborhood subgraph for a given node.
+
+        Uses two queries (nodes then relationships) with DISTINCT to avoid
+        cartesian product. RULE 2: tenant_id always a query parameter.
+        """
+        log = logger.bind(tenant_id=tenant_id, node_id=node_id)
+        log.info("graph_service.get_neighborhood.started")
+
+        nodes_query = (
+            "MATCH (start) "
+            "WHERE start.tenant_id = $tenant_id "
+            "  AND (start.concept_id = $node_id OR start.memory_id = $node_id "
+            "       OR start.source_id = $node_id OR start.doc_id = $node_id) "
+            "MATCH path = (start)-[*1..$hops]-(neighbor) "
+            "WHERE ALL(x IN nodes(path) WHERE x.tenant_id = $tenant_id) "
+            "UNWIND nodes(path) AS n "
+            "RETURN DISTINCT labels(n)[0] AS n_type, properties(n) AS n_props "
+            "LIMIT $limit"
+        )
+        rels_query = (
+            "MATCH (start) "
+            "WHERE start.tenant_id = $tenant_id "
+            "  AND (start.concept_id = $node_id OR start.memory_id = $node_id "
+            "       OR start.source_id = $node_id OR start.doc_id = $node_id) "
+            "MATCH path = (start)-[*1..$hops]-(neighbor) "
+            "WHERE ALL(x IN nodes(path) WHERE x.tenant_id = $tenant_id) "
+            "UNWIND relationships(path) AS r "
+            "WITH DISTINCT r "
+            "RETURN "
+            "  type(r) AS r_type, "
+            "  properties(r) AS r_props, "
+            "  properties(startNode(r)) AS r_source_props, "
+            "  labels(startNode(r))[0] AS r_source_type, "
+            "  properties(endNode(r)) AS r_target_props, "
+            "  labels(endNode(r))[0] AS r_target_type "
+            "LIMIT $limit"
+        )
+        neo4j = self._get_neo4j()
+        node_rows = await neo4j.run_query(
+            nodes_query, node_id=node_id, tenant_id=tenant_id, hops=hops, limit=limit
+        )
+        rel_rows = await neo4j.run_query(
+            rels_query, node_id=node_id, tenant_id=tenant_id, hops=hops, limit=limit
+        )
+
+        nodes: dict[str, GraphNode] = {}
+        for row in node_rows:
+            node = self._row_to_graph_node(row["n_props"], row.get("n_type"))
+            if node:
+                nodes[node.id] = node
+
+        edges: list[GraphEdge] = []
+        seen_edges: set[tuple[str, str, str]] = set()
+        for row in rel_rows:
+            r_type = row.get("r_type") or ""
+            source_id = self._extract_node_id(
+                row.get("r_source_props") or {}, row.get("r_source_type")
+            )
+            target_id = self._extract_node_id(
+                row.get("r_target_props") or {}, row.get("r_target_type")
+            )
+            key = (source_id, target_id, r_type)
+            if key not in seen_edges and source_id and target_id:
+                seen_edges.add(key)
+                edges.append(
+                    GraphEdge(
+                        source=source_id,
+                        target=target_id,
+                        type=r_type,
+                        properties=row.get("r_props") or {},
+                    )
+                )
+
+        result = GraphResponse(nodes=list(nodes.values()), edges=edges)
+        log.info(
+            "graph_service.get_neighborhood.completed",
+            node_count=len(result.nodes),
+            edge_count=len(result.edges),
+        )
+        return result
+
+    # ------------------------------------------------------------------
+    # Private helpers
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _rows_to_graph_response(
+        rows: list[dict],
+        node_types: list[str] | None,
+    ) -> GraphResponse:
+        """Convert flat OPTIONAL MATCH rows into deduplicated nodes + edges."""
+        nodes: dict[str, GraphNode] = {}
+        edges: list[GraphEdge] = []
+        seen_edges: set[tuple[str, str, str]] = set()
+        # Track memory count: concept_id → count of EXTRACTED_FROM Memory edges
+        memory_counts: dict[str, int] = {}
+
+        for row in rows:
+            # --- primary node (n) ---
+            n_node = GraphService._row_to_graph_node(row.get("n_props") or {}, row.get("n_type"))
+            if n_node:
+                if node_types and n_node.type not in node_types:
+                    continue
+                if n_node.id not in nodes:
+                    nodes[n_node.id] = n_node
+
+            # --- neighbor node (m) from OPTIONAL MATCH ---
+            m_props = row.get("m_props") or {}
+            m_type = row.get("m_type")
+            if m_props:
+                m_node = GraphService._row_to_graph_node(m_props, m_type)
+                if m_node and m_node.id not in nodes:
+                    nodes[m_node.id] = m_node
+
+                # --- edge (r) ---
+                r_type = row.get("r_type") or ""
+                r_props = row.get("r_props") or {}
+                if n_node and m_node and r_type:
+                    source_id = n_node.id
+                    target_id = m_node.id
+                    key = (source_id, target_id, r_type)
+                    if key not in seen_edges:
+                        seen_edges.add(key)
+                        edges.append(
+                            GraphEdge(
+                                source=source_id,
+                                target=target_id,
+                                type=r_type,
+                                properties=r_props,
+                            )
+                        )
+                    # EXTRACTED_FROM direction: (Memory)-[:EXTRACTED_FROM]->(Concept).
+                    # With undirected (n)-[r]-(m) match: when n=Concept and m=Memory,
+                    # r_type="EXTRACTED_FROM", so n_node is the Concept getting the count.
+                    if r_type == "EXTRACTED_FROM" and m_type == "Memory" and n_node:
+                        memory_counts[n_node.id] = memory_counts.get(n_node.id, 0) + 1
+
+        # Apply memory_counts back to Concept nodes
+        for node_id, count in memory_counts.items():
+            if node_id in nodes:
+                nodes[node_id].memory_count = count
+
+        return GraphResponse(nodes=list(nodes.values()), edges=edges)
+
+    @staticmethod
+    def _row_to_graph_node(props: dict[str, Any], node_type: str | None) -> GraphNode | None:
+        """Convert a property dict + label string into a GraphNode. Returns None if no ID."""
+        node_id = GraphService._extract_node_id(props, node_type)
+        if not node_id:
+            return None
+        label = GraphService._extract_node_label(props, node_type)
+        return GraphNode(
+            id=node_id,
+            label=label,
+            type=node_type or "unknown",
+            properties=props,
+            memory_count=0,
+        )
+
+    @staticmethod
+    def _extract_node_id(props: dict[str, Any], node_type: str | None) -> str:
+        """Return the canonical ID for a node given its label and property dict."""
+        if node_type and node_type in _NODE_ID_KEYS:
+            key = _NODE_ID_KEYS[node_type]
+            if key in props:
+                return str(props[key])
+        # Fallback: try all known ID keys in priority order
+        for key in (
+            "concept_id",
+            "memory_id",
+            "source_id",
+            "conflict_id",
+            "doc_id",
+            "profile_id",
+            "user_id",
+        ):
+            if key in props:
+                return str(props[key])
+        return ""
+
+    @staticmethod
+    def _extract_node_label(props: dict[str, Any], node_type: str | None) -> str:
+        """Return a human-readable label for the node."""
+        if node_type and node_type in _NODE_LABEL_KEYS:
+            val = str(props.get(_NODE_LABEL_KEYS[node_type], node_type or "unknown"))
+            return val[:100]
+        return str(props.get("name", node_type or "unknown"))[:100]

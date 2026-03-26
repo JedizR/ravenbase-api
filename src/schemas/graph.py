@@ -32,7 +32,7 @@ class ExtractionResult(BaseModel):
 class GraphNode(BaseModel):
     id: str
     label: str
-    type: str  # "concept" | "memory" | "source" | "conflict" | "metadocument"
+    type: str  # "Concept" | "Memory" | "Source" | "Conflict" | "MetaDocument"
     properties: dict[str, Any]
     memory_count: int = 0
 
