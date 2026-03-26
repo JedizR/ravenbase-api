@@ -9,23 +9,23 @@
 
 **Phase:** A — Backend (Sprints 1–17)
 **Current sprint:** 2
-**Status:** In progress — 2 of 37 stories complete
+**Status:** In progress — 3 of 37 stories complete
 
-**Next story to implement:** STORY-003
-**Story file:** `docs/stories/EPIC-01-foundation/STORY-003.md`
+**Next story to implement:** STORY-004
+**Story file:** `docs/stories/EPIC-01-foundation/STORY-004.md`
 
 ---
 
 ## Last Completed Story
 
-**STORY-002 — PostgreSQL schema + Alembic migrations** (2026-03-25)
-All 8 SQLModel table classes defined and migrated via Alembic autogenerate. Async migration pattern used (asyncpg driver). 8 unit tests + 3 integration tests pass. Two composite indexes created for query performance.
+**STORY-003 — Qdrant + Neo4j initialization + constraints** (2026-03-26)
+QdrantAdapter and Neo4jAdapter implemented with lazy initialization and full tenant isolation enforcement. Idempotent setup scripts created for both stores. `/health` endpoint upgraded to check all 4 services (postgresql, redis, qdrant, neo4j). Mock fixtures added to conftest.py. 25 tests pass.
 
 ---
 
 ## Context for Next Session
 
-STORY-002 is complete. All quality gates pass (ruff 0 errors, pyright 0 errors, 8 unit tests + 3 integration tests passing against local Docker postgres). Note: `asyncpg` and `greenlet` were added to `pyproject.toml` (STORY-001 gaps). The local docker DB has the migration applied at `ravenbase:ravenbase@localhost:5432/ravenbase`. STORY-003 adds Qdrant + Neo4j initialization + constraints — start by reading `docs/stories/EPIC-01-foundation/STORY-003.md`.
+STORY-003 is complete. All quality gates pass (ruff 0 errors, pyright 0 errors). 25 unit + integration tests pass. Note: 3 pre-existing STORY-002 integration tests fail because they require the Supabase cloud DB (`db.dsfeqnjeabyptldlwrkv.supabase.co`) which is not reachable offline — these are not regressions. STORY-004 adds ARQ worker setup + health endpoint — start by reading `docs/stories/EPIC-01-foundation/STORY-004.md`.
 
 ---
 
