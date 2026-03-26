@@ -1,5 +1,5 @@
 import jwt
-from fastapi import Header, HTTPException
+from fastapi import Header, HTTPException, Query
 
 from src.core.config import settings
 
@@ -14,13 +14,11 @@ def _get_jwks_client() -> jwt.PyJWKClient:
     return _clerk_jwks_client
 
 
-async def require_user(authorization: str | None = Header(None)) -> dict:
-    if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(
-            status_code=401,
-            detail={"code": "MISSING_AUTH", "message": "Authorization header required"},
-        )
-    token = authorization.removeprefix("Bearer ")
+def _decode_jwt(token: str) -> dict:
+    """Validate a Clerk JWT and return the user payload dict.
+
+    Raises HTTPException 403 on any validation failure.
+    """
     try:
         client = _get_jwks_client()
         signing_key = client.get_signing_key_from_jwt(token)
@@ -42,3 +40,22 @@ async def require_user(authorization: str | None = Header(None)) -> dict:
             status_code=403,
             detail={"code": "INVALID_TOKEN", "message": "Invalid or expired token"},
         ) from None
+
+
+async def require_user(authorization: str | None = Header(None)) -> dict:
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(
+            status_code=401,
+            detail={"code": "MISSING_AUTH", "message": "Authorization header required"},
+        )
+    token = authorization.removeprefix("Bearer ")
+    return _decode_jwt(token)
+
+
+async def verify_token_query_param(token: str = Query(...)) -> dict:
+    """JWT auth for EventSource connections that cannot set headers.
+
+    EventSource passes the Clerk JWT as ?token=<jwt> in the query string.
+    Validation logic is identical to require_user.
+    """
+    return _decode_jwt(token)
