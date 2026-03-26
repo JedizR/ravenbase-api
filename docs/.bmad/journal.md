@@ -257,7 +257,7 @@ Full ARQ `parse_document` pipeline replacing the STORY-005 stub. New adapters: `
 ### STORY-008 Part 1 — Text Quick-Capture (Backend)
 **Date:** 2026-03-26 | **Sprint:** 5 | **Phase:** A | **Repo:** ravenbase-api
 **Quality gate:** ✅ clean — 70 tests passing, 0 ruff errors, 0 pyright errors
-**Commit:** `<fill in after commit>`
+**Commit:** `5c543f2`
 
 **What was built:**
 `POST /v1/ingest/text` endpoint accepting `{content, profile_id, tags}` JSON body. `TextIngestRequest` Pydantic schema added. `IngestionService.handle_text_ingest()` validates 50,000-char limit (raises `TEXT_TOO_LONG`), SHA-256 deduplication, creates Source record with `file_type="direct_input"` and `storage_path="direct_input"` (non-nullable sentinel), enqueues `ingest_text` ARQ task. `ingest_text` worker task: plain-text chunking (2000-char chunks, 200-char overlap), OpenAI `text-embedding-3-small` embeddings, Qdrant upsert with deterministic UUIDs, PENDING → PROCESSING → INDEXING → COMPLETED status transitions, Redis pub/sub progress events, graph_extraction enqueued on completion. 2 integration tests added.
