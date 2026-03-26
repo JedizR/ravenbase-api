@@ -3,10 +3,7 @@
 Docling is imported lazily inside _sync_parse_and_chunk. We inject mocks via
 sys.modules so no real Docling installation is needed during unit tests.
 """
-import sys
 from unittest.mock import MagicMock, patch
-
-import pytest
 
 
 def _make_docling_sys_modules(markdown: str) -> dict:
@@ -37,7 +34,7 @@ def test_parse_and_chunk_returns_list_of_dicts() -> None:
     md = "Hello world.\n\nThis is paragraph two.\n\nAnd paragraph three."
 
     with patch.dict("sys.modules", _make_docling_sys_modules(md)):
-        from src.adapters.docling_adapter import DoclingAdapter
+        from src.adapters.docling_adapter import DoclingAdapter  # noqa: PLC0415
 
         adapter = DoclingAdapter()
         chunks = adapter._sync_parse_and_chunk(b"%PDF fake", "test.pdf")
@@ -58,7 +55,7 @@ def test_parse_and_chunk_respects_size_limit() -> None:
     md = "\n\n".join([long_para] * 20)  # 20 × 300 = 6000 chars total
 
     with patch.dict("sys.modules", _make_docling_sys_modules(md)):
-        from src.adapters.docling_adapter import DoclingAdapter
+        from src.adapters.docling_adapter import DoclingAdapter  # noqa: PLC0415
 
         adapter = DoclingAdapter()
         chunks = adapter._sync_parse_and_chunk(b"%PDF fake", "test.pdf")
@@ -74,7 +71,7 @@ def test_parse_and_chunk_chunk_index_is_sequential() -> None:
     md = "\n\n".join([long_para] * 30)
 
     with patch.dict("sys.modules", _make_docling_sys_modules(md)):
-        from src.adapters.docling_adapter import DoclingAdapter
+        from src.adapters.docling_adapter import DoclingAdapter  # noqa: PLC0415
 
         adapter = DoclingAdapter()
         chunks = adapter._sync_parse_and_chunk(b"%PDF fake", "test.pdf")
