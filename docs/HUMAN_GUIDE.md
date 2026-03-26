@@ -55,8 +55,9 @@ git --version
 npm install -g @railway/cli
 brew install stripe/stripe-cli/stripe && stripe login
 brew install gh && gh auth login
-brew install ngrok/ngrok/ngrok            # For webhook testing (STORY-018)
-# Then: ngrok config add-authtoken YOUR_TOKEN (get token at ngrok.com)
+brew install ngrok/ngrok/ngrok   # For Clerk webhook testing (STORY-018)
+# Authenticate ngrok (free account at ngrok.com):
+ngrok config add-authtoken YOUR_NGROK_TOKEN
 ```
 
 ### 2.2 Create Two GitHub Repos `[HUMAN]`
@@ -72,7 +73,7 @@ cd ravenbase-web && git init && cd ..
 cp -r /path/to/ravenbase-docs/docs ravenbase-api/docs
 cp -r /path/to/ravenbase-docs/docs ravenbase-web/docs
 
-# Each repo gets its own CLAUDE.md
+# Each repo gets its own CLAUDE.md (different rules for backend vs frontend)
 cp ravenbase-api/docs/CLAUDE.md ravenbase-api/CLAUDE.md
 cp ravenbase-api/docs/design/CLAUDE_FRONTEND.md ravenbase-web/CLAUDE.md
 
@@ -100,12 +101,14 @@ playwright-report/
 test-results/
 EOF
 
-# Push to GitHub
+# Push to GitHub (use SSH)
 gh repo create ravenbase-api --private
 gh repo create ravenbase-web --private
+
 cd ravenbase-api
 git remote add origin git@github.com:YOUR_USERNAME/ravenbase-api.git
 git add . && git commit -m "chore: initial docs corpus" && git push -u origin main
+
 cd ../ravenbase-web
 git remote add origin git@github.com:YOUR_USERNAME/ravenbase-web.git
 git add . && git commit -m "chore: initial docs corpus" && git push -u origin main
@@ -129,111 +132,246 @@ Workspace structure:
 
 Do these in order. Each produces credentials needed before development starts.
 
+---
+
 #### Service 1 — Supabase (PostgreSQL + Storage)
-1. `supabase.com` → New project → Name: `ravenbase-prod`
-2. Save: **DB Password**, **Project URL**, **anon key**, **service_role key**
-3. Create Storage bucket `ravenbase-sources` (private)
+
+1. Go to `supabase.com` → sign in → click **"New project"**
+2. Fill in:
+   - **Name:** `ravenbase`
+   - **Database Password:** generate a strong one → **copy it immediately** into your password manager
+   - **Region:** pick closest to you
+   - Click **"Create new project"** — takes ~2 minutes
+
+3. **Get your Project URL and API keys:**
+   - Left sidebar → **Settings** → **API**
+   - Copy and save all three:
+     - **Project URL** → `https://abcdefghijklmno.supabase.co`
+     - **anon** key → the long `eyJ...` string (for frontend/client use)
+     - **service_role** key → click **"Reveal"** → copy it (for backend/server use)
+
+   > **Note on Supabase's new key format:** Supabase is transitioning to `sb_publishable_...` and `sb_secret_...` keys. If your project shows these instead of `anon` / `service_role`, use `sb_publishable_...` where the guide says anon key, and `sb_secret_...` where it says service_role key. Both formats work during the transition period.
+
+4. **Get your Database URL:**
+   - Left sidebar → **Settings** → **Database**
+   - Under **"Connection string"** → select the **"URI"** tab
+   - Copy the URI: `postgresql://postgres:[YOUR-PASSWORD]@db.REF.supabase.co:5432/postgres`
+   - Replace `[YOUR-PASSWORD]` with your DB password from step 2
+   - Change the scheme to `postgresql+asyncpg://` for SQLAlchemy async
+
+5. **Create the Storage bucket:**
+   - Left sidebar → **Storage** → **"New bucket"**
+   - Name: `ravenbase-sources`
+   - Toggle **"Public bucket"** to **OFF** (keep it private)
+   - Click **"Save"**
+
+> **RLS note:** Do not enable RLS manually now. The agent running STORY-002 creates all tables via Alembic migrations. RLS policies are configured by the agent in the relevant stories.
+
+---
 
 #### Service 2 — Clerk (Auth)
-1. `clerk.com` → New application → Name: `Ravenbase`
-2. Enable: Email/password + Google OAuth
-3. Save: **Publishable Key** (`pk_test_...`), **Secret Key** (`sk_test_...`), **Frontend API** (`your-app.clerk.accounts.dev`)
-4. Add webhook: events `user.created`, `user.deleted`; save **Webhook Signing Secret** (`whsec_...`)
-5. Find your **Clerk User ID** at `dashboard.clerk.com → Users` — save for `ADMIN_USER_IDS`
+
+1. Go to `clerk.com` → **"Create application"**
+2. Fill in:
+   - **Application name:** `Ravenbase`
+   - Enable: **Email** and **Google** sign-in (toggle both on)
+   - Click **"Create application"**
+
+3. **Your API keys are shown immediately on the overview page:**
+   - **Publishable Key** → `pk_test_...` — visible directly on the page
+   - **Secret Key** → click the eye icon to reveal → `sk_test_...` → copy it
+
+4. **Webhook** — set this up later during STORY-018 when you have a running server. Skip for now.
+
+5. **Your Clerk User ID** — you don't have one yet. It's created when you register as the first user in your own app during STORY-018 testing. Come back then:
+   - Left sidebar → **Users** → click your account → copy **User ID** (`user_2abc...`)
+   - Set this as `ADMIN_USER_IDS` in both env files
+
+---
 
 #### Service 3 — Qdrant Cloud (Vector Store)
-1. `cloud.qdrant.io` → New cluster → Free tier
-2. Save: **Cluster URL**, **API Key**
+
+1. Go to `cloud.qdrant.io` → sign up with email, Google, or GitHub
+
+2. You'll see a **"Create a Free Cluster"** section. Fill in:
+   - **Cluster name:** `ravenbase` (just a label)
+   - **Cloud provider + Region:** pick any — choose the region closest to you
+   - Click **"Create Free Cluster"**
+
+3. **⚠️ A dialog appears with your API key — copy it immediately.** It is shown only once. If you miss it, you can only generate a new one, not retrieve the original. Save it to your password manager now.
+
+4. Click **"Continue"** → you land on the cluster detail page
+
+5. **Get your Cluster URL:**
+   - On the cluster detail page, find the **"Endpoint"** section
+   - The URL looks like: `https://xyz-example.eu-central.aws.cloud.qdrant.io`
+   - Copy this — this is your `QDRANT_URL`
+
+6. **If you missed the API key**, generate a new one:
+   - Cluster detail page → **"API Keys"** tab → **"Create"**
+   - Name: `ravenbase-dev`, leave expiration blank → click **"Create"** → copy immediately
+
+7. **Verify the connection works:**
+   ```bash
+   curl https://YOUR-CLUSTER.cloud.qdrant.io:6333 \
+     --header 'api-key: YOUR_API_KEY'
+   # Expected: {"title":"qdrant - vector search engine","version":"..."}
+   ```
+
+> **Free tier:** 1 node, 1GB storage, ~1M vectors at 768 dimensions. Sufficient for the entire MVP. Clusters suspend after 1 week of inactivity and are deleted after 4 weeks — log in occasionally during development.
+
+---
 
 #### Service 4 — Neo4j AuraDB (Graph Database)
-1. `neo4j.com/cloud/platform/aura-graph-database` → Free instance
-2. Save: **Connection URI**, **Username**, **Password**
-3. ⚠️ Download credentials file immediately — password shown only once
+
+1. Go to `neo4j.com/cloud/platform/aura-graph-database` → click **"Start Free"**
+2. Sign up or log in → you land in the **Aura Console**
+3. Click **"New Instance"** → select **"AuraDB Free"**
+4. Fill in:
+   - **Instance name:** `ravenbase`
+   - **Region:** pick closest to you
+   - Leave other settings as default
+   - Click **"Create"**
+
+5. **⚠️ A dialog appears — do ALL of these right now:**
+   - Click **"Download and Continue"** → saves a `.txt` credentials file to your machine
+   - The file contains your **Connection URI**, **Username**, and **Password**
+   - **The password is shown only once and cannot be recovered.** If you lose it, you must destroy the instance and create a new one.
+
+6. **Open the downloaded credentials file** and save to your password manager:
+   - `NEO4J_URI` → `neo4j+s://xxxxxxxx.databases.neo4j.io`
+   - `NEO4J_USERNAME` → `neo4j`
+   - `NEO4J_PASSWORD` → the long generated password
+
+7. Wait ~2 minutes for the instance status to show **"Running"**
+
+> **Free tier limits:** 200k nodes, 400k relationships. More than sufficient for MVP and beta. Instances inactive for 30 days are paused with a warning email before deletion.
+
+---
 
 #### Service 5 — OpenAI (Embeddings)
-1. `platform.openai.com/api-keys` → Create key; set $20/month limit
-2. Save: **API Key** (`sk-...`)
+
+1. Go to `platform.openai.com/api-keys` → sign in → click **"Create new secret key"**
+2. Name: `ravenbase-dev` → click **"Create secret key"**
+3. **Copy the key immediately** (`sk-...`) — shown only once → save to password manager
+4. **Set a spending limit:** Left sidebar → **Settings** → **Limits** → set **"Monthly budget"** to `$20`
+
+---
 
 #### Service 6 — Anthropic (User-facing LLM)
-1. `console.anthropic.com → API Keys` → Create
-2. Save: **API Key** (`sk-ant-...`)
+
+1. Go to `console.anthropic.com` → sign in → **API Keys** (left sidebar)
+2. Click **"Create Key"** → Name: `ravenbase-dev` → click **"Create Key"**
+3. **Copy the key** (`sk-ant-...`) → save to password manager
+
+---
 
 #### Service 7 — Google AI Studio (Background LLM — Gemini Flash)
-1. `aistudio.google.com/apikey` → Create API key
-2. Save: **API Key** (`AIza...`)
-3. Optional for local dev — background tasks fall back to Claude Haiku if absent (3× cost)
 
-#### Service 8 — Stripe + Resend
-**Stripe:** `stripe.com` → Get API keys → save **Publishable Key** + **Secret Key**
+1. Go to `aistudio.google.com/apikey`
+2. Click **"Create API key"** → select or create a Google Cloud project → click **"Create API key in existing project"**
+3. **Copy the key** (`AIza...`) → save to password manager
+
+> Optional for local dev — background tasks fall back to Claude Haiku if absent (~3× cost). Set it now to save money from sprint 1.
+
+---
+
+#### Service 8 — Stripe (Payments) + Resend (Email)
+
+**Stripe:**
+
+1. Go to `stripe.com` → sign in → **Developers** → **API keys**
+2. Make sure you're in **Test mode** (toggle in top-right of Stripe dashboard)
+3. Save to password manager:
+   - **Publishable key** → `pk_test_...` (click to copy)
+   - **Secret key** → click **"Reveal test key"** → `sk_test_...` → copy
+
+4. The **Stripe Webhook Secret** (`whsec_test_...`) is generated by `stripe listen` during STORY-022 — leave it as a placeholder for now.
 
 **Resend:**
-1. `resend.com` → API Keys → Create → save **API Key** (`re_test_...`)
-2. Resend Dashboard → Webhooks → Create → save **Webhook Signing Secret** (`whsec_...`)
+
+1. Go to `resend.com` → sign up → left sidebar → **API Keys** → **"Create API Key"**
+2. Name: `ravenbase-dev`, Permission: **Full access**
+3. Click **"Add"** → **copy the key immediately** (`re_...`) → save to password manager
+
+4. **Resend Webhook** (for bounce/complaint handling — needed for STORY-032):
+   - Left sidebar → **Webhooks** → **"Add Webhook"**
+   - You'll fill in the URL during STORY-032. The **Signing Secret** (`whsec_...`) appears on the webhook detail page after creation → save it.
+
+> Resend free tier: 3,000 emails/month, 100/day. Leave `RESEND_API_KEY` blank in `.env.dev` to skip sending real emails locally — the backend logs a warning and skips gracefully.
+
+---
 
 ### 2.4 Create Environment Files `[HUMAN]`
 
-**`ravenbase-api/.envs/.env.dev`:**
+Create this file: **`ravenbase-api/.envs/.env.dev`**
+
 ```bash
+mkdir -p ~/ravenbase/ravenbase-api/.envs
+cat > ~/ravenbase/ravenbase-api/.envs/.env.dev << 'EOF'
 # Database
 DATABASE_URL=postgresql+asyncpg://postgres:YOUR_DB_PASS@db.YOUR_REF.supabase.co:5432/postgres
 REDIS_URL=redis://localhost:6379
 
 # Auth
 CLERK_SECRET_KEY=sk_test_YOUR_KEY
-CLERK_WEBHOOK_SECRET=whsec_YOUR_WEBHOOK_SECRET
-CLERK_FRONTEND_API=your-app.clerk.accounts.dev
+CLERK_WEBHOOK_SECRET=whsec_placeholder   # Fill in during STORY-018 using ngrok
 
 # AI
 OPENAI_API_KEY=sk-YOUR_KEY
 ANTHROPIC_API_KEY=sk-ant-YOUR_KEY
-GEMINI_API_KEY=AIza...              # Optional for local dev
+GEMINI_API_KEY=AIza...                   # Optional for local dev
 
 # Vector + Graph
-QDRANT_URL=https://YOUR_CLUSTER.cloud.qdrant.io
-QDRANT_API_KEY=YOUR_KEY
-NEO4J_URI=neo4j+s://YOUR_INSTANCE.databases.neo4j.io
+QDRANT_URL=https://xyz-example.eu-central.aws.cloud.qdrant.io
+QDRANT_API_KEY=YOUR_QDRANT_KEY
+NEO4J_URI=neo4j+s://xxxxxxxx.databases.neo4j.io
 NEO4J_USER=neo4j
-NEO4J_PASSWORD=YOUR_PASSWORD
+NEO4J_PASSWORD=YOUR_NEO4J_PASSWORD
 
 # Storage
 SUPABASE_URL=https://YOUR_PROJECT_REF.supabase.co
-SUPABASE_SERVICE_ROLE_KEY=eyJ_YOUR_KEY
+SUPABASE_SERVICE_ROLE_KEY=eyJ_YOUR_SERVICE_ROLE_KEY
 STORAGE_BUCKET=ravenbase-sources
 
 # Payments + Email
 STRIPE_SECRET_KEY=sk_test_YOUR_KEY
-STRIPE_WEBHOOK_SECRET=whsec_test_xxx  # Generated by: stripe listen
-RESEND_API_KEY=re_test_xxx            # Leave blank to skip emails in local dev
-RESEND_WEBHOOK_SECRET=whsec_...
+STRIPE_WEBHOOK_SECRET=whsec_placeholder  # Fill in during STORY-022: stripe listen
+RESEND_API_KEY=                          # Leave blank to skip emails in local dev
+RESEND_WEBHOOK_SECRET=whsec_placeholder  # Fill in during STORY-032
 
 # Security
-CLOUDFLARE_ORIGIN_SECRET=changeme     # Only needed in production
+CLOUDFLARE_ORIGIN_SECRET=changeme        # Only needed in production
 
 # Config
 APP_ENV=development
 ENABLE_PII_MASKING=false
 CONFLICT_SIMILARITY_THRESHOLD=0.87
 MAX_DAILY_LLM_SPEND_USD=50.0
-ADMIN_USER_IDS=user_YOUR_CLERK_USER_ID
+ADMIN_USER_IDS=user_placeholder          # Fill in after STORY-018
+EOF
 ```
 
-**`ravenbase-web/.env.local`:**
+Create this file: **`ravenbase-web/.env.local`**
+
 ```bash
+cat > ~/ravenbase/ravenbase-web/.env.local << 'EOF'
 NEXT_PUBLIC_API_URL=http://localhost:8000
 NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_YOUR_KEY
 CLERK_SECRET_KEY=sk_test_YOUR_KEY
 NEXT_PUBLIC_SUPABASE_URL=https://YOUR_PROJECT_REF.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ_YOUR_ANON_KEY
-ADMIN_USER_IDS=user_YOUR_CLERK_USER_ID
+ADMIN_USER_IDS=user_placeholder          # Fill in after STORY-018 — same as backend
 # NEXT_PUBLIC_POSTHOG_KEY=phc_YOUR_KEY   # Optional — cookie banner only shows if set
+EOF
 ```
 
 ### 2.5 Install Skills into Claude Code `[HUMAN]`
 
-Run once. Applies globally to all Claude Code sessions.
+Run once globally. Applies to all Claude Code sessions.
 
 ```bash
-# Terminal:
+# In terminal:
 npx skills add shadcn-ui/ui --skill shadcn -a claude-code -g
 npx skills add secondsky/claude-skills --skill tailwind-v4-shadcn -a claude-code -g
 npx skills add Jeffallan/claude-skills --skill fastapi-expert -a claude-code -g
@@ -244,11 +382,11 @@ npx skills add Jeffallan/claude-skills --skill fastapi-expert -a claude-code -g
 /install-skill https://github.com/aj-geddes/claude-code-bmad-skills
 ```
 
-| Skill | Does | When it activates |
+| Skill | Does | Activates when |
 |---|---|---|
-| `shadcn` | Reads live `components.json` at session start | Any shadcn/ui work |
-| `tailwind-v4-shadcn` | Tailwind v4 gotchas, `@theme` pattern | Any Tailwind v4 work |
-| `fastapi-expert` | Async patterns, lifespan, Pydantic v2 | Any FastAPI work |
+| `shadcn` | Reads your live `components.json` at session start | Any shadcn/ui work |
+| `tailwind-v4-shadcn` | Tailwind v4 gotchas, `@theme inline` pattern | Any Tailwind v4 work |
+| `fastapi-expert` | Async patterns, lifespan, dependency injection | Any FastAPI work |
 | `superpowers` | TDD, systematic debugging, brainstorm→plan→implement | All sessions |
 | BMAD skills | `/bmad:dev-story` story workflow commands | All sessions |
 
@@ -272,80 +410,44 @@ cd ~/ravenbase/ravenbase-web    # frontend stories
 claude
 ```
 
----
-
 ### Step 1 — Paste the Brief `[HUMAN]`
 
-Find the **Agent Implementation Brief** at the bottom of
-`docs/stories/EPIC-XX/STORY-XXX.md`. Copy it. Paste it as your first message.
+Find the **Agent Implementation Brief** at the bottom of the story file. Copy it. Paste it as your first message.
 
-**For cross-repo stories** (STORY-007, STORY-008, STORY-018, STORY-028, STORY-036):
-- Open **backend session** first → paste **Backend Agent Brief**
-- After backend is merged → open **frontend session** → paste **Frontend Agent Brief**
-
----
+**For cross-repo stories** (STORY-007, STORY-008, STORY-018, STORY-028, STORY-036): backend session first → Frontend Agent Brief in a second session after backend is merged.
 
 ### Step 2 — Agent Reads `[AGENT]`
 
-Automatically reads:
-1. `CLAUDE.md` — architecture rules
-2. `docs/.bmad/project-status.md` — current state
-3. Last 2–3 entries in `docs/.bmad/journal.md` — recent decisions + gotchas
-4. The story file — all ACs
-5. All files in "Before You Start"
-
----
+Reads: `CLAUDE.md` → `project-status.md` → last 2–3 `journal.md` entries → story file → all "Before You Start" files.
 
 ### Step 3 — Agent Plans `[AGENT]`
 
-Outputs:
-- Files to create (exact paths)
-- Files to modify (exact changes)
-- How each AC maps to code
-
-**Agent stops and waits for your explicit approval.**
-
----
+Outputs files to create, files to modify, how each AC maps to code.
+**Stops and waits for your explicit approval.**
 
 ### Step 4 — You Approve `[HUMAN]`
 
-Review the plan. If correct: `"Approved. Proceed."`
-
-If wrong, redirect before any code:
-> "AC-3 doesn't need a new file — put it in `src/services/existing.py`. Revise the plan."
-
----
+If correct: `"Approved. Proceed."`
+If wrong, redirect before any code is written.
 
 ### Step 5 — Agent Implements `[AGENT]`
 
 Strict order: **schemas/models → tests → implementation**
 
----
-
 ### Step 6 — Agent Runs Quality Gate `[AGENT]`
 
-**Backend:**
 ```
-make quality    → 0 ruff errors, 0 pyright errors
-make test       → 0 failures, coverage ≥ 70%
-```
-
-**Frontend:**
-```
-npm run build   → 0 TypeScript errors, 0 warnings
-npm run test    → 0 failures
+Backend:   make quality → 0 ruff + pyright errors
+           make test    → 0 failures, coverage ≥ 70%
+Frontend:  npm run build → 0 TypeScript errors, 0 warnings
+           npm run test  → 0 failures
 ```
 
-If the gate fails: agent fixes, re-runs, does not commit until clean.
-
----
+Agent fixes and re-runs if gate fails. Does not commit until clean.
 
 ### Step 7 — Agent Verifies `[AGENT]`
 
-Runs every command from "Testing This Story" in the story file.
-Confirms every AC checkbox is met.
-
----
+Runs every command from "Testing This Story". Confirms every AC checkbox is met.
 
 ### Step 8 — Agent Commits `[AGENT]`
 
@@ -355,66 +457,43 @@ git commit -m "feat(ravenbase): STORY-XXX brief description"
 git push
 ```
 
----
-
 ### Step 9 — Agent Regenerates Client (if needed) `[AGENT]`
 
 Only when the story added or changed an API endpoint:
 
 ```bash
 cd ../ravenbase-web
-npm run generate-client        # API server must be running at localhost:8000
+npm run generate-client
 git add src/lib/api-client/
 git commit -m "chore: regenerate client after STORY-XXX"
-git push
-cd ../ravenbase-api
+git push && cd ../ravenbase-api
 ```
 
-Stories that always require client regen:
-`STORY-005, 007-BE, 008-BE, 010, 013, 016, 018-BE, 023, 024, 026, 028-BE, 029, 034, 035, 036-BE`
-
----
+Stories that always require it:
+`005, 007-BE, 008-BE, 010, 013, 016, 018-BE, 023, 024, 026, 028-BE, 029, 034, 035, 036-BE`
 
 ### Step 10 — Agent Updates All State `[AGENT]`
 
 ```bash
-# 1. epics.md: 🔲 → ✅
-# 2. .bmad/project-status.md: sprint, next story, last completed
-# 3. .bmad/story-counter.txt: increment by 1 (e.g. "005" → "006")
-# 4. .bmad/journal.md: append entry with all 6 fields + update stats table
+# epics.md: 🔲 → ✅
+# project-status.md: sprint, next story, last completed
+# story-counter.txt: increment by 1
+# journal.md: append entry with all 6 fields + update stats table
 
-git add docs/stories/epics.md \
-        docs/.bmad/project-status.md \
-        docs/.bmad/journal.md
+git add docs/stories/epics.md docs/.bmad/project-status.md docs/.bmad/journal.md
 git commit -m "docs: mark STORY-XXX complete"
 git push
 ```
 
-Journal entry format (agent fills this):
-```
-### STORY-XXX — [Title]
-**Date:** YYYY-MM-DD | **Sprint:** N | **Phase:** A or B | **Repo:** ravenbase-api
-**Quality gate:** ✅ clean | **Commit:** `xxxxxxxx`
-
-**What was built:** [1–3 sentences]
-**Key decisions:** [bullet points — architectural choices and why]
-**Gotchas:** [surprises, workarounds, or "None"]
-**Tech debt noted:** [deferred items or "None"]
-```
-
----
-
 ### Step 11 — You Verify on GitHub `[HUMAN]`
 
-Check the commit landed. Confirm CI is green.
-
-**→ Pick next 🔲 from `epics.md`. Return to Loop Start.**
+Confirm commit landed. CI is green. Pick next 🔲. Return to Loop Start.
 
 ---
 
 ## Part 4 — The Three Situations
 
-### Situation A — Session dies between stories (clean)
+### Situation A — Session dies between stories
 
 ```bash
 cd ~/ravenbase/ravenbase-api  # or ravenbase-web
@@ -422,101 +501,55 @@ claude
 # Paste the Agent Implementation Brief from the next story file
 ```
 
-No special handling. The agent reads `project-status.md` and `journal.md` and starts clean.
+No special handling needed.
 
----
-
-### Situation B — Session dies mid-story (partial work)
-
-**Before opening Claude Code:**
+### Situation B — Session dies mid-story
 
 ```bash
-git log --oneline -5    # What was committed
-git status              # What's staged
-ls src/services/        # What files actually exist
-```
-
-Read the story file — note which ACs have `[x]` vs `[ ]`.
-
-```bash
-# Mark in-progress
+git log --oneline -5 && git status   # What exists
 # Edit epics.md → 🔲 to 🔄
-# Edit project-status.md → add session note describing current state
+# Edit project-status.md → add session note
 git add docs/stories/epics.md docs/.bmad/project-status.md
-git commit -m "docs: STORY-XXX in progress — resume notes added"
-git push
+git commit -m "docs: STORY-XXX in progress — resume notes added" && git push
 ```
 
-Open Claude Code, paste:
-
+Paste this resume message in Claude Code:
 ```
 I am resuming STORY-XXX: [title]. It is partially complete.
 
-Before anything else, read:
-1. CLAUDE.md (architecture rules)
-2. docs/.bmad/project-status.md (see session notes for current state)
-3. docs/.bmad/journal.md (last 2–3 entries)
-4. docs/stories/EPIC-XX/STORY-XXX.md (note which ACs have [x])
-5. [list specific files created so far]
+Read: CLAUDE.md, project-status.md, last 2–3 journal.md entries,
+the story file (note [x] ACs), and [list files created so far].
 
-After reading, tell me:
-- Which ACs are already met by existing code
-- Which ACs are NOT yet met
-- Your plan to complete ONLY the remaining work
-
-Do NOT re-implement anything that already exists.
-Do NOT start implementing — show me the completion plan first.
+Tell me: which ACs are done, which remain, and your plan for ONLY
+the remaining work. Do not re-implement. Show plan first.
 ```
-
-Review the agent's plan. Correct any misidentifications:
-> "AC-3 is already implemented in `src/adapters/docling_adapter.py`. Skip it and focus only on AC-5."
-
-Then complete the story normally.
-
----
 
 ### Situation C — Restart from scratch
 
 ```bash
-rm src/services/my_new_service.py  # Delete story files
-# Edit epics.md → 🔄 back to 🔲
-git add -A
-git commit -m "chore: reset STORY-XXX for clean restart"
-git push
+# Delete story files, edit epics.md → 🔲, commit, start fresh session
 ```
-
-Start a fresh session with the standard Agent Implementation Brief.
 
 ---
 
 ## Part 5 — The Backend Gate
 
-After Sprint 17 (STORY-029) completes, before opening any frontend story:
+After Sprint 17, before any frontend story:
 
 ```bash
-cd ~/ravenbase/ravenbase-api
-
-# Clean install
-rm -rf .venv
-uv sync --dev
-make test       # Must show: 0 failures
-make quality    # Must show: 0 errors
-
-cd ../ravenbase-web
-npm ci
-npm run generate-client   # Must produce non-empty src/lib/api-client/
+rm -rf .venv && uv sync --dev
+make test && make quality          # Must both be clean
+cd ../ravenbase-web && npm ci
+npm run generate-client            # Must produce non-empty src/lib/api-client/
 ```
 
-Checklist `[HUMAN]`:
 ```
 [ ] All 17 backend stories merged to main
 [ ] make test: 0 failures from clean checkout
-[ ] make quality: 0 ruff + pyright errors
+[ ] make quality: 0 errors
 [ ] npm run generate-client: non-empty typed client
 [ ] curl localhost:8000/health → all 4 services healthy
 ```
-
-**Do not start Sprint 18 until all five are checked.**
 
 ---
 
@@ -526,22 +559,22 @@ Checklist `[HUMAN]`:
 
 | Sprint | Story | Done when |
 |---|---|---|
-| 1 | STORY-001 | `make quality` passes. `/health` → `{"status":"ok"}` |
+| 1 | STORY-001 | `/health` → `{"status":"ok"}` |
 | 2 | STORY-002 | Migrations clean. All tables exist |
 | 3 | STORY-003 + STORY-004 | Health: qdrant+neo4j ok. ARQ starts |
 | 4 | STORY-005 | Upload → 202. File in Supabase Storage |
 | 5 | STORY-006 | PDF parsed + embedded. Searchable in Qdrant |
 | 6 | STORY-007-BE | SSE stream emits progress to curl |
-| 7 | STORY-008-BE | `/v1/ingest/text` accepts + queues text |
+| 7 | STORY-008-BE | `/v1/ingest/text` accepts + queues |
 | 8 | STORY-009 + STORY-010 | Neo4j nodes populated. Graph API works |
-| 9 | STORY-012 + STORY-013 | Conflict detected + stored. Resolve + undo work |
+| 9 | STORY-012 + STORY-013 | Conflict detected. Resolve + undo work |
 | 10 | STORY-015 + STORY-016 | Retrieval returns chunks. MetaDoc streams SSE |
 | 11 | STORY-018-BE | JWT validated. Clerk webhook creates User |
 | 12 | STORY-023 | Credits deducted. 402 on insufficient balance |
 | 13 | STORY-024 | Full cascade deletion across 4 stores |
 | 14 | STORY-025 | PII masking active. Tests pass |
-| 15 | STORY-026 | Chat streams tokens. Multi-turn session. Credits deducted |
-| 16 | STORY-028-BE | `/v1/ingest/import-prompt` returns personalized prompt |
+| 15 | STORY-026 | Chat streams tokens. Credits deducted |
+| 16 | STORY-028-BE | Import prompt endpoint works |
 | 17 | STORY-029 | Graph query → cypher + nodes. Write ops rejected |
 
 **→ BACKEND GATE ← (see Part 5)**
@@ -551,154 +584,146 @@ Checklist `[HUMAN]`:
 | Sprint | Story | Done when |
 |---|---|---|
 | 18 | STORY-001-WEB | `npm run build` passes. `--primary: #2d4a3e` in globals.css |
-| 19 | STORY-018-FE | Register → login → `/dashboard`. JWT on API calls |
+| 19 | STORY-018-FE | Register → login → `/dashboard` |
 | 20 | STORY-019 + STORY-020 | Onboarding wizard. Profile switching |
-| 21 | STORY-007-FE + STORY-008-FE | IngestionProgress streams. Omnibar captures text |
-| 22 | STORY-011 | Graph Explorer renders. Node click opens panel |
-| 23 | STORY-014 | Memory Inbox: all 3 keyboard flows work |
-| 24 | STORY-017 | Workstation streams Markdown. Export to .md |
+| 21 | STORY-007-FE + STORY-008-FE | IngestionProgress streams. Omnibar works |
+| 22 | STORY-011 | Graph Explorer renders |
+| 23 | STORY-014 | Memory Inbox: all 3 flows |
+| 24 | STORY-017 | Workstation streams. Export works |
 | 25 | STORY-021 + STORY-022 | Landing page live. Stripe checkout works |
-| 26 | STORY-027 | Chat UI streams. Citations link to graph nodes |
-| 27 | STORY-028-FE | Import helper: copy prompt, paste, submit |
-| 28 | STORY-030 | Query bar in Graph Explorer. Nodes highlight amber |
-| 29 | STORY-031 | Dark mode toggle. No flash. Persists |
-| 30 | STORY-032 | Welcome email sends. Low-credits warning sends |
-| 31 | STORY-033 | Privacy + Terms pages. Cookie banner conditional |
-| 32 | STORY-034 | Referral codes working. Settings → Referrals renders |
-| 33 | STORY-035 | Export ZIP in Supabase. Email with link sends |
-| 34 | STORY-036 | Admin dashboard. Credit adjustment works |
-| 35 | STORY-037 | Activity middleware tracking. CRON purge at day 180 |
+| 26 | STORY-027 | Chat UI streams with citations |
+| 27 | STORY-028-FE | Import helper UI works |
+| 28 | STORY-030 | Graph query bar highlights nodes |
+| 29 | STORY-031 | Dark mode toggle persists |
+| 30 | STORY-032 | Welcome + low-credits emails send |
+| 31 | STORY-033 | Privacy + Terms pages. Cookie banner |
+| 32 | STORY-034 | Referral codes working |
+| 33 | STORY-035 | Export ZIP + email link |
+| 34 | STORY-036 | Admin dashboard works |
+| 35 | STORY-037 | CRON purge at day 180 |
 
 ---
 
 ## Part 7 — Story-Specific Concerns
 
-These stories need your active attention. Everything else is fully autonomous.
+### STORY-001 `[HUMAN: check before approving]`
+- `pyproject.toml` uses `uv` syntax (not Poetry)
+- FastAPI uses `lifespan` context manager (not `@app.on_event`)
+- `aiosqlite` is in `[dependency-groups.dev]`
 
-### STORY-001 — API Scaffold `[HUMAN: check before approving plan]`
-- `pyproject.toml` must use `uv` syntax (`[project]` table), not Poetry
-- FastAPI must use `lifespan` context manager, not `@app.on_event`
-- `aiosqlite` must be in `[dependency-groups.dev]`
-- `/health` endpoint must return `{"status": "ok"}`
+### STORY-001-WEB `[HUMAN: verify after completion]`
+`app/globals.css` must contain `--primary: ...` resolving to `#2d4a3e` and `--background: ...` resolving to `#f5f3ee`. Wrong tokens = every frontend story builds with wrong colors.
 
-### STORY-001-WEB — Frontend Scaffold `[HUMAN: verify after completion]`
-Check `app/globals.css` contains:
-```css
---primary: ...     /* must resolve to #2d4a3e */
---background: ...  /* must resolve to #f5f3ee */
-```
-If wrong, every subsequent frontend story builds with wrong colors.
+### STORY-006 `[HUMAN: budget a full session]`
+Content moderation (AC-11) must run **before** Docling. Docling backend: `pypdfium2` with `generate_page_images=False`.
 
-### STORY-006 — Docling Pipeline `[HUMAN: budget a full session]`
-- Content moderation (AC-11) must run **before** Docling, not after
-- Docling backend: `pypdfium2` with `generate_page_images=False`
-- If stuck: use Context7 MCP to fetch current Docling docs
+### STORY-009 `[HUMAN: verify LLMRouter]`
+Agent must implement `src/adapters/llm_router.py` using LiteLLM SDK. Routes to `gemini/gemini-2.5-flash` primary, Claude Haiku fallback.
 
-### STORY-009 — Entity Extraction via LLMRouter `[HUMAN: verify LLMRouter]`
-- Agent must implement `src/adapters/llm_router.py` using LiteLLM SDK
-- Extraction must route to `gemini/gemini-2.5-flash` primary, Claude Haiku fallback
-- First run will likely need 1–2 rounds of prompt refinement — normal
-
-### STORY-018-BE — Clerk Auth `[HUMAN: critical test after completion]`
+### STORY-018-BE `[HUMAN: critical test]`
 ```bash
 curl localhost:8000/v1/graph/nodes
-# Must return 401 — not 200, not 500
+# Must return 401
 ```
-If not 401, auth middleware is broken. Fix before continuing. Everything after depends on this.
+If not 401, stop everything and fix. Every story after depends on this.
 
-For local webhook testing:
+**Local webhook testing:**
 ```bash
-# In a dedicated terminal (keep running):
-clerk webhooks listen --forward-to http://localhost:8000/webhooks/clerk
-# Output: "Webhook signing secret: whsec_test_xxxxxxxxx"
-# Copy → CLERK_WEBHOOK_SECRET in .envs/.env.dev
+ngrok http 8000
+# URL: https://abc123.ngrok-free.app
+# Clerk Dashboard → Configure → Webhooks → Add Endpoint:
+#   URL: https://abc123.ngrok-free.app/webhooks/clerk
+#   Events: user.created, user.deleted
+#   Signing Secret → CLERK_WEBHOOK_SECRET in .envs/.env.dev
+
+# After testing, register yourself at localhost:3000/register
+# Clerk Dashboard → Users → your account → copy User ID (user_2abc...)
+# Set ADMIN_USER_IDS=user_2abc... in BOTH .envs/.env.dev AND .env.local
 ```
 
-### STORY-022 — Pricing + Stripe `[HUMAN: start Stripe CLI first]`
+### STORY-022 `[HUMAN: start Stripe CLI first]`
 ```bash
 stripe listen --forward-to localhost:8000/webhooks/stripe
-# Printed signing secret → update STRIPE_WEBHOOK_SECRET in .env.dev
-# This value is DIFFERENT from the Stripe dashboard secret
+# Printed secret → STRIPE_WEBHOOK_SECRET in .envs/.env.dev
+# This is DIFFERENT from the Stripe dashboard webhook secret
 ```
-Before approving the plan: ask agent to show you the webhook handler. It must check Redis for `stripe:event:{event_id}` before processing (idempotency AC-11/12).
 
-### STORY-036 — Admin Dashboard `[HUMAN: verify both env files]`
-`ADMIN_USER_IDS` must be in **both** `.envs/.env.dev` (backend) and `.env.local` (web). Next.js server components read `process.env.ADMIN_USER_IDS`. If only in backend, the frontend middleware redirects everyone to `/dashboard`.
+### STORY-032 `[HUMAN: Resend webhook]`
+```bash
+ngrok http 8000
+# Resend Dashboard → Webhooks → Add Webhook
+#   URL: https://YOUR_NGROK_URL/webhooks/resend
+#   Events: email.bounced, email.complained
+#   Signing Secret → RESEND_WEBHOOK_SECRET in .envs/.env.dev
+```
 
-Find your Clerk user ID: `dashboard.clerk.com → Users → click your account`.
+### STORY-036 `[HUMAN: both env files]`
+`ADMIN_USER_IDS` must be in **both** `.envs/.env.dev` and `.env.local`. Next.js server components read it independently.
 
-### STORY-037 — Cold Data Lifecycle `[HUMAN: verify two constraints]`
-Before approving:
-1. `ActivityTrackingMiddleware` must use `asyncio.create_task()` — never `await`. Blocking here slows every API request.
-2. Purge task must check BOTH `User.tier IN ('pro', 'team')` AND `settings.admin_user_ids`. Either check alone is insufficient.
+### STORY-037 `[HUMAN: two constraints]`
+1. `ActivityTrackingMiddleware` must use `asyncio.create_task()` — never `await`
+2. Purge must check BOTH `User.tier IN ('pro', 'team')` AND `settings.admin_user_ids`
 
 ---
 
 ## Part 8 — Context Window Management
 
-**The rule:** Always finish the current story before context dies. At ~80% context, push to complete and commit. A half-done story in a dead session is harder to resume than no story.
-
-**Fresh agent = no problem.** Every story brief is self-contained. A new agent reads `CLAUDE.md`, `project-status.md`, `journal.md`, and the story file — and has everything it needs. No conversation history required.
+At ~80% context: push to complete and commit the current story rather than starting a new one. Fresh agents work fine — every story brief is self-contained.
 
 ---
 
 ## Part 9 — Production Deployment Checklist
 
-When all 35 sprints are complete:
-
-### Railway (Backend) `[HUMAN]`
+### Railway (Backend)
 ```
-[ ] GEMINI_API_KEY set (not optional — Haiku fallback costs 3× more)
-[ ] MAX_DAILY_LLM_SPEND_USD=200.0 (not 50.0)
+[ ] GEMINI_API_KEY set (Haiku fallback costs 3× more)
+[ ] MAX_DAILY_LLM_SPEND_USD=200.0
 [ ] CLOUDFLARE_ORIGIN_SECRET set (32-char hex)
-[ ] ADMIN_USER_IDS set (Clerk production user ID)
+[ ] ADMIN_USER_IDS set (production Clerk user ID)
 [ ] RESEND_WEBHOOK_SECRET set
-[ ] STRIPE_WEBHOOK_SECRET matches production Stripe webhook
+[ ] STRIPE_WEBHOOK_SECRET = production webhook (not test mode)
 [ ] APP_ENV=production
 [ ] ENABLE_PII_MASKING=true
 ```
 
-### Vercel (Frontend) `[HUMAN]`
+### Vercel (Frontend)
 ```
 [ ] ADMIN_USER_IDS set (same as Railway)
-[ ] NEXT_PUBLIC_API_URL pointing to production Railway URL
+[ ] NEXT_PUBLIC_API_URL → production Railway URL
 [ ] NEXT_PUBLIC_POSTHOG_KEY set if you want analytics
 ```
 
-### Cloudflare `[HUMAN]`
+### Cloudflare
 ```
-[ ] WAF managed ruleset enabled
-[ ] Bot Fight Mode enabled
-[ ] Origin secret header rule: requests without X-CF-Secret → block
-[ ] Rate limiting: 100 requests / 10 seconds / IP
+[ ] WAF + Bot Fight Mode enabled
+[ ] Origin secret header rule active
+[ ] Rate limiting: 100 req / 10s / IP
 ```
 
-### Monitoring `[HUMAN]`
+### Monitoring
 ```
-[ ] Better Uptime: /health check every 60 seconds
-[ ] Alert: llm_circuit_breaker.approaching_cap (warning)
-[ ] Alert: llm_circuit_breaker.TRIPPED (critical — page immediately)
-[ ] Alert: Dead Letter Queue depth > 0
+[ ] Better Uptime: /health every 60s
+[ ] Alert: llm_circuit_breaker.TRIPPED (page immediately)
+[ ] Alert: Dead Letter Queue > 0
 [ ] Supabase PITR enabled
 ```
 
-### Multi-Database Restore Order `[HUMAN — verify before go-live]`
-
-Mandatory order: PostgreSQL first → Qdrant (`make reindex-missing`) → Neo4j (`make regraph-missing`). Never restore Qdrant or Neo4j before PostgreSQL — they are derived from it.
+### Multi-Database Restore Order
+PostgreSQL first → Qdrant (`make reindex-missing`) → Neo4j (`make regraph-missing`). Never restore Qdrant or Neo4j before PostgreSQL.
 
 ---
 
 ## Part 10 — Files You Interact With Every Day
 
-| File | Purpose | Who updates it |
+| File | Purpose | Who updates |
 |---|---|---|
-| `docs/stories/epics.md` | Story status board (🔲 🔄 ✅) | Agent after each story |
+| `docs/stories/epics.md` | Story status board | Agent after each story |
 | `docs/.bmad/project-status.md` | Current sprint, next story | Agent after each story |
 | `docs/.bmad/journal.md` | Append-only history | Agent after each story |
 | `docs/.bmad/story-counter.txt` | Story number counter | Agent after each story |
 | `docs/.bmad/resume-protocol.md` | How to resume mid-story | You read when needed |
 | Story files (`STORY-XXX.md`) | Agent Brief you paste | You read; agent checks ACs |
-| `CLAUDE.md` (repo root) | Backend architecture rules | Reference when redirecting |
+| `CLAUDE.md` (repo root) | Backend rules | Reference when redirecting |
 | `CLAUDE.md` (`ravenbase-web`) | Frontend rules | Reference when redirecting |
 
 ---
@@ -708,13 +733,10 @@ Mandatory order: PostgreSQL first → Qdrant (`make reindex-missing`) → Neo4j 
 ```bash
 git clone git@github.com:YOUR_USERNAME/ravenbase-api.git
 git clone git@github.com:YOUR_USERNAME/ravenbase-web.git
-
-# Re-create env files from your password manager
-# Re-install tools: uv, gh, stripe CLI, Node.js 20+, Docker
-# Re-install Claude Code skills (see Part 2, Section 2.5)
-
-# Resume from:
-cat ravenbase-api/docs/.bmad/project-status.md
+# Re-create env files from password manager
+# Re-install: uv, gh, stripe CLI, ngrok, Node 20+, Docker
+# Re-install Claude Code skills (Part 2, Section 2.5)
+cat ravenbase-api/docs/.bmad/project-status.md  # Resume from here
 ```
 
 ---
@@ -731,26 +753,3 @@ Everything else is automated.
 
 **Verified against `docs_newest_version.zip` — 81 files, 37 stories, 35 sprints.**
 **Zero failures across all 20 structural check categories.**
-
-| Category | Status |
-|---|---|
-| All 37 story files — structure + Agent Briefs complete | ✅ |
-| Credit values consistent (18/45/3/8 credits) | ✅ |
-| Model strings correct | ✅ |
-| Pricing correct (Pro $15, Team $49, Free 500cr) | ✅ |
-| 15 security layers documented | ✅ |
-| 19 frontend rules sequential | ✅ |
-| Schema complete (all fields including cold-data lifecycle) | ✅ |
-| API contract complete (all endpoints) | ✅ |
-| ENV vars in KICKSTART complete | ✅ |
-| Sprint counts correct (37 stories, 35 sprints, 18 backend) | ✅ |
-| Journal integrated across 5 files | ✅ |
-| INP metric in NFR | ✅ |
-| STORY-021 consistent (9 sections, FAQ in AC-1, dual CTA) | ✅ |
-| UX micro-interaction patterns documented | ✅ |
-| Preconnect resource hints in CLAUDE_FRONTEND | ✅ |
-| ADR-011 LLMRouter documented | ✅ |
-| BMAD state files all present | ✅ |
-| Development loop fully automated (9 steps) | ✅ |
-| story-counter.txt in loop Step 8 | ✅ |
-| Cross-repo story protocol in loop preamble | ✅ |
