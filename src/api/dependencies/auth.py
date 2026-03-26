@@ -30,7 +30,8 @@ async def require_user(authorization: str | None = Header(None)) -> dict:
             algorithms=["RS256"],
             options={"verify_exp": True},
         )
-        return {"user_id": payload["sub"], "email": payload.get("email", "")}
+        tier = payload.get("public_metadata", {}).get("plan", "free")
+        return {"user_id": payload["sub"], "email": payload.get("email", ""), "tier": tier}
     except jwt.ExpiredSignatureError as err:
         raise HTTPException(
             status_code=403,

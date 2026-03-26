@@ -1,17 +1,21 @@
 from contextlib import asynccontextmanager
 
+from arq import create_pool
+from arq.connections import RedisSettings
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from src.api.routes import health
+from src.api.routes import health, ingest
 from src.core.config import settings
 from src.core.logging import configure_logging
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):  # noqa: ARG001
+async def lifespan(app: FastAPI):
     configure_logging()
+    app.state.arq_pool = await create_pool(RedisSettings.from_dsn(settings.REDIS_URL))
     yield
+    await app.state.arq_pool.close()
 
 
 def create_app() -> FastAPI:
@@ -35,6 +39,7 @@ def create_app() -> FastAPI:
     )
 
     app.include_router(health.router)
+    app.include_router(ingest.router)
     return app
 
 
