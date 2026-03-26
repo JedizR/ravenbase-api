@@ -2,6 +2,8 @@
 import uuid
 
 from src.models.conflict import Conflict, ConflictStatus
+from src.models.credit import CreditTransaction
+from src.models.job_status import JobStatus
 from src.models.meta_document import MetaDocument
 from src.models.profile import SystemProfile
 from src.models.source import Source, SourceAuthorityWeight, SourceStatus
@@ -90,3 +92,18 @@ def test_meta_document_default_fields() -> None:
     assert doc.parsed_intent is None
     assert doc.profile_id is None
     assert isinstance(doc.id, uuid.UUID)
+
+
+def test_credit_transaction_fields() -> None:
+    uid = uuid.uuid4()
+    tx = CreditTransaction(user_id=uid, amount=-5, balance_after=195, operation="ingest_page")
+    assert tx.reference_id is None
+
+
+def test_job_status_default_fields() -> None:
+    uid = uuid.uuid4()
+    job = JobStatus(id="arq:job:abc123", user_id=uid, job_type="ingestion")
+    assert job.status == "queued"
+    assert job.progress_pct == 0
+    assert job.message is None
+    assert job.source_id is None
