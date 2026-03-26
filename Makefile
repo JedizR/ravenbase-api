@@ -1,4 +1,4 @@
-.PHONY: dev-up dev-down migrate db-upgrade seed lint-fix format quality test ci-local worker
+.PHONY: dev-up dev-down migrate db-upgrade seed setup-qdrant setup-neo4j lint-fix format quality test ci-local worker
 
 dev-up:
 	docker-compose up -d postgres redis
@@ -14,6 +14,12 @@ db-upgrade:
 
 seed:
 	uv run python scripts/seed_dev_data.py
+
+setup-qdrant:
+	uv run python scripts/setup_qdrant.py
+
+setup-neo4j:
+	uv run python scripts/setup_neo4j.py
 
 lint-fix:
 	uv run ruff check src/ tests/ --fix
