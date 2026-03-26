@@ -1,12 +1,29 @@
+import structlog
 from arq.connections import RedisSettings
 
 from src.core.config import settings
 
+logger = structlog.get_logger()
+
+
+async def hello_world(_ctx: dict) -> dict:  # type: ignore[type-arg]
+    """Stub task to verify ARQ worker is running. Returns {"status": "ok"}."""
+    log = logger.bind(job="hello_world")
+    log.info("hello_world.started")
+    log.info("hello from worker")
+    log.info("hello_world.completed")
+    return {"status": "ok"}
+
 
 class WorkerSettings:
-    """ARQ WorkerSettings. Tasks registered here as implemented in later stories."""
+    """ARQ WorkerSettings. Add real tasks in later stories."""
 
+    functions = [hello_world]
     redis_settings = RedisSettings.from_dsn(settings.REDIS_URL)
-    functions: list = []
-    cron_jobs: list = []
     max_jobs = settings.MAX_CONCURRENT_INGEST_JOBS
+    job_timeout = 600  # 10 min max per job; must be < Railway SIGKILL grace period
+    keep_result = 3600  # Keep result in Redis for 1 hour
+    retry_jobs = True
+    max_tries = 3
+    health_check_interval = 10
+    health_check_key = b"arq:health-check"
