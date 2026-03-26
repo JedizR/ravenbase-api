@@ -2,6 +2,7 @@
 import uuid
 
 from src.models.conflict import Conflict, ConflictStatus
+from src.models.meta_document import MetaDocument
 from src.models.profile import SystemProfile
 from src.models.source import Source, SourceAuthorityWeight, SourceStatus
 from src.models.user import User
@@ -74,3 +75,18 @@ def test_conflict_default_fields() -> None:
     assert conflict.resolved_at is None
     assert conflict.profile_id is None
     assert isinstance(conflict.id, uuid.UUID)
+
+
+def test_meta_document_default_fields() -> None:
+    uid = uuid.uuid4()
+    doc = MetaDocument(
+        user_id=uid,
+        title="My Knowledge Summary",
+        original_prompt="Summarize my Python knowledge",
+    )
+    assert doc.contributing_memory_ids == []
+    assert doc.credits_consumed == 0
+    assert doc.model_used == "claude-sonnet"
+    assert doc.parsed_intent is None
+    assert doc.profile_id is None
+    assert isinstance(doc.id, uuid.UUID)
