@@ -9,7 +9,7 @@ logger = structlog.get_logger()
 
 
 async def graph_extraction(
-    ctx: dict,  # type: ignore[type-arg]
+    ctx: dict,  # type: ignore[type-arg]  # noqa: ARG001
     *,
     source_id: str,
     tenant_id: str,
