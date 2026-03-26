@@ -9,23 +9,23 @@
 
 **Phase:** A — Backend (Sprints 1–17)
 **Current sprint:** 2
-**Status:** In progress — 1 of 37 stories complete
+**Status:** In progress — 2 of 37 stories complete
 
-**Next story to implement:** STORY-002
-**Story file:** `docs/stories/EPIC-01-foundation/STORY-002.md`
+**Next story to implement:** STORY-003
+**Story file:** `docs/stories/EPIC-01-foundation/STORY-003.md`
 
 ---
 
 ## Last Completed Story
 
-**STORY-001 — API and Web repo scaffolding** (2026-03-25)
-Both repos scaffolded from scratch: FastAPI app with `/health` endpoint, full Python package structure, Docker Compose (dev/prod), ARQ worker stub, Alembic config, and Next.js 15 App Router with brand components, Tailwind v4 design tokens, and shadcn/ui.
+**STORY-002 — PostgreSQL schema + Alembic migrations** (2026-03-25)
+All 8 SQLModel table classes defined and migrated via Alembic autogenerate. Async migration pattern used (asyncpg driver). 8 unit tests + 3 integration tests pass. Two composite indexes created for query performance.
 
 ---
 
 ## Context for Next Session
 
-STORY-001 is merged to main on both repos. All quality gates pass (ruff 0 errors, pyright 0 errors, 1 pytest passing, Next.js build clean). STORY-002 adds the PostgreSQL schema and Alembic migrations — start by reading `docs/stories/EPIC-01-foundation/STORY-002.md` and `docs/architecture/`.
+STORY-002 is complete. All quality gates pass (ruff 0 errors, pyright 0 errors, 8 unit tests + 3 integration tests passing against local Docker postgres). Note: `asyncpg` and `greenlet` were added to `pyproject.toml` (STORY-001 gaps). The local docker DB has the migration applied at `ravenbase:ravenbase@localhost:5432/ravenbase`. STORY-003 adds Qdrant + Neo4j initialization + constraints — start by reading `docs/stories/EPIC-01-foundation/STORY-003.md`.
 
 ---
 

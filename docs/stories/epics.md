@@ -16,7 +16,7 @@
 | Story | Title | Priority | Complexity | Status |
 |---|---|---|---|---|
 | STORY-001 | API repo scaffold + Web repo scaffold + Makefile + Docker Compose | P0 | Medium | ✅ |
-| STORY-002 | PostgreSQL schema + Alembic migrations | P0 | Medium | 🔲 |
+| STORY-002 | PostgreSQL schema + Alembic migrations | P0 | Medium | ✅ |
 | STORY-003 | Qdrant + Neo4j initialization + constraints | P0 | Small | 🔲 |
 | STORY-004 | ARQ worker setup + health endpoint | P0 | Small | 🔲 |
 
