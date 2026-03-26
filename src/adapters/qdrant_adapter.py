@@ -37,9 +37,7 @@ class QdrantAdapter(BaseAdapter):
 
     def _tenant_filter(self, tenant_id: str) -> Filter:
         """ALWAYS include this in every search/scroll/delete call. Security boundary."""
-        return Filter(
-            must=[FieldCondition(key="tenant_id", match=MatchValue(value=tenant_id))]
-        )
+        return Filter(must=[FieldCondition(key="tenant_id", match=MatchValue(value=tenant_id))])
 
     async def search(
         self,

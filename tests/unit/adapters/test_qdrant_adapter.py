@@ -59,9 +59,7 @@ async def test_upsert_targets_correct_collection() -> None:
     points = [PointStruct(id="pt-1", vector=[0.1] * 1536, payload={"tenant_id": "t1"})]
     await adapter.upsert(points=points)
 
-    mock_client.upsert.assert_called_once_with(
-        collection_name="ravenbase_chunks", points=points
-    )
+    mock_client.upsert.assert_called_once_with(collection_name="ravenbase_chunks", points=points)
 
 
 @pytest.mark.asyncio

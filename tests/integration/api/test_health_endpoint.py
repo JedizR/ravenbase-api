@@ -31,9 +31,7 @@ async def test_health_returns_healthy_with_all_checks(client: AsyncClient, mocke
 
 
 @pytest.mark.asyncio
-async def test_health_reports_degraded_when_service_down(
-    client: AsyncClient, mocker
-) -> None:
+async def test_health_reports_degraded_when_service_down(client: AsyncClient, mocker) -> None:
     mocker.patch(
         "src.api.routes.health.QdrantAdapter.verify_connectivity",
         new=AsyncMock(return_value=False),
