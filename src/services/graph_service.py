@@ -110,7 +110,11 @@ class GraphService(BaseService):
                 )
             except Exception as exc:
                 failed_chunks += 1
-                chunk_log.warning("graph_service.chunk_failed", error=str(exc))
+                chunk_log.warning(
+                    "graph_service.chunk_failed",
+                    error=str(exc),
+                    exc_type=type(exc).__name__,
+                )
 
         log.info(
             "graph_service.extract_and_write.completed",

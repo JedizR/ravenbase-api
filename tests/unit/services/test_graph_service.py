@@ -141,6 +141,7 @@ async def test_concept_writes_use_merge_not_create(mock_llm, mock_qdrant, mock_n
         if "MERGE (c:Concept" in str(c.args[0])
     ]
     assert len(concept_queries) >= 1
+    # "ON CREATE SET" is a MERGE clause — assert startsWith not absence of "CREATE" to avoid false negative
     assert all(q.strip().startswith("MERGE") for q in concept_queries), (
         "Concepts must use MERGE, not bare CREATE"
     )
