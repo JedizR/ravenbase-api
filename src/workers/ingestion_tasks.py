@@ -24,6 +24,36 @@ logger = structlog.get_logger()
 
 
 # ---------------------------------------------------------------------------
+# Plain-text chunking — used by ingest_text (no Docling)
+# ---------------------------------------------------------------------------
+
+_CHUNK_SIZE = 2000  # chars (~500 tokens at 4 chars/token)
+_CHUNK_OVERLAP = 200  # chars
+
+
+def _chunk_plain_text(content: str) -> list[dict[str, object]]:
+    """Split plain text into overlapping fixed-size chunks.
+
+    Returns a list of dicts: [{"text": str, "chunk_index": int}]
+    Single chunk returned when content fits within _CHUNK_SIZE.
+    """
+    if len(content) <= _CHUNK_SIZE:
+        return [{"text": content, "chunk_index": 0}]
+
+    chunks: list[dict[str, object]] = []
+    start = 0
+    idx = 0
+    while start < len(content):
+        end = min(start + _CHUNK_SIZE, len(content))
+        chunks.append({"text": content[start:end], "chunk_index": idx})
+        if end == len(content):
+            break
+        start = end - _CHUNK_OVERLAP
+        idx += 1
+    return chunks
+
+
+# ---------------------------------------------------------------------------
 # DB helpers — open their own sessions (no Depends() in worker context)
 # ---------------------------------------------------------------------------
 
@@ -227,4 +257,88 @@ async def parse_document(
             await publish_progress(source_id, 0, f"Ingestion failed: {exc}", "failed")
         except Exception as inner:
             log.error("parse_document.cleanup_failed", error=str(inner))
+        return {"status": "error", "source_id": source_id, "error": str(exc)}
+
+
+async def ingest_text(
+    ctx: dict,  # type: ignore[type-arg]
+    *,
+    content: str,
+    profile_id: str | None,
+    tags: list[str],
+    tenant_id: str,
+    source_id: str,
+) -> dict:  # type: ignore[type-arg]
+    """Chunk, embed, and index plain text from the Omnibar quick-capture.
+
+    No Docling. No StorageAdapter. Status: PENDING → PROCESSING → INDEXING → COMPLETED.
+    On failure: FAILED (no re-raise → no ARQ retry).
+    """
+    log = logger.bind(tenant_id=tenant_id, source_id=source_id, job="ingest_text")
+    log.info("ingest_text.started", char_count=len(content))
+
+    try:
+        # ── 1. PROCESSING ───────────────────────────────────────────────────
+        await _update_source_status(source_id, SourceStatus.PROCESSING)
+        await publish_progress(source_id, 10, "Chunking text...", "processing")
+
+        # ── 2. Chunk plain text ──────────────────────────────────────────────
+        chunks = _chunk_plain_text(content)
+        log.info("ingest_text.chunked", chunk_count=len(chunks))
+
+        # ── 3. INDEXING ──────────────────────────────────────────────────────
+        await _update_source_status(source_id, SourceStatus.INDEXING)
+        await publish_progress(source_id, 40, "Generating embeddings...", "indexing")
+
+        # ── 4. Embed chunks (batched 100) ────────────────────────────────────
+        texts = [str(c["text"]) for c in chunks]
+        embeddings = await OpenAIAdapter().embed_chunks(texts)
+
+        await publish_progress(source_id, 70, "Indexing in vector store...", "indexing")
+
+        # ── 5. Upsert to Qdrant (tenant-scoped, deterministic IDs) ───────────
+        now_iso = datetime.now(UTC).isoformat()
+        points = [
+            PointStruct(
+                id=str(uuid.uuid5(uuid.NAMESPACE_URL, f"{source_id}:{i}")),
+                vector=embeddings[i],
+                payload={
+                    "tenant_id": tenant_id,
+                    "source_id": source_id,
+                    "chunk_id": str(uuid.uuid5(uuid.NAMESPACE_URL, f"{source_id}:{i}")),
+                    "profile_id": profile_id,
+                    "page_number": 0,
+                    "chunk_index": i,
+                    "text": chunks[i]["text"],
+                    "tags": tags,
+                    "created_at": now_iso,
+                },
+            )
+            for i in range(len(chunks))
+        ]
+        await QdrantAdapter().upsert(points)
+        log.info("ingest_text.indexed", point_count=len(points))
+
+        # ── 6. COMPLETED ──────────────────────────────────────────────────────
+        await _set_source_completed(source_id, chunk_count=len(chunks))
+        await publish_progress(source_id, 100, "Text capture complete!", "completed")
+
+        # ── 7. Enqueue graph extraction ───────────────────────────────────────
+        await ctx["redis"].enqueue_job(
+            "graph_extraction",
+            source_id=source_id,
+            tenant_id=tenant_id,
+        )
+        log.info("ingest_text.graph_extraction_enqueued")
+
+        log.info("ingest_text.completed", chunk_count=len(chunks))
+        return {"status": "ok", "source_id": source_id, "chunk_count": len(chunks)}
+
+    except Exception as exc:
+        log.error("ingest_text.failed", error=str(exc), exc_info=True)
+        try:
+            await _set_source_failed(source_id, str(exc))
+            await publish_progress(source_id, 0, f"Text capture failed: {exc}", "failed")
+        except Exception as inner:
+            log.error("ingest_text.cleanup_failed", error=str(inner))
         return {"status": "error", "source_id": source_id, "error": str(exc)}

@@ -254,6 +254,26 @@ Full ARQ `parse_document` pipeline replacing the STORY-005 stub. New adapters: `
 **Tech debt noted:**
 - `verify_token_query_param` currently does not validate that the `tenant_id` from the JWT matches the owner of `source_id` in the database. A future security hardening story should add a DB lookup to confirm the caller owns the source before subscribing to its Redis channel.
 
+### STORY-008 Part 1 — Text Quick-Capture (Backend)
+**Date:** 2026-03-26 | **Sprint:** 5 | **Phase:** A | **Repo:** ravenbase-api
+**Quality gate:** ✅ clean — 70 tests passing, 0 ruff errors, 0 pyright errors
+**Commit:** `<fill in after commit>`
+
+**What was built:**
+`POST /v1/ingest/text` endpoint accepting `{content, profile_id, tags}` JSON body. `TextIngestRequest` Pydantic schema added. `IngestionService.handle_text_ingest()` validates 50,000-char limit (raises `TEXT_TOO_LONG`), SHA-256 deduplication, creates Source record with `file_type="direct_input"` and `storage_path="direct_input"` (non-nullable sentinel), enqueues `ingest_text` ARQ task. `ingest_text` worker task: plain-text chunking (2000-char chunks, 200-char overlap), OpenAI `text-embedding-3-small` embeddings, Qdrant upsert with deterministic UUIDs, PENDING → PROCESSING → INDEXING → COMPLETED status transitions, Redis pub/sub progress events, graph_extraction enqueued on completion. 2 integration tests added.
+
+**Key decisions:**
+- `Source.storage_path` is non-nullable (`str`) — used sentinel `"direct_input"` to avoid a DB migration.
+- Chunking is character-based (2000 chars, 200 overlap) rather than token-based — simpler and sufficient for the 50k char cap.
+- Tags stored in Qdrant payload only (no Source model column) — avoids schema change and keeps tags searchable via vector filter.
+- No content moderation for direct-input text — YAGNI at this stage; story scope doesn't require it.
+
+**Gotchas:**
+- None encountered — straightforward implementation following `parse_document` pattern.
+
+**Tech debt noted:**
+- Tags are not persisted to PostgreSQL — a future story may want a `source_tags` join table if tag-based filtering at the DB layer (not just Qdrant) becomes necessary.
+
 ---
 
 ## Sprint 6 — SSE Frontend + Omnibar UI

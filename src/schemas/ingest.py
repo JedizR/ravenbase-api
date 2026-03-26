@@ -14,3 +14,9 @@ class ProgressEvent(BaseModel):
     progress_pct: int
     message: str
     status: str  # "processing" | "completed" | "failed"
+
+
+class TextIngestRequest(BaseModel):
+    content: str
+    profile_id: UUID | None = None
+    tags: list[str] = []

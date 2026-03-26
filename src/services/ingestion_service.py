@@ -157,6 +157,80 @@ class IngestionService(BaseService):
             duplicate=False,
         )
 
+    async def handle_text_ingest(
+        self,
+        *,
+        content: str,
+        profile_id: str | None,
+        tags: list[str],
+        tenant_id: str,
+        arq_pool: object,
+        db: AsyncSession,
+    ) -> UploadResponse:
+        log = logger.bind(tenant_id=tenant_id)
+        log.info("ingest.text.started", char_count=len(content))
+
+        # 1. Validate content length
+        if len(content) > 50_000:
+            raise_422(
+                ErrorCode.TEXT_TOO_LONG,
+                f"Text exceeds 50,000 character limit ({len(content)} chars)",
+            )
+
+        # 2. SHA-256 deduplication
+        file_hash = hashlib.sha256(content.encode("utf-8")).hexdigest()
+        result = await db.exec(
+            select(Source).where(
+                Source.user_id == uuid.UUID(tenant_id),
+                Source.sha256_hash == file_hash,
+            )
+        )
+        existing = result.first()
+        if existing is not None:
+            log.info("ingest.text.duplicate", source_id=str(existing.id))
+            return UploadResponse(
+                job_id="",
+                source_id=existing.id,
+                status="duplicate",
+                duplicate=True,
+            )
+
+        # 3. Create Source record (no file storage — sentinel values)
+        source_id = uuid.uuid4()
+        source = Source(
+            id=source_id,
+            user_id=uuid.UUID(tenant_id),
+            profile_id=uuid.UUID(profile_id) if profile_id else None,
+            original_filename="direct_input",
+            file_type="direct_input",
+            mime_type="text/plain",
+            storage_path="direct_input",
+            sha256_hash=file_hash,
+            file_size_bytes=len(content.encode("utf-8")),
+            status=SourceStatus.PENDING,
+        )
+        db.add(source)
+        await db.commit()
+
+        # 4. Enqueue ARQ job
+        job = await arq_pool.enqueue_job(  # type: ignore[union-attr]
+            "ingest_text",
+            content=content,
+            profile_id=profile_id,
+            tags=tags,
+            tenant_id=tenant_id,
+            source_id=str(source_id),
+        )
+        job_id = job.job_id if job is not None else ""
+
+        log.info("ingest.text.queued", source_id=str(source_id), job_id=job_id)
+        return UploadResponse(
+            job_id=job_id,
+            source_id=source_id,
+            status="queued",
+            duplicate=False,
+        )
+
     def cleanup(self) -> None:
         if self._storage:
             self._storage.cleanup()

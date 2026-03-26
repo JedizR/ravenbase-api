@@ -11,21 +11,21 @@
 **Current sprint:** 6
 **Status:** In progress — 6 of 37 stories complete
 
-**Next story to implement:** STORY-008-BE
-**Story file:** `docs/stories/EPIC-02-ingestion/STORY-008.md`
+**Next story to implement:** STORY-009
+**Story file:** `docs/stories/EPIC-02-ingestion/STORY-009.md`
 
 ---
 
 ## Last Completed Story
 
-**STORY-007-BE — SSE progress stream (Backend, AC-1 to AC-5 only)** (2026-03-26)
-`GET /v1/ingest/stream/{source_id}?token=` SSE endpoint live. `verify_token_query_param` dependency added for EventSource auth. Redis pub/sub subscriber with try/finally disconnect safety. `ProgressEvent` schema added. 68 tests passing, `make quality` clean. AC-6 and AC-7 (frontend) are pending Phase B Sprint 21.
+**STORY-008-BE — Text Quick-Capture (Backend, AC-1 to AC-5 only)** (2026-03-26)
+`POST /v1/ingest/text` endpoint live. `TextIngestRequest` schema added. `ingest_text` ARQ task with plain-text chunking, OpenAI embedding, Qdrant upsert. `ErrorCode.TEXT_TOO_LONG` added. 70 tests passing, `make quality` clean. AC-6, AC-7, AC-8 (Omnibar UI) are pending Phase B Sprint 21 in ravenbase-web.
 
 ---
 
 ## Context for Next Session
 
-STORY-007 backend (AC-1..AC-5) merged to main. story-counter stays at 007 — the full STORY-007 row in epics.md will only flip to ✅ after the frontend session (AC-6, AC-7) in ravenbase-web completes in Phase B Sprint 21. Next up is STORY-008-BE (text quick-capture Omnibar endpoint) — backend only, staying in ravenbase-api for all of Phase A.
+STORY-008 backend (AC-1..AC-5) merged to main. story-counter is now 009 — the full STORY-008 row in epics.md will only flip to ✅ after the frontend session (AC-6..AC-8) in ravenbase-web completes in Phase B. Next up is STORY-009 (graph entity extraction — backend, staying in ravenbase-api).
 
 ---
 
