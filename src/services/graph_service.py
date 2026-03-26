@@ -154,9 +154,8 @@ class GraphService(BaseService):
             )
             await neo4j.run_query(
                 "MERGE (c:Concept {name: $name, tenant_id: $tenant_id}) "
-                "SET c.concept_id = coalesce(c.concept_id, $concept_id), "
-                "c.type = $type, "
-                "c.updated_at = datetime()",
+                "ON CREATE SET c.concept_id = $concept_id, c.type = $type, c.created_at = datetime() "
+                "ON MATCH SET c.updated_at = datetime()",
                 name=entity.name,
                 tenant_id=tenant_id,
                 concept_id=concept_id,

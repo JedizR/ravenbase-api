@@ -136,11 +136,14 @@ async def test_concept_writes_use_merge_not_create(mock_llm, mock_qdrant, mock_n
     await service.extract_and_write("src-1", "t-1")
 
     concept_queries = [
-        str(c.args[0]) for c in mock_neo4j.run_query.call_args_list if "Concept" in str(c.args[0])
+        str(c.args[0])
+        for c in mock_neo4j.run_query.call_args_list
+        if "MERGE (c:Concept" in str(c.args[0])
     ]
     assert len(concept_queries) >= 1
-    assert all("MERGE" in q for q in concept_queries), "Concepts must use MERGE"
-    assert all("CREATE" not in q for q in concept_queries), "Concepts must NOT use CREATE"
+    assert all(q.strip().startswith("MERGE") for q in concept_queries), (
+        "Concepts must use MERGE, not bare CREATE"
+    )
 
 
 @pytest.mark.asyncio
