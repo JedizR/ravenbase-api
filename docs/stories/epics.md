@@ -29,7 +29,7 @@
 
 | Story | Title | Priority | Complexity | Status |
 |---|---|---|---|---|
-| STORY-005 | File upload endpoint + Supabase Storage | P0 | Medium | 🔲 |
+| STORY-005 | File upload endpoint + Supabase Storage | P0 | Medium | ✅ |
 | STORY-006 | Docling parse + chunk + embed worker | P0 | Large | 🔲 |
 | STORY-007 | SSE progress stream (Redis pub/sub) | P0 | Medium | 🔲 |
 | STORY-008 | Text quick-capture (Omnibar /ingest) | P0 | Small | 🔲 |

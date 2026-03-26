@@ -8,24 +8,24 @@
 ## Current State
 
 **Phase:** A — Backend (Sprints 1–17)
-**Current sprint:** 2
-**Status:** In progress — 4 of 37 stories complete
+**Current sprint:** 4
+**Status:** In progress — 5 of 37 stories complete
 
-**Next story to implement:** STORY-005
-**Story file:** `docs/stories/EPIC-02-ingestion/STORY-005.md`
+**Next story to implement:** STORY-006
+**Story file:** `docs/stories/EPIC-02-ingestion/STORY-006.md`
 
 ---
 
 ## Last Completed Story
 
-**STORY-004 — ARQ worker setup + health endpoint** (2026-03-26)
-WorkerSettings completed with all required fields. `src/workers/utils.py` created with `publish_progress()` (Redis pub/sub) and `update_job_status()` (own DB session). `hello_world` stub task added. 36 tests pass, `make quality` clean, 100% coverage on both new worker files.
+**STORY-005 — File upload endpoint + Supabase Storage** (2026-03-26)
+`POST /v1/ingest/upload` live: MIME validation (python-magic), SHA-256 dedup, Supabase Storage upload, PostgreSQL Source record, ARQ enqueue, Redis rate limiting. ARQ pool initialised in FastAPI lifespan. `process_ingestion` stub registered. `python-multipart` added. 42 tests passing, `make quality` clean.
 
 ---
 
 ## Context for Next Session
 
-STORY-004 is complete. All quality gates pass (ruff 0 errors, pyright 0 errors). 36 tests pass. ARQ worker is now fully scaffolded — `make worker` starts the worker. STORY-005 adds file upload endpoint + Supabase Storage — start by reading `docs/stories/EPIC-02-ingestion/STORY-005.md`.
+STORY-005 merged to main. ARQ pool initialized in lifespan (`app.state.arq_pool`). `process_ingestion` stub registered in `WorkerSettings`. `python-multipart` added to `pyproject.toml`. 42 tests passing. STORY-006 implements the full Docling parse + chunk + embed pipeline — budget a full session, it is the largest backend story.
 
 ---
 
