@@ -1,21 +1,20 @@
 # src/models/user.py
 import uuid
 from datetime import UTC, datetime
-from typing import Optional
 
 from sqlmodel import Field, SQLModel
 
 
 class User(SQLModel, table=True):
-    __tablename__ = "users"
+    __tablename__ = "users"  # type: ignore[assignment]
 
     id: uuid.UUID = Field(
         default_factory=uuid.uuid4,
         primary_key=True,
     )
     email: str = Field(unique=True, index=True)
-    display_name: Optional[str] = None
-    avatar_url: Optional[str] = None
+    display_name: str | None = None
+    avatar_url: str | None = None
     tier: str = Field(default="free")
     credits_balance: int = Field(default=200)
     is_active: bool = Field(default=True)
@@ -40,7 +39,7 @@ class User(SQLModel, table=True):
             "Used as: ravenbase.app/register?ref=CODE"
         ),
     )
-    referred_by_user_id: Optional[uuid.UUID] = Field(
+    referred_by_user_id: uuid.UUID | None = Field(
         default=None,
         foreign_key="users.id",
         description="UUID of referring user. NULL if organic signup.",
@@ -52,7 +51,7 @@ class User(SQLModel, table=True):
             "Prevents double-crediting."
         ),
     )
-    low_credits_email_sent_at: Optional[datetime] = Field(
+    low_credits_email_sent_at: datetime | None = Field(
         default=None,
         description=(
             "Timestamp of last low-credits warning email. "
@@ -60,7 +59,7 @@ class User(SQLModel, table=True):
             "Reset to None when monthly credits refresh."
         ),
     )
-    last_active_at: Optional[datetime] = Field(
+    last_active_at: datetime | None = Field(
         default=None,
         index=True,
         description=(

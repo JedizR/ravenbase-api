@@ -6,6 +6,7 @@ expected tables exist in the PostgreSQL database.
 Requires: running PostgreSQL (via docker compose up -d postgres).
 Run with: uv run pytest tests/integration/api/test_database_connectivity.py -v
 """
+
 import pytest
 from sqlalchemy import inspect, text
 from sqlalchemy.ext.asyncio import create_async_engine
