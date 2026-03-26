@@ -290,7 +290,22 @@ _No entries yet._
 > LLMRouter (Gemini Flash + Haiku fallback), Neo4j writer, graph endpoints.
 > Sprint 7 covers STORY-009 and STORY-010.
 
-_No entries yet._
+### STORY-009 — Entity Extraction + Neo4j Writer
+**Date:** 2026-03-26 | **Sprint:** 7 | **Phase:** A | **Repo:** ravenbase-api
+**Quality gate:** ✅ clean — all tests passing, 0 ruff errors, 0 pyright errors
+**Commit:** `<fill in the actual commit SHA from the final commit>`
+
+**What was built:**
+LLMRouter adapter routing entity_extraction to Gemini 2.5 Flash (primary) and Claude Haiku (fallback) with exponential backoff on 429. GraphService orchestrating per-chunk entity extraction via LLM and MERGE writes to Neo4j for Concept nodes (deduplication by {name, tenant_id}) and CREATE for Memory nodes. graph_extraction ARQ task wired into WorkerSettings, triggered automatically by parse_document and ingest_text. QdrantAdapter.scroll_by_source for paginated chunk retrieval.
+
+**Key decisions:**
+Used MERGE (c:Concept {name: $name, tenant_id: $tenant_id}) with ON CREATE SET / ON MATCH SET to deduplicate concepts across re-ingestions while keeping created_at immutable and updating updated_at on each match. Confidence threshold 0.6 filters low-quality extractions before Neo4j writes. litellm imported lazily (RULE 6). User-controlled chunk content wrapped in XML boundary tags (RULE 10). Chunk failures logged and skipped — one bad LLM call does not abort the entire source graph write.
+
+**Gotchas:**
+ON CREATE SET in MERGE clause uses the word "CREATE" as a substring — test assertion for "Concepts must use MERGE not CREATE" must use startsWith("MERGE") not absence-of-"CREATE" to avoid false negatives.
+
+**Tech debt noted:**
+GraphService._write_to_neo4j issues N separate run_query calls per chunk (1 per entity + 1 per memory + N relationship queries). For sources with hundreds of chunks and many entities, this could be batched with UNWIND for better Neo4j throughput.
 
 ---
 

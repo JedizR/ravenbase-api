@@ -3,6 +3,7 @@
 
 All external dependencies are mocked — this tests task wiring, not Neo4j/Qdrant.
 """
+
 from unittest.mock import AsyncMock, patch
 
 import pytest

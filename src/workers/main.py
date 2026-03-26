@@ -2,6 +2,7 @@ import structlog
 from arq.connections import RedisSettings
 
 from src.core.config import settings
+from src.workers.graph_tasks import graph_extraction
 from src.workers.ingestion_tasks import ingest_text, parse_document
 
 logger = structlog.get_logger()
@@ -19,7 +20,7 @@ async def hello_world(_ctx: dict) -> dict:  # type: ignore[type-arg]
 class WorkerSettings:
     """ARQ WorkerSettings. Add real tasks in later stories."""
 
-    functions = [hello_world, parse_document, ingest_text]
+    functions = [hello_world, parse_document, ingest_text, graph_extraction]
     redis_settings = RedisSettings.from_dsn(settings.REDIS_URL)
     max_jobs = settings.MAX_CONCURRENT_INGEST_JOBS
     job_timeout = 600  # 10 min max per job; must be < Railway SIGKILL grace period
