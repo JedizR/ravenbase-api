@@ -143,7 +143,7 @@ class IngestionService(BaseService):
 
         # 8. Enqueue ARQ job
         job = await arq_pool.enqueue_job(  # type: ignore[union-attr]
-            "process_ingestion",
+            "parse_document",
             source_id=str(source_id),
             tenant_id=tenant_id,
         )
