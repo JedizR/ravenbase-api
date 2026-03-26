@@ -137,10 +137,12 @@ async def test_stream_closes_on_failed(mocker):
 
 @pytest.mark.asyncio
 async def test_stream_always_unsubscribes_on_disconnect(mocker):
-    """Redis pubsub.unsubscribe is called even if the generator raises (disconnect)."""
+    """Redis pubsub.unsubscribe is called even when generator is interrupted."""
+    # Simulate a real-world scenario: Redis raises ConnectionError mid-stream
     async def _listen_raising():
         yield {"type": "subscribe", "data": 1}
-        raise GeneratorExit  # simulate client disconnect mid-stream
+        yield {"type": "message", "data": PROCESSING_MSG}
+        raise Exception("simulated disconnect")  # real exception, not GeneratorExit
 
     mock_pubsub = MagicMock()
     mock_pubsub.subscribe = AsyncMock()
@@ -157,7 +159,7 @@ async def test_stream_always_unsubscribes_on_disconnect(mocker):
         try:
             async with ac.stream("GET", f"/v1/ingest/stream/{TEST_SOURCE_ID}?token=fake") as response:
                 async for _ in response.aiter_text():
-                    break  # disconnect after first chunk
+                    pass
         except Exception:
             pass
 
@@ -169,14 +171,14 @@ async def test_stream_always_unsubscribes_on_disconnect(mocker):
 @pytest.mark.asyncio
 async def test_stream_missing_token_returns_422():
     """Missing ?token= → 422 Unprocessable Entity (FastAPI Query validation)."""
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
-        # Override auth back to the real dependency for this test
-        app.dependency_overrides.pop(verify_token_query_param, None)
-        response = await ac.get(f"/v1/ingest/stream/{TEST_SOURCE_ID}")
+    app.dependency_overrides.pop(verify_token_query_param, None)
+    try:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+            response = await ac.get(f"/v1/ingest/stream/{TEST_SOURCE_ID}")
+        assert response.status_code == 422
+    finally:
         app.dependency_overrides[verify_token_query_param] = lambda: {
             "user_id": TEST_TENANT_ID,
             "email": "test@example.com",
             "tier": "free",
         }
-
-    assert response.status_code == 422

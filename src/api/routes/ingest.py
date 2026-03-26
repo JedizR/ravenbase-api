@@ -65,12 +65,14 @@ async def stream_progress(
                 raw = message["data"]
                 payload = raw.decode() if isinstance(raw, bytes) else raw
                 yield {"data": payload}
-                data = json.loads(payload)
+                try:
+                    data = json.loads(payload)
+                except json.JSONDecodeError:
+                    log.warning("sse.invalid_json", raw=payload)
+                    continue
                 if data.get("status") in ("completed", "failed"):
                     log.info("sse.closing", status=data["status"])
                     break
-        except BaseException:  # noqa: BLE001 — ensure cleanup on GeneratorExit / disconnect
-            pass
         finally:
             await pubsub.unsubscribe(channel)
             await r.aclose()
