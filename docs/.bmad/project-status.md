@@ -8,11 +8,11 @@
 ## Current State
 
 **Phase:** A — Backend (Sprints 1–17)
-**Current sprint:** 5
-**Status:** In progress — 6 of 37 stories complete
+**Current sprint:** 7
+**Status:** In progress — 7 of 37 stories complete
 
-**Next story to implement:** STORY-007 Part 2 — Frontend (`IngestionProgress` component + `use-sse.ts` hook in `ravenbase-web`)
-**Story file:** `docs/stories/EPIC-02-ingestion/STORY-007.md`
+**Next story to implement:** STORY-008-BE
+**Story file:** `docs/stories/EPIC-02-ingestion/STORY-008.md`
 
 ---
 
