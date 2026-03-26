@@ -175,7 +175,7 @@ AC-6, AC-7, AC-8 are frontend scope — leave them for the frontend session.
 Mark docs state after completion:
 - epics.md: do NOT mark ✅ yet — story is only half done
 - project-status.md: note STORY-008 backend complete, frontend pending
-- story-counter.txt: do NOT increment yet — wait until full story is done
+- story-counter.txt: increment to 009 (next story to implement is STORY-009)
 - journal.md: append entry under Sprint 5 for STORY-008-BE
 
 Show plan first. Do not implement yet.
