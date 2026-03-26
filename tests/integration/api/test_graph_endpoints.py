@@ -9,10 +9,10 @@ import uuid
 from unittest.mock import AsyncMock
 
 import pytest
-from httpx import ASGITransport, AsyncClient  # noqa: F401
+from httpx import ASGITransport, AsyncClient
 
-from src.api.dependencies.auth import require_user  # noqa: F401
-from src.api.main import app  # noqa: F401
+from src.api.dependencies.auth import require_user
+from src.api.main import app
 from src.schemas.graph import GraphEdge, GraphNode, GraphResponse
 from src.services.graph_service import GraphService
 
@@ -43,6 +43,7 @@ def test_schema_imports() -> None:
 
 
 TEST_TENANT_ID = "tenant-test-001"
+TEST_NODE_ID = "node-test-001"
 
 # ---------------------------------------------------------------------------
 # GraphService unit tests (mocked Neo4jAdapter)
@@ -144,3 +145,162 @@ async def test_get_neighborhood_returns_graph_response() -> None:
     assert result.edges[0].type == "RELATES_TO"
     assert result.edges[0].source == node_id_a
     assert result.edges[0].target == node_id_b
+
+
+# ---------------------------------------------------------------------------
+# Fixtures
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+async def graph_client(mocker):
+    """AsyncClient with mocked auth and GraphService. No live Neo4j required."""
+    app.dependency_overrides[require_user] = lambda: {
+        "user_id": TEST_TENANT_ID,
+        "email": "test@example.com",
+        "tier": "free",
+    }
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+        yield ac
+    app.dependency_overrides.pop(require_user, None)
+
+
+# ---------------------------------------------------------------------------
+# GET /v1/graph/nodes tests
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_get_nodes_returns_200_with_graph_shape(graph_client: AsyncClient, mocker) -> None:
+    """GET /v1/graph/nodes returns 200 with nodes + edges arrays."""
+    mock_response = GraphResponse(
+        nodes=[GraphNode(id="abc", label="React", type="Concept", properties={}, memory_count=2)],
+        edges=[GraphEdge(source="abc", target="def", type="RELATES_TO", properties={})],
+    )
+    mocker.patch.object(
+        GraphService, "get_nodes_for_explorer", new=AsyncMock(return_value=mock_response)
+    )
+
+    response = await graph_client.get("/v1/graph/nodes")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert "nodes" in data
+    assert "edges" in data
+    assert data["nodes"][0]["id"] == "abc"
+    assert data["nodes"][0]["label"] == "React"
+    assert data["nodes"][0]["memory_count"] == 2
+    assert data["edges"][0]["type"] == "RELATES_TO"
+
+
+@pytest.mark.asyncio
+async def test_get_nodes_empty_graph_returns_empty_arrays(
+    graph_client: AsyncClient, mocker
+) -> None:
+    """Empty graph → 200 with {nodes: [], edges: []}, not 404."""
+    mocker.patch.object(
+        GraphService,
+        "get_nodes_for_explorer",
+        new=AsyncMock(return_value=GraphResponse(nodes=[], edges=[])),
+    )
+
+    response = await graph_client.get("/v1/graph/nodes")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data == {"nodes": [], "edges": []}
+
+
+@pytest.mark.asyncio
+async def test_get_nodes_no_auth_returns_401() -> None:
+    """Request without Authorization header → 401."""
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+        response = await ac.get("/v1/graph/nodes")
+    assert response.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_get_nodes_passes_profile_id_to_service(graph_client: AsyncClient, mocker) -> None:
+    """profile_id query param is forwarded to get_nodes_for_explorer()."""
+    profile_id = str(uuid.uuid4())
+    mock_fn = mocker.patch.object(
+        GraphService,
+        "get_nodes_for_explorer",
+        new=AsyncMock(return_value=GraphResponse(nodes=[], edges=[])),
+    )
+
+    await graph_client.get(f"/v1/graph/nodes?profile_id={profile_id}")
+
+    mock_fn.assert_called_once()
+    call_kwargs = mock_fn.call_args.kwargs
+    assert call_kwargs["profile_id"] == profile_id
+
+
+@pytest.mark.asyncio
+async def test_get_nodes_default_limit_is_200(graph_client: AsyncClient, mocker) -> None:
+    """Default limit param is 200."""
+    mock_fn = mocker.patch.object(
+        GraphService,
+        "get_nodes_for_explorer",
+        new=AsyncMock(return_value=GraphResponse(nodes=[], edges=[])),
+    )
+
+    await graph_client.get("/v1/graph/nodes")
+
+    call_kwargs = mock_fn.call_args.kwargs
+    assert call_kwargs["limit"] == 200
+
+
+# ---------------------------------------------------------------------------
+# GET /v1/graph/neighborhood/{node_id} tests
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_get_neighborhood_returns_200(graph_client: AsyncClient, mocker) -> None:
+    """GET /v1/graph/neighborhood/{node_id} returns 200 with nodes + edges."""
+    mock_response = GraphResponse(
+        nodes=[
+            GraphNode(
+                id=TEST_NODE_ID, label="React", type="Concept", properties={}, memory_count=0
+            ),
+            GraphNode(
+                id="neighbor-1", label="TypeScript", type="Concept", properties={}, memory_count=0
+            ),
+        ],
+        edges=[
+            GraphEdge(source=TEST_NODE_ID, target="neighbor-1", type="RELATES_TO", properties={})
+        ],
+    )
+    mocker.patch.object(GraphService, "get_neighborhood", new=AsyncMock(return_value=mock_response))
+
+    response = await graph_client.get(f"/v1/graph/neighborhood/{TEST_NODE_ID}")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data["nodes"]) == 2
+    assert len(data["edges"]) == 1
+
+
+@pytest.mark.asyncio
+async def test_get_neighborhood_default_hops_and_limit(graph_client: AsyncClient, mocker) -> None:
+    """Default hops=2, default limit=50 are forwarded to get_neighborhood()."""
+    mock_fn = mocker.patch.object(
+        GraphService,
+        "get_neighborhood",
+        new=AsyncMock(return_value=GraphResponse(nodes=[], edges=[])),
+    )
+
+    await graph_client.get(f"/v1/graph/neighborhood/{TEST_NODE_ID}")
+
+    call_kwargs = mock_fn.call_args.kwargs
+    assert call_kwargs["hops"] == 2
+    assert call_kwargs["limit"] == 50
+
+
+@pytest.mark.asyncio
+async def test_get_neighborhood_no_auth_returns_401() -> None:
+    """Request without auth → 401."""
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+        response = await ac.get(f"/v1/graph/neighborhood/{TEST_NODE_ID}")
+    assert response.status_code == 401
