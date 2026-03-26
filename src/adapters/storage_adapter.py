@@ -49,3 +49,26 @@ class StorageAdapter(BaseAdapter):
         except Exception as exc:
             log.error("storage.upload.failed", error=str(exc))
             raise RuntimeError(f"Supabase Storage upload failed: {exc}") from exc
+
+    async def download_file(self, path: str) -> bytes:
+        """Download bytes from Supabase Storage at the given path.
+
+        Args:
+            path: Storage path, e.g. "/{tenant_id}/{source_id}/{filename}".
+
+        Returns:
+            Raw file bytes.
+
+        Raises:
+            RuntimeError: If the download fails.
+        """
+        log = logger.bind(storage_path=path)
+        log.info("storage.download.started")
+        try:
+            client = self._get_client()
+            data = client.storage.from_(settings.STORAGE_BUCKET).download(path)
+            log.info("storage.download.completed", size_bytes=len(data))
+            return data
+        except Exception as exc:
+            log.error("storage.download.failed", error=str(exc))
+            raise RuntimeError(f"Supabase Storage download failed: {exc}") from exc
