@@ -1,5 +1,36 @@
+import os
+
 import pytest
 from httpx import ASGITransport, AsyncClient
+
+_LOCAL_DB_URL = "postgresql+asyncpg://ravenbase:ravenbase@localhost:5432/ravenbase"
+
+
+@pytest.fixture(autouse=True, scope="session")
+def _override_database_url():
+    """Ensure all tests use local docker postgres, not any cloud URL from .env.dev.
+
+    test_database_connectivity.py imports `settings` at module level (a cached
+    singleton), so we must mutate the singleton directly in addition to patching
+    os.environ for fixtures that call get_settings() at runtime.
+    """
+    import src.core.config as _cfg  # noqa: PLC0415
+
+    original_env = os.environ.get("DATABASE_URL")
+    original_url = _cfg.settings.DATABASE_URL
+
+    os.environ["DATABASE_URL"] = _LOCAL_DB_URL
+    _cfg.settings.DATABASE_URL = _LOCAL_DB_URL
+    _cfg.get_settings.cache_clear()
+
+    yield
+
+    _cfg.settings.DATABASE_URL = original_url
+    if original_env is None:
+        os.environ.pop("DATABASE_URL", None)
+    else:
+        os.environ["DATABASE_URL"] = original_env
+    _cfg.get_settings.cache_clear()
 
 
 @pytest.fixture
