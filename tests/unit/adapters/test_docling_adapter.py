@@ -3,6 +3,7 @@
 Docling is imported lazily inside _sync_parse_and_chunk. We inject mocks via
 sys.modules so no real Docling installation is needed during unit tests.
 """
+
 from unittest.mock import MagicMock, patch
 
 
@@ -15,10 +16,13 @@ def _make_docling_sys_modules(markdown: str) -> dict:
     mock_result.document = mock_doc
 
     mock_conv_instance = MagicMock()
-    mock_conv_instance.convert_from_bytes.return_value = mock_result
+    mock_conv_instance.convert.return_value = mock_result
 
     mock_docling_dc = MagicMock()
     mock_docling_dc.DocumentConverter = MagicMock(return_value=mock_conv_instance)
+
+    mock_docling_core_io = MagicMock()
+    mock_docling_core_io.DocumentStream = MagicMock(return_value=MagicMock())
 
     return {
         "docling": MagicMock(),
@@ -26,6 +30,9 @@ def _make_docling_sys_modules(markdown: str) -> dict:
         "docling.datamodel": MagicMock(),
         "docling.datamodel.pipeline_options": MagicMock(),
         "docling.datamodel.base_models": MagicMock(),
+        "docling_core": MagicMock(),
+        "docling_core.types": MagicMock(),
+        "docling_core.types.io": mock_docling_core_io,
     }
 
 

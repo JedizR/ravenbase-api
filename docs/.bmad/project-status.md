@@ -8,24 +8,24 @@
 ## Current State
 
 **Phase:** A — Backend (Sprints 1–17)
-**Current sprint:** 4
-**Status:** In progress — 5 of 37 stories complete
+**Current sprint:** 5
+**Status:** In progress — 6 of 37 stories complete
 
-**Next story to implement:** STORY-006
-**Story file:** `docs/stories/EPIC-02-ingestion/STORY-006.md`
+**Next story to implement:** STORY-007
+**Story file:** `docs/stories/EPIC-02-ingestion/STORY-007.md`
 
 ---
 
 ## Last Completed Story
 
-**STORY-005 — File upload endpoint + Supabase Storage** (2026-03-26)
-`POST /v1/ingest/upload` live: MIME validation (python-magic), SHA-256 dedup, Supabase Storage upload, PostgreSQL Source record, ARQ enqueue, Redis rate limiting. ARQ pool initialised in FastAPI lifespan. `process_ingestion` stub registered. `python-multipart` added. 42 tests passing, `make quality` clean.
+**STORY-006 — Docling parse + chunk + embed worker** (2026-03-26)
+Full ARQ `parse_document` pipeline live: Supabase Storage download, OpenAI moderation pre-check, Docling parse+chunk in executor, OpenAI `text-embedding-3-small` batched embeddings, Qdrant upsert (deterministic UUIDs), Source status transitions (PENDING→PROCESSING→INDEXING→COMPLETED), graph_extraction enqueue. `DoclingAdapter`, `OpenAIAdapter`, `ModerationAdapter` added. 58 tests passing, `make quality` clean.
 
 ---
 
 ## Context for Next Session
 
-STORY-005 merged to main. ARQ pool initialized in lifespan (`app.state.arq_pool`). `process_ingestion` stub registered in `WorkerSettings`. `python-multipart` added to `pyproject.toml`. 42 tests passing. STORY-006 implements the full Docling parse + chunk + embed pipeline — budget a full session, it is the largest backend story.
+STORY-006 merged to main. `parse_document` ARQ task fully replaces the stub — downloads from Supabase Storage, runs moderation, Docling parse+chunk in executor, embeds with OpenAI, upserts to Qdrant, then enqueues `graph_extraction`. Docling uses `DocumentStream` + `converter.convert()` API (not `convert_from_bytes`). STORY-007 implements the SSE progress stream via Redis pub/sub so the frontend can observe ingestion in real time.
 
 ---
 

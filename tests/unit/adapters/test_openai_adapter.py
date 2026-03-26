@@ -21,9 +21,7 @@ async def test_embed_chunks_returns_list_of_vectors() -> None:
 
     with patch("src.adapters.openai_adapter.AsyncOpenAI") as mock_open_ai:
         mock_client = MagicMock()
-        mock_client.embeddings.create = AsyncMock(
-            return_value=_make_embedding_response(len(texts))
-        )
+        mock_client.embeddings.create = AsyncMock(return_value=_make_embedding_response(len(texts)))
         mock_open_ai.return_value = mock_client
 
         adapter = OpenAIAdapter()

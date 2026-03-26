@@ -12,9 +12,9 @@
 
 | Field | Value |
 |---|---|
-| Total stories complete | 5 / 37 |
+| Total stories complete | 6 / 37 |
 | Current phase | Phase A — Backend (Sprints 1–17) |
-| Current sprint | 4 |
+| Current sprint | 5 |
 | Active repo | ravenbase-api |
 | Project started | 2026-03-25 |
 | Last entry | 2026-03-26 |
@@ -200,7 +200,29 @@ All 8 SQLModel table classes (`User`, `SystemProfile`, `Source`, `SourceAuthorit
 > PDF parsing, chunking, embedding, Qdrant upsert, content moderation.
 > Sprint 4 covers STORY-006.
 
-_No entries yet._
+### STORY-006 — Docling Parse + Chunk + Embed Worker
+**Date:** 2026-03-26 | **Sprint:** 4 | **Phase:** A | **Repo:** ravenbase-api
+**Quality gate:** ✅ clean — 58 tests passing, 0 ruff errors, 0 pyright errors
+**Commit:** `94f47d2`
+
+**What was built:**
+Full ARQ `parse_document` pipeline replacing the STORY-005 stub. New adapters: `DoclingAdapter` (lazy Docling imports, paragraph-aware chunking with overlap in a thread executor), `OpenAIAdapter` (batched `text-embedding-3-small` embeddings in groups of 100), `ModerationAdapter` (OpenAI moderation pre-check before Docling, raises `ModerationError` with `hard` flag). `StorageAdapter.download_file()` added. `ingestion_tasks.py` implements the full status pipeline: PENDING→PROCESSING→INDEXING→COMPLETED with Redis pub/sub progress events. Qdrant upsert uses deterministic UUIDs (`uuid.uuid5`) so re-runs are safe. Graph extraction is enqueued as the final step.
+
+**Key decisions:**
+- Docling `DocumentConverter.convert()` takes a `DocumentStream(name, stream)` — not `convert_from_bytes()` which does not exist in the installed version. Unit tests updated to mock `convert` (not `convert_from_bytes`) and to include `docling_core.types.io` in the `sys.modules` patch dict.
+- `_update_source_status` typed as `status: str` (not `status: SourceStatus`) because `SourceStatus` is a plain namespace class (not an Enum), and `Source.status` is a `str` field — pyright correctly rejects the mismatch.
+- `_extract_text_preview` extracts readable text before Docling for the moderation pre-check, using plain bytes/zip parsing (no heavy ML) so it is synchronous and fast.
+- Moderation hard-rejects deactivate the user account (`user.is_active = False`) and do not retry; soft-rejects only mark the source as FAILED.
+- `ruff format` was required after initial file writes — 6 files reformatted before `make quality` passed.
+
+**Gotchas:**
+- `ruff check` flagged `PLC0415` (import not at top level) and `I001` (unsorted imports) in `test_storage_adapter_download.py` — fixed by moving `import pytest` before `unittest.mock` and adding `# noqa: PLC0415` on in-function imports.
+- Pyright error on `source.status = status` when `status: SourceStatus` — pyright infers `SourceStatus` as a class type, not a string, so assigning to `str` field fails. Fix: type annotation changed to `str`.
+- `test_parse_and_chunk_*` tests returned empty lists after the `convert_from_bytes` → `convert` change because the mock still wired `convert_from_bytes`. Updated `_make_docling_sys_modules` helper to wire `mock_conv_instance.convert.return_value` and added `docling_core.types.io` stub.
+
+**Tech debt noted:**
+- `parse_document` opens separate DB sessions for each status transition (`_update_source_status`, `_set_source_completed`, `_set_source_failed`). These could be batched or merged in a later refactor if DB round-trips become a bottleneck.
+- `graph_extraction` task is enqueued by name (`"graph_extraction"`) but not yet implemented — will silently fail in ARQ until STORY-009. This is intentional per spec.
 
 ---
 

@@ -1,4 +1,5 @@
 """Unit tests for ModerationAdapter."""
+
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest

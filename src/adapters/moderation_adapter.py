@@ -77,9 +77,7 @@ class ModerationAdapter(BaseAdapter):
 
         # Determine hard vs soft by inspecting flagged categories
         cats = result.categories
-        flagged_hard = any(
-            getattr(cats, attr, False) for attr in _HARD_REJECT_CATEGORIES
-        )
+        flagged_hard = any(getattr(cats, attr, False) for attr in _HARD_REJECT_CATEGORIES)
         if flagged_hard:
             log.warning("moderation.hard_reject", source_id=source_id, tenant_id=tenant_id)
             raise ModerationError("Content flagged by safety system", hard=True)

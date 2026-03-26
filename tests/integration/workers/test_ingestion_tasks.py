@@ -10,6 +10,7 @@ ingestion_tasks uses datetime.now(UTC) (tz-aware) for completed_at, which asyncp
 rejects for TZ-naive columns. We patch datetime in ingestion_tasks to return naive
 UTC datetimes so the write succeeds.
 """
+
 import uuid
 from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch

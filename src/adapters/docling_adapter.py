@@ -4,6 +4,7 @@ Wraps Docling document parsing and paragraph-aware chunking.
 All Docling imports are INSIDE _sync_parse_and_chunk() (RULE 6: lazy heavy imports).
 Call parse_and_chunk() — it runs the sync method in a thread executor.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -14,7 +15,7 @@ from src.adapters.base import BaseAdapter
 
 logger = structlog.get_logger()
 
-_CHUNK_MAX_CHARS = 2048   # ~512 tokens at 4 chars/token
+_CHUNK_MAX_CHARS = 2048  # ~512 tokens at 4 chars/token
 _CHUNK_OVERLAP_CHARS = 200  # ~50 tokens overlap
 
 
@@ -42,9 +43,7 @@ class DoclingAdapter(BaseAdapter):
         log = logger.bind(filename=filename, size_bytes=len(content))
         log.info("docling.parse.started")
         loop = asyncio.get_running_loop()
-        chunks = await loop.run_in_executor(
-            None, self._sync_parse_and_chunk, content, filename
-        )
+        chunks = await loop.run_in_executor(None, self._sync_parse_and_chunk, content, filename)
         log.info("docling.parse.completed", chunk_count=len(chunks))
         return chunks
 
@@ -58,23 +57,22 @@ class DoclingAdapter(BaseAdapter):
         Returns:
             List of chunks with text, page_number, and chunk_index
         """
+        import io  # noqa: PLC0415
+
         from docling.datamodel.base_models import InputFormat  # noqa: PLC0415
         from docling.datamodel.pipeline_options import PdfPipelineOptions  # noqa: PLC0415
         from docling.document_converter import DocumentConverter, PdfFormatOption  # noqa: PLC0415
+        from docling_core.types.io import DocumentStream  # noqa: PLC0415
 
         options = PdfPipelineOptions(
             generate_page_images=False,
             generate_picture_images=False,
         )
         converter = DocumentConverter(
-            format_options={
-                InputFormat.PDF: PdfFormatOption(pipeline_options=options)
-            }
+            format_options={InputFormat.PDF: PdfFormatOption(pipeline_options=options)}
         )
-        result = converter.convert_from_bytes(
-            content,
-            filename=filename,
-        )
+        stream = DocumentStream(name=filename, stream=io.BytesIO(content))
+        result = converter.convert(stream)
         markdown = result.document.export_to_markdown()
         return _chunk_markdown(markdown)
 
@@ -115,13 +113,17 @@ def _chunk_markdown(markdown: str) -> list[dict]:
         if new_len > _CHUNK_MAX_CHARS and current_parts:
             # Emit current chunk
             text = "\n\n".join(current_parts)
-            chunks.append({
-                "text": (overlap_text + " " + text).strip() if overlap_text else text,
-                "page_number": 0,
-                "chunk_index": len(chunks),
-            })
+            chunks.append(
+                {
+                    "text": (overlap_text + " " + text).strip() if overlap_text else text,
+                    "page_number": 0,
+                    "chunk_index": len(chunks),
+                }
+            )
             # Build overlap from end of emitted chunk
-            overlap_text = text[-_CHUNK_OVERLAP_CHARS:] if len(text) > _CHUNK_OVERLAP_CHARS else text
+            overlap_text = (
+                text[-_CHUNK_OVERLAP_CHARS:] if len(text) > _CHUNK_OVERLAP_CHARS else text
+            )
             current_parts = [para]
             current_len = para_len
         else:
@@ -131,10 +133,12 @@ def _chunk_markdown(markdown: str) -> list[dict]:
     # Emit final chunk
     if current_parts:
         text = "\n\n".join(current_parts)
-        chunks.append({
-            "text": (overlap_text + " " + text).strip() if overlap_text else text,
-            "page_number": 0,
-            "chunk_index": len(chunks),
-        })
+        chunks.append(
+            {
+                "text": (overlap_text + " " + text).strip() if overlap_text else text,
+                "page_number": 0,
+                "chunk_index": len(chunks),
+            }
+        )
 
     return chunks

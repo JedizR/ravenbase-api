@@ -28,7 +28,7 @@ logger = structlog.get_logger()
 # ---------------------------------------------------------------------------
 
 
-async def _update_source_status(source_id: str, status: SourceStatus) -> None:
+async def _update_source_status(source_id: str, status: str) -> None:
     async with async_session_factory() as session:
         source = await session.get(Source, uuid.UUID(source_id))
         if source is None:

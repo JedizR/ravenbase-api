@@ -1,5 +1,6 @@
-import pytest
 from unittest.mock import MagicMock, patch
+
+import pytest
 
 
 @pytest.mark.asyncio
@@ -12,7 +13,7 @@ async def test_download_file_returns_bytes() -> None:
         mock_storage.from_.return_value.download.return_value = fake_bytes
         mock_client.return_value.storage = mock_storage
 
-        from src.adapters.storage_adapter import StorageAdapter
+        from src.adapters.storage_adapter import StorageAdapter  # noqa: PLC0415
 
         adapter = StorageAdapter()
         result = await adapter.download_file("/tenant/source/file.pdf")
@@ -28,7 +29,7 @@ async def test_download_file_raises_on_failure() -> None:
         mock_storage.from_.return_value.download.side_effect = Exception("network error")
         mock_client.return_value.storage = mock_storage
 
-        from src.adapters.storage_adapter import StorageAdapter
+        from src.adapters.storage_adapter import StorageAdapter  # noqa: PLC0415
 
         adapter = StorageAdapter()
         with pytest.raises(RuntimeError, match="Supabase Storage download failed"):
