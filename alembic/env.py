@@ -12,9 +12,11 @@ if config.config_file_name is not None:
 # Strip +asyncpg for sync alembic driver
 config.set_main_option("sqlalchemy.url", settings.DATABASE_URL.replace("+asyncpg", ""))
 
-# Import SQLModel models here as they are created in later stories:
-# from src.models import user, source, profile  # noqa: F401
-target_metadata = None
+from sqlmodel import SQLModel
+
+import src.models  # noqa: F401 — registers all tables with SQLModel.metadata
+
+target_metadata = SQLModel.metadata
 
 
 def run_migrations_offline() -> None:
