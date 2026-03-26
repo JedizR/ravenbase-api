@@ -4,6 +4,7 @@
 Redis pub/sub is fully mocked — no live Redis required.
 Run with: uv run pytest tests/integration/api/test_ingest_stream.py -v
 """
+
 import json
 import uuid
 from unittest.mock import AsyncMock, MagicMock
@@ -62,10 +63,12 @@ def _override_auth():
 @pytest.mark.asyncio
 async def test_stream_returns_event_stream_content_type(mocker):
     """GET /stream/{source_id} → Content-Type: text/event-stream."""
-    mock_redis, _ = _make_mock_redis([
-        {"type": "subscribe", "data": 1},
-        {"type": "message", "data": COMPLETED_MSG},
-    ])
+    mock_redis, _ = _make_mock_redis(
+        [
+            {"type": "subscribe", "data": 1},
+            {"type": "message", "data": COMPLETED_MSG},
+        ]
+    )
     mocker.patch("src.api.routes.ingest.aioredis.from_url", new=AsyncMock(return_value=mock_redis))
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
@@ -77,11 +80,13 @@ async def test_stream_returns_event_stream_content_type(mocker):
 @pytest.mark.asyncio
 async def test_stream_emits_progress_events(mocker):
     """Stream emits data: lines for each message-type Redis event."""
-    mock_redis, _ = _make_mock_redis([
-        {"type": "subscribe", "data": 1},
-        {"type": "message", "data": PROCESSING_MSG},
-        {"type": "message", "data": COMPLETED_MSG},
-    ])
+    mock_redis, _ = _make_mock_redis(
+        [
+            {"type": "subscribe", "data": 1},
+            {"type": "message", "data": PROCESSING_MSG},
+            {"type": "message", "data": COMPLETED_MSG},
+        ]
+    )
     mocker.patch("src.api.routes.ingest.aioredis.from_url", new=AsyncMock(return_value=mock_redis))
 
     body = ""
@@ -99,13 +104,18 @@ async def test_stream_emits_progress_events(mocker):
 @pytest.mark.asyncio
 async def test_stream_closes_on_completed(mocker):
     """Stream closes (does not hang) when status=completed is received."""
-    mock_redis, mock_pubsub = _make_mock_redis([
-        {"type": "subscribe", "data": 1},
-        {"type": "message", "data": PROCESSING_MSG},
-        {"type": "message", "data": COMPLETED_MSG},
-        # This message must NOT appear in the body — stream already closed
-        {"type": "message", "data": b'{"progress_pct": 0, "message": "ghost", "status": "processing"}'},
-    ])
+    mock_redis, mock_pubsub = _make_mock_redis(
+        [
+            {"type": "subscribe", "data": 1},
+            {"type": "message", "data": PROCESSING_MSG},
+            {"type": "message", "data": COMPLETED_MSG},
+            # This message must NOT appear in the body — stream already closed
+            {
+                "type": "message",
+                "data": b'{"progress_pct": 0, "message": "ghost", "status": "processing"}',
+            },
+        ]
+    )
     mocker.patch("src.api.routes.ingest.aioredis.from_url", new=AsyncMock(return_value=mock_redis))
 
     body = ""
@@ -120,10 +130,12 @@ async def test_stream_closes_on_completed(mocker):
 @pytest.mark.asyncio
 async def test_stream_closes_on_failed(mocker):
     """Stream closes when status=failed is received."""
-    mock_redis, _ = _make_mock_redis([
-        {"type": "subscribe", "data": 1},
-        {"type": "message", "data": FAILED_MSG},
-    ])
+    mock_redis, _ = _make_mock_redis(
+        [
+            {"type": "subscribe", "data": 1},
+            {"type": "message", "data": FAILED_MSG},
+        ]
+    )
     mocker.patch("src.api.routes.ingest.aioredis.from_url", new=AsyncMock(return_value=mock_redis))
 
     body = ""
@@ -138,6 +150,7 @@ async def test_stream_closes_on_failed(mocker):
 @pytest.mark.asyncio
 async def test_stream_always_unsubscribes_on_disconnect(mocker):
     """Redis pubsub.unsubscribe is called even when generator is interrupted."""
+
     # Simulate a real-world scenario: Redis raises ConnectionError mid-stream
     async def _listen_raising():
         yield {"type": "subscribe", "data": 1}
@@ -157,7 +170,9 @@ async def test_stream_always_unsubscribes_on_disconnect(mocker):
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
         try:
-            async with ac.stream("GET", f"/v1/ingest/stream/{TEST_SOURCE_ID}?token=fake") as response:
+            async with ac.stream(
+                "GET", f"/v1/ingest/stream/{TEST_SOURCE_ID}?token=fake"
+            ) as response:
                 async for _ in response.aiter_text():
                     pass
         except Exception:

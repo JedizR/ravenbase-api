@@ -1,9 +1,10 @@
 # tests/unit/api/test_auth_query_param.py
 """Unit tests for verify_token_query_param dependency."""
-import pytest
-from unittest.mock import MagicMock, patch
-from fastapi import HTTPException
 
+from unittest.mock import MagicMock, patch
+
+import pytest
+from fastapi import HTTPException
 
 FAKE_PAYLOAD = {
     "sub": "user_abc",
@@ -36,6 +37,7 @@ async def test_verify_token_query_param_valid_token():
 async def test_verify_token_query_param_expired_token():
     """Expired token → 403 TOKEN_EXPIRED."""
     import jwt as pyjwt  # noqa: PLC0415
+
     from src.api.dependencies.auth import verify_token_query_param  # noqa: PLC0415
 
     mock_client = MagicMock()
@@ -56,6 +58,7 @@ async def test_verify_token_query_param_expired_token():
 async def test_verify_token_query_param_invalid_token():
     """Garbage token → 403 INVALID_TOKEN."""
     import jwt as pyjwt  # noqa: PLC0415
+
     from src.api.dependencies.auth import verify_token_query_param  # noqa: PLC0415
 
     mock_client = MagicMock()
