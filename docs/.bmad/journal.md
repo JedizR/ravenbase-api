@@ -12,7 +12,7 @@
 
 | Field | Value |
 |---|---|
-| Total stories complete | 3 / 37 |
+| Total stories complete | 4 / 37 |
 | Current phase | Phase A — Backend (Sprints 1–17) |
 | Current sprint | 2 |
 | Active repo | ravenbase-api |
@@ -138,6 +138,28 @@ All 8 SQLModel table classes (`User`, `SystemProfile`, `Source`, `SourceAuthorit
 
 **Tech debt noted:**
 - `make test` includes the Supabase-dependent connectivity tests with no skip marker; consider adding `@pytest.mark.requires_db` and a `--skip-cloud` pytest flag to cleanly separate local-only from cloud-dependent tests.
+
+### STORY-004 — ARQ Worker Setup + Health Endpoint
+**Date:** 2026-03-26 | **Sprint:** 2 | **Phase:** A | **Repo:** ravenbase-api
+**Quality gate:** ✅ clean
+**Commit:** `4976e52`
+
+**What was built:**
+`src/workers/utils.py` with `publish_progress()` (async Redis pub/sub, `job:progress:{source_id}` channel) and `update_job_status()` (opens its own `AsyncSession` per call, updates `JobStatus` record with status/progress/message/updated_at). `src/workers/main.py` completed with `hello_world` stub task and full `WorkerSettings` (job_timeout, keep_result, retry_jobs, max_tries, health_check_interval, health_check_key). 5 new unit tests; 36 total pass. 100% coverage on both new files.
+
+**Key decisions:**
+- `publish_progress` opens and closes its own Redis connection per call (matches architecture doc pattern). The ARQ `ctx["redis"]` pool approach would be more efficient at scale but requires threading the context through — deferred to STORY-006 when the first real task uses this utility.
+- `update_job_status` uses `async_session_factory` from `src/api/dependencies/db.py` directly (not `get_db` which is a FastAPI dependency). This is a minor layer boundary concern; can be moved to `src/core/db.py` if needed later.
+- Removed `cron_jobs: list = []` from WorkerSettings — ARQ doesn't require explicit empty declaration and it added unnecessary type-ignore noise.
+- `ctx` parameter renamed to `_ctx` in `hello_world` to satisfy ruff ARG001 (unused arg).
+
+**Gotchas:**
+- `aioredis.from_url` is an `async def` — patching it with `MagicMock(return_value=mock)` doesn't work; must use `async def fake_from_url(_url): return mock` as the patch target.
+- ruff flags unused `ctx` argument in ARQ task functions — prefix with `_` to silence.
+- ruff format auto-reformatted inline comments (trailing `# ...` on assignment lines) to use 2-space separation.
+
+**Tech debt noted:**
+- `publish_progress` creates a new Redis TCP connection per call. When STORY-006 implements `parse_document`, pass `ctx["redis"]` instead to reuse the ARQ-managed connection pool.
 
 ---
 

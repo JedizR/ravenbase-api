@@ -9,23 +9,23 @@
 
 **Phase:** A — Backend (Sprints 1–17)
 **Current sprint:** 2
-**Status:** In progress — 3 of 37 stories complete
+**Status:** In progress — 4 of 37 stories complete
 
-**Next story to implement:** STORY-004
-**Story file:** `docs/stories/EPIC-01-foundation/STORY-004.md`
+**Next story to implement:** STORY-005
+**Story file:** `docs/stories/EPIC-02-ingestion/STORY-005.md`
 
 ---
 
 ## Last Completed Story
 
-**STORY-003 — Qdrant + Neo4j initialization + constraints** (2026-03-26)
-QdrantAdapter and Neo4jAdapter implemented with lazy initialization and full tenant isolation enforcement. Idempotent setup scripts created for both stores. `/health` endpoint upgraded to check all 4 services (postgresql, redis, qdrant, neo4j). Mock fixtures added to conftest.py. 25 tests pass.
+**STORY-004 — ARQ worker setup + health endpoint** (2026-03-26)
+WorkerSettings completed with all required fields. `src/workers/utils.py` created with `publish_progress()` (Redis pub/sub) and `update_job_status()` (own DB session). `hello_world` stub task added. 36 tests pass, `make quality` clean, 100% coverage on both new worker files.
 
 ---
 
 ## Context for Next Session
 
-STORY-003 is complete. All quality gates pass (ruff 0 errors, pyright 0 errors). 25 unit + integration tests pass. Note: 3 pre-existing STORY-002 integration tests fail because they require the Supabase cloud DB (`db.dsfeqnjeabyptldlwrkv.supabase.co`) which is not reachable offline — these are not regressions. STORY-004 adds ARQ worker setup + health endpoint — start by reading `docs/stories/EPIC-01-foundation/STORY-004.md`.
+STORY-004 is complete. All quality gates pass (ruff 0 errors, pyright 0 errors). 36 tests pass. ARQ worker is now fully scaffolded — `make worker` starts the worker. STORY-005 adds file upload endpoint + Supabase Storage — start by reading `docs/stories/EPIC-02-ingestion/STORY-005.md`.
 
 ---
 
