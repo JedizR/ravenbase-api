@@ -143,3 +143,52 @@ def test_cleanup_clears_client() -> None:
     adapter._client = AsyncMock()
     adapter.cleanup()
     assert adapter._client is None
+
+
+@pytest.mark.asyncio
+async def test_scroll_by_source_enforces_tenant_and_source_filter() -> None:
+    from unittest.mock import AsyncMock, MagicMock  # noqa: PLC0415
+
+    from src.adapters.qdrant_adapter import QdrantAdapter  # noqa: PLC0415
+
+    adapter = QdrantAdapter()
+    mock_record = MagicMock()
+    mock_record.payload = {"tenant_id": "t1", "source_id": "s1", "text": "hello"}
+    mock_client = AsyncMock()
+    mock_client.scroll = AsyncMock(return_value=([mock_record], None))
+    adapter._client = mock_client
+
+    results = await adapter.scroll_by_source("s1", "t1")
+
+    assert len(results) == 1
+    assert results[0]["text"] == "hello"
+    call_kwargs = mock_client.scroll.call_args.kwargs
+    must_conditions = call_kwargs["scroll_filter"].must
+    keys = [c.key for c in must_conditions]
+    assert "tenant_id" in keys
+    assert "source_id" in keys
+
+
+@pytest.mark.asyncio
+async def test_scroll_by_source_paginates_all_results() -> None:
+    from unittest.mock import AsyncMock, MagicMock  # noqa: PLC0415
+
+    from src.adapters.qdrant_adapter import QdrantAdapter  # noqa: PLC0415
+
+    adapter = QdrantAdapter()
+
+    def make_record(text: str) -> MagicMock:
+        r = MagicMock()
+        r.payload = {"text": text}
+        return r
+
+    page1 = [make_record("chunk-1")]
+    page2 = [make_record("chunk-2")]
+    mock_client = AsyncMock()
+    mock_client.scroll = AsyncMock(side_effect=[(page1, "cursor-1"), (page2, None)])
+    adapter._client = mock_client
+
+    results = await adapter.scroll_by_source("s1", "t1")
+
+    assert len(results) == 2
+    assert mock_client.scroll.call_count == 2

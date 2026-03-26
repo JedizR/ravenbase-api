@@ -91,6 +91,37 @@ class QdrantAdapter(BaseAdapter):
         )
         return result.count
 
+    async def scroll_by_source(
+        self,
+        source_id: str,
+        tenant_id: str,
+    ) -> list[dict]:
+        """Fetch all chunk payloads for a source. Enforces tenant_id + source_id filter.
+
+        Paginates through all results using Qdrant scroll cursor.
+        Returns list of payload dicts (each dict has 'text', 'chunk_id', etc.).
+        """
+        must_conditions: list[Condition] = list(self._tenant_filter(tenant_id).must or [])  # type: ignore[arg-type]
+        must_conditions.append(FieldCondition(key="source_id", match=MatchValue(value=source_id)))
+        f = Filter(must=must_conditions)
+
+        payloads: list[dict] = []
+        offset: object = None
+        while True:
+            records, next_offset = await self._get_client().scroll(
+                collection_name="ravenbase_chunks",
+                scroll_filter=f,
+                with_payload=True,
+                with_vectors=False,
+                limit=100,
+                offset=offset,
+            )
+            payloads.extend(record.payload for record in records if record.payload)
+            if next_offset is None:
+                break
+            offset = next_offset
+        return payloads
+
     async def verify_connectivity(self) -> bool:
         try:
             await self._get_client().get_collections()
