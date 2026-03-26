@@ -59,6 +59,11 @@ class QdrantAdapter(BaseAdapter):
         return result.points
 
     async def upsert(self, points: list[PointStruct]) -> None:
+        for point in points:
+            if not (point.payload or {}).get("tenant_id"):
+                raise ValueError(
+                    f"PointStruct id={point.id!r} is missing required 'tenant_id' in payload"
+                )
         await self._get_client().upsert(
             collection_name=self.COLLECTION_NAME,
             points=points,

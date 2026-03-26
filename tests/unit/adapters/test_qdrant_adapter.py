@@ -63,6 +63,21 @@ async def test_upsert_targets_correct_collection() -> None:
 
 
 @pytest.mark.asyncio
+async def test_upsert_raises_if_point_missing_tenant_id() -> None:
+    from src.adapters.qdrant_adapter import QdrantAdapter  # noqa: PLC0415
+
+    adapter = QdrantAdapter()
+    mock_client = AsyncMock()
+    adapter._client = mock_client
+
+    points_without_tenant = [PointStruct(id="pt-1", vector=[0.1] * 1536, payload={"other": "data"})]
+    with pytest.raises(ValueError, match="tenant_id"):
+        await adapter.upsert(points=points_without_tenant)
+
+    mock_client.upsert.assert_not_called()
+
+
+@pytest.mark.asyncio
 async def test_delete_by_filter_always_includes_tenant_filter() -> None:
     from src.adapters.qdrant_adapter import QdrantAdapter  # noqa: PLC0415
 

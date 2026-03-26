@@ -34,10 +34,14 @@ async def test_run_query_passes_params_to_session() -> None:
     result = await adapter.run_query(cypher, tenant_id="user-abc")
 
     mock_session.run.assert_called_once()
-    _, call_kwargs = mock_session.run.call_args
-    assert call_kwargs.get("tenant_id") == "user-abc" or (
-        "user-abc" in str(mock_session.run.call_args)
-    )
+    call_args = mock_session.run.call_args
+    # run_query passes params as a positional dict: session.run(query, params_dict)
+    positional_args = call_args.args
+    assert len(positional_args) == 2, "session.run should be called with (query, params_dict)"
+    assert positional_args[0] == cypher
+    params_dict = positional_args[1]
+    assert isinstance(params_dict, dict)
+    assert params_dict.get("tenant_id") == "user-abc"
     assert result == [{"n": "val"}]
 
 
@@ -91,3 +95,43 @@ async def test_write_nodes_includes_tenant_id_param() -> None:
     adapter.run_query.assert_called_once()
     _, call_kwargs = adapter.run_query.call_args
     assert call_kwargs.get("tenant_id") == "user-abc"
+
+
+@pytest.mark.asyncio
+async def test_write_nodes_raises_on_invalid_label() -> None:
+    from src.adapters.neo4j_adapter import Neo4jAdapter  # noqa: PLC0415
+
+    adapter = Neo4jAdapter()
+    adapter.run_query = AsyncMock()
+
+    with pytest.raises(ValueError, match="Invalid Neo4j node label"):
+        await adapter.write_nodes(
+            label="Injected; DROP DATABASE neo4j",
+            node_id_key="memory_id",
+            properties={"memory_id": "m-1"},
+            tenant_id="user-abc",
+        )
+
+    adapter.run_query.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_write_relationships_raises_on_invalid_rel_type() -> None:
+    from src.adapters.neo4j_adapter import Neo4jAdapter  # noqa: PLC0415
+
+    adapter = Neo4jAdapter()
+    adapter.run_query = AsyncMock()
+
+    with pytest.raises(ValueError, match="Invalid Neo4j relationship type"):
+        await adapter.write_relationships(
+            from_label="Memory",
+            from_id_key="memory_id",
+            from_id="m-1",
+            to_label="Concept",
+            to_id_key="concept_id",
+            to_id="c-1",
+            rel_type="MALICIOUS_TYPE; DROP DATABASE",
+            tenant_id="user-abc",
+        )
+
+    adapter.run_query.assert_not_called()
