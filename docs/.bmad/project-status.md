@@ -11,21 +11,21 @@
 **Current sprint:** 5
 **Status:** In progress — 6 of 37 stories complete
 
-**Next story to implement:** STORY-007
+**Next story to implement:** STORY-007 Part 2 — Frontend (`IngestionProgress` component + `use-sse.ts` hook in `ravenbase-web`)
 **Story file:** `docs/stories/EPIC-02-ingestion/STORY-007.md`
 
 ---
 
 ## Last Completed Story
 
-**STORY-006 — Docling parse + chunk + embed worker** (2026-03-26)
-Full ARQ `parse_document` pipeline live: Supabase Storage download, OpenAI moderation pre-check, Docling parse+chunk in executor, OpenAI `text-embedding-3-small` batched embeddings, Qdrant upsert (deterministic UUIDs), Source status transitions (PENDING→PROCESSING→INDEXING→COMPLETED), graph_extraction enqueue. `DoclingAdapter`, `OpenAIAdapter`, `ModerationAdapter` added. 58 tests passing, `make quality` clean.
+**STORY-007 Part 1 — SSE progress stream (Backend)** (2026-03-26)
+`GET /v1/ingest/stream/{source_id}?token=` SSE endpoint live. `verify_token_query_param` dependency added for EventSource auth. Redis pub/sub subscriber with try/finally disconnect safety. `ProgressEvent` schema added. 68 tests passing, `make quality` clean. AC-1..AC-5 done; AC-6..AC-7 (frontend) pending.
 
 ---
 
 ## Context for Next Session
 
-STORY-006 merged to main. `parse_document` ARQ task fully replaces the stub — downloads from Supabase Storage, runs moderation, Docling parse+chunk in executor, embeds with OpenAI, upserts to Qdrant, then enqueues `graph_extraction`. Docling uses `DocumentStream` + `converter.convert()` API (not `convert_from_bytes`). STORY-007 implements the SSE progress stream via Redis pub/sub so the frontend can observe ingestion in real time.
+STORY-007 backend merged to main. SSE endpoint at `GET /v1/ingest/stream/{source_id}?token=<clerk_jwt>` streams Redis pub/sub events (`job:progress:{source_id}`) as `text/event-stream`. Stream closes on `status=completed` or `status=failed`. `verify_token_query_param` reads JWT from query param (EventSource cannot set headers). Before starting STORY-007 Part 2 (frontend), run `npm run generate-client` in `ravenbase-web` to pick up the new endpoint. Frontend needs `IngestionProgress` component + `use-sse.ts` hook.
 
 ---
 

@@ -35,11 +35,11 @@ As a user, I want to see real-time progress updates as my file is being processe
 - API contract: `architecture/03-api-contract.md` — `GET /v1/ingest/stream/{source_id}`
 
 ## Acceptance Criteria
-- [ ] AC-1: `GET /v1/ingest/stream/{source_id}?token=` returns `text/event-stream`
-- [ ] AC-2: Token validated via `verify_token_query_param` (Clerk JWT as query param)
-- [ ] AC-3: SSE stream emits `data:` events with `{progress_pct, message, status}`
-- [ ] AC-4: Stream closes automatically when status is `completed` or `failed`
-- [ ] AC-5: Client that disconnects mid-stream does not cause server error (test with connection abort)
+- [x] AC-1: `GET /v1/ingest/stream/{source_id}?token=` returns `text/event-stream`
+- [x] AC-2: Token validated via `verify_token_query_param` (Clerk JWT as query param)
+- [x] AC-3: SSE stream emits `data:` events with `{progress_pct, message, status}`
+- [x] AC-4: Stream closes automatically when status is `completed` or `failed`
+- [x] AC-5: Client that disconnects mid-stream does not cause server error (test with connection abort)
 - [ ] AC-6: Frontend `IngestionProgress` component subscribes to SSE and updates progress bar in real-time
 - [ ] AC-7: Frontend shows correct states: idle → uploading → processing (with %) → complete / error
 

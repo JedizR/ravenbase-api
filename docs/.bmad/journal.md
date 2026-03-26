@@ -17,7 +17,7 @@
 | Current sprint | 5 |
 | Active repo | ravenbase-api |
 | Project started | 2026-03-25 |
-| Last entry | 2026-03-26 |
+| Last entry | 2026-03-26 (STORY-007 BE) |
 
 > **Update this table** after every story entry. Increment stories complete,
 > update current sprint and phase when they change.
@@ -231,7 +231,28 @@ Full ARQ `parse_document` pipeline replacing the STORY-005 stub. New adapters: `
 > Progress streaming, Omnibar text capture endpoint.
 > Sprint 5 covers STORY-007-BE and STORY-008-BE.
 
-_No entries yet._
+### STORY-007 Part 1 — SSE Progress Stream (Backend)
+**Date:** 2026-03-26 | **Sprint:** 5 | **Phase:** A | **Repo:** ravenbase-api
+**Quality gate:** ✅ clean — 68 tests passing, 0 ruff errors, 0 pyright errors
+**Commit:** `bd3c17b`
+
+**What was built:**
+`GET /v1/ingest/stream/{source_id}?token=<jwt>` SSE endpoint using `sse-starlette`. `verify_token_query_param(token: str = Query(...))` FastAPI dependency added for EventSource auth (EventSource cannot set request headers). `_decode_jwt()` private helper extracted to share JWT validation logic between `require_user` and the new dependency. `ProgressEvent` Pydantic schema added to `src/schemas/ingest.py`. 10 new tests (4 unit + 6 integration), all 68 tests passing.
+
+**Key decisions:**
+- `verify_token_query_param` uses `Query(...)` not `Header(None)` — browser `EventSource` API cannot set custom headers, so the Clerk JWT must travel as a URL query parameter.
+- `_decode_jwt()` extracted as a private helper to keep `require_user` and `verify_token_query_param` DRY. Both are now one-line delegators.
+- `except BaseException: pass` removed from the generator — `try/finally` alone guarantees cleanup on `GeneratorExit`. The bare-except pattern silently swallowed all exceptions including real bugs; discovered during code quality review.
+- `json.loads(payload)` wrapped in `try/except json.JSONDecodeError` with a `log.warning` — a malformed worker payload should log and continue, not crash the stream.
+- Disconnect test uses `raise Exception(...)` in the mock async generator (not `raise GeneratorExit`) — `GeneratorExit` propagated through `sse_starlette`'s internal `TaskGroup` as a `BaseExceptionGroup`, crashing the test boundary. A regular exception correctly exercises the `try/finally` cleanup path without this side effect.
+- `except jwt.PyJWTError` used instead of bare `except Exception` in `_decode_jwt` — catches all PyJWT validation errors without swallowing unrelated programming errors.
+
+**Gotchas:**
+- `sse-starlette` wraps the generator in an `anyio.TaskGroup`. Raising `GeneratorExit` inside a mock `async for` body escapes as a `BaseExceptionGroup` at the httpx client boundary — not catchable by `except Exception`. Switched the disconnect simulation to a plain `Exception` which is handled gracefully.
+- `app.dependency_overrides.pop(verify_token_query_param, None)` mid-test (for the 422 test) needed a `try/finally` restore block to avoid leaking the removal when the assertion fails.
+
+**Tech debt noted:**
+- `verify_token_query_param` currently does not validate that the `tenant_id` from the JWT matches the owner of `source_id` in the database. A future security hardening story should add a DB lookup to confirm the caller owns the source before subscribing to its Redis channel.
 
 ---
 
