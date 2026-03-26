@@ -109,7 +109,7 @@ class QdrantAdapter(BaseAdapter):
         offset: object = None
         while True:
             records, next_offset = await self._get_client().scroll(
-                collection_name="ravenbase_chunks",
+                collection_name=self.COLLECTION_NAME,
                 scroll_filter=f,
                 with_payload=True,
                 with_vectors=False,
