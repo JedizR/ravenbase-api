@@ -1,9 +1,12 @@
 import jwt
+import structlog
 from fastapi import Header, HTTPException, Query
 
 from src.core.config import settings
 
 _clerk_jwks_client: jwt.PyJWKClient | None = None
+
+logger = structlog.get_logger()
 
 
 def _get_jwks_client() -> jwt.PyJWKClient:
@@ -28,14 +31,17 @@ def _decode_jwt(token: str) -> dict:
             algorithms=["RS256"],
             options={"verify_exp": True},
         )
+        # tier comes from Clerk's public_metadata.plan claim (set via Clerk Dashboard)
         tier = payload.get("public_metadata", {}).get("plan", "free")
         return {"user_id": payload["sub"], "email": payload.get("email", ""), "tier": tier}
     except jwt.ExpiredSignatureError as err:
+        logger.warning("auth.token_expired")
         raise HTTPException(
             status_code=403,
             detail={"code": "TOKEN_EXPIRED", "message": "Token has expired"},
         ) from err
-    except Exception:
+    except jwt.PyJWTError:
+        logger.warning("auth.invalid_token")
         raise HTTPException(
             status_code=403,
             detail={"code": "INVALID_TOKEN", "message": "Invalid or expired token"},

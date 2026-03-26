@@ -55,10 +55,11 @@ async def test_verify_token_query_param_expired_token():
 @pytest.mark.asyncio
 async def test_verify_token_query_param_invalid_token():
     """Garbage token → 403 INVALID_TOKEN."""
+    import jwt as pyjwt  # noqa: PLC0415
     from src.api.dependencies.auth import verify_token_query_param  # noqa: PLC0415
 
     mock_client = MagicMock()
-    mock_client.get_signing_key_from_jwt.side_effect = Exception("bad token")
+    mock_client.get_signing_key_from_jwt.side_effect = pyjwt.PyJWTError("bad token")
 
     with patch("src.api.dependencies.auth._get_jwks_client", return_value=mock_client):
         with pytest.raises(HTTPException) as exc_info:
