@@ -1,6 +1,7 @@
 # tests/unit/models/test_model_instantiation.py
 import uuid
 
+from src.models.conflict import Conflict, ConflictStatus
 from src.models.profile import SystemProfile
 from src.models.source import Source, SourceAuthorityWeight, SourceStatus
 from src.models.user import User
@@ -55,3 +56,21 @@ def test_source_authority_weight_defaults() -> None:
     uid = uuid.uuid4()
     saw = SourceAuthorityWeight(user_id=uid, source_type="pdf")
     assert saw.weight == 5
+
+
+def test_conflict_default_fields() -> None:
+    uid = uuid.uuid4()
+    conflict = Conflict(
+        user_id=uid,
+        incumbent_memory_id="mem-001",
+        challenger_memory_id="mem-002",
+        incumbent_content="I use Python.",
+        challenger_content="I use Go.",
+        ai_classification="CONTRADICTION",
+        confidence_score=0.92,
+    )
+    assert conflict.status == ConflictStatus.PENDING
+    assert conflict.resolution_note is None
+    assert conflict.resolved_at is None
+    assert conflict.profile_id is None
+    assert isinstance(conflict.id, uuid.UUID)
