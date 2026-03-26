@@ -293,7 +293,7 @@ _No entries yet._
 ### STORY-009 — Entity Extraction + Neo4j Writer
 **Date:** 2026-03-26 | **Sprint:** 7 | **Phase:** A | **Repo:** ravenbase-api
 **Quality gate:** ✅ clean — all tests passing, 0 ruff errors, 0 pyright errors
-**Commit:** `<fill in the actual commit SHA from the final commit>`
+**Commit:** `ada81c3`
 
 **What was built:**
 LLMRouter adapter routing entity_extraction to Gemini 2.5 Flash (primary) and Claude Haiku (fallback) with exponential backoff on 429. GraphService orchestrating per-chunk entity extraction via LLM and MERGE writes to Neo4j for Concept nodes (deduplication by {name, tenant_id}) and CREATE for Memory nodes. graph_extraction ARQ task wired into WorkerSettings, triggered automatically by parse_document and ingest_text. QdrantAdapter.scroll_by_source for paginated chunk retrieval.
