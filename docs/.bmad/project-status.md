@@ -8,8 +8,8 @@
 ## Current State
 
 **Phase:** A — Backend (Sprints 1–17)
-**Current sprint:** 7
-**Status:** In progress — 7 of 37 stories complete
+**Current sprint:** 6
+**Status:** In progress — 6 of 37 stories complete
 
 **Next story to implement:** STORY-008-BE
 **Story file:** `docs/stories/EPIC-02-ingestion/STORY-008.md`
@@ -18,14 +18,14 @@
 
 ## Last Completed Story
 
-**STORY-007 Part 1 — SSE progress stream (Backend)** (2026-03-26)
-`GET /v1/ingest/stream/{source_id}?token=` SSE endpoint live. `verify_token_query_param` dependency added for EventSource auth. Redis pub/sub subscriber with try/finally disconnect safety. `ProgressEvent` schema added. 68 tests passing, `make quality` clean. AC-1..AC-5 done; AC-6..AC-7 (frontend) pending.
+**STORY-007-BE — SSE progress stream (Backend, AC-1 to AC-5 only)** (2026-03-26)
+`GET /v1/ingest/stream/{source_id}?token=` SSE endpoint live. `verify_token_query_param` dependency added for EventSource auth. Redis pub/sub subscriber with try/finally disconnect safety. `ProgressEvent` schema added. 68 tests passing, `make quality` clean. AC-6 and AC-7 (frontend) are pending Phase B Sprint 21.
 
 ---
 
 ## Context for Next Session
 
-STORY-007 backend merged to main. SSE endpoint at `GET /v1/ingest/stream/{source_id}?token=<clerk_jwt>` streams Redis pub/sub events (`job:progress:{source_id}`) as `text/event-stream`. Stream closes on `status=completed` or `status=failed`. `verify_token_query_param` reads JWT from query param (EventSource cannot set headers). Before starting STORY-007 Part 2 (frontend), run `npm run generate-client` in `ravenbase-web` to pick up the new endpoint. Frontend needs `IngestionProgress` component + `use-sse.ts` hook.
+STORY-007 backend (AC-1..AC-5) merged to main. story-counter stays at 007 — the full STORY-007 row in epics.md will only flip to ✅ after the frontend session (AC-6, AC-7) in ravenbase-web completes in Phase B Sprint 21. Next up is STORY-008-BE (text quick-capture Omnibar endpoint) — backend only, staying in ravenbase-api for all of Phase A.
 
 ---
 
