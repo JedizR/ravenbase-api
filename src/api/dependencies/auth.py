@@ -58,10 +58,16 @@ async def require_user(authorization: str | None = Header(None)) -> dict:
     return _decode_jwt(token)
 
 
-async def verify_token_query_param(token: str = Query(...)) -> dict:
+async def verify_token_query_param(token: str | None = Query(None)) -> dict:  # type: ignore[return]
     """JWT auth for EventSource connections that cannot set headers.
 
     EventSource passes the Clerk JWT as ?token=<jwt> in the query string.
     Validation logic is identical to require_user.
+    Raises 401 (not 422) if token is missing — EventSource clients cannot set headers.
     """
+    if not token:
+        raise HTTPException(
+            status_code=401,
+            detail={"code": "MISSING_AUTH", "message": "token query parameter required"},
+        )
     return _decode_jwt(token)
