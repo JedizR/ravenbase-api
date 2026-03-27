@@ -8,24 +8,24 @@
 ## Current State
 
 **Phase:** A — Backend (Sprints 1–17)
-**Current sprint:** 9
-**Status:** In progress — 10 of 37 stories complete
+**Current sprint:** 11
+**Status:** In progress — 11 of 37 stories complete
 
-**Next story to implement:** STORY-015
-**Story file:** `docs/stories/EPIC-05-rag/STORY-015.md`
+**Next story to implement:** STORY-016
+**Story file:** `docs/stories/EPIC-05-metadoc/STORY-016.md`
 
 ---
 
 ## Last Completed Story
 
-**STORY-013 — Conflict API (List, Resolve, Undo)** (2026-03-27)
-Three endpoints added: `GET /v1/conflicts` (paginated, status filter), `POST /v1/conflicts/{id}/resolve` (ACCEPT_NEW / KEEP_OLD / CUSTOM actions, atomic SUPERSEDES Neo4j edge), `POST /v1/conflicts/{id}/undo` (30-second window with Neo4j rollback). 126 tests passing, `make quality` clean.
+**STORY-015 — Hybrid Retrieval Service** (2026-03-27)
+RAGService implemented with three-phase retrieval pipeline: Qdrant kNN semantic search, Neo4j concept-graph traversal, and re-ranking with `semantic×0.6 + recency×0.3 + profile_match×0.1` formula plus content-hash deduplication. 158 tests passing, `make quality` clean.
 
 ---
 
 ## Context for Next Session
 
-STORY-013 merged to main. Conflict pipeline is fully usable: detection (STORY-012) + API resolution (STORY-013). STORY-014 is the Memory Inbox UI (frontend-only, skipped in backend sequence). Next backend story is STORY-015 (Hybrid RAG retrieval).
+STORY-015 merged to main. Hybrid retrieval pipeline is complete: `RAGService.retrieve()` queries Qdrant for semantic chunks, traverses Neo4j concept graph, deduplicates by content hash, and reranks by weighted formula. STORY-016 is Meta-Doc generation (PII masking + LLM streaming).
 
 ---
 

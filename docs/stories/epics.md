@@ -69,7 +69,7 @@
 
 | Story | Title | Priority | Complexity | Status |
 |---|---|---|---|---|
-| STORY-015 | Hybrid retrieval service (Qdrant + Neo4j) | P0 | Large | 🔲 |
+| STORY-015 | Hybrid retrieval service (Qdrant + Neo4j) | P0 | Large | ✅ |
 | STORY-016 | Meta-Doc generation worker (PII mask + LLM stream) | P0 | Large | 🔲 |
 | STORY-017 | Workstation UI (SSE streaming, Markdown render, export) | P0 | Medium | 🔲 |
 

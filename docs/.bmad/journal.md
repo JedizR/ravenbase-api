@@ -12,12 +12,12 @@
 
 | Field | Value |
 |---|---|
-| Total stories complete | 10 / 37 |
+| Total stories complete | 11 / 37 |
 | Current phase | Phase A — Backend (Sprints 1–17) |
-| Current sprint | 9 |
+| Current sprint | 11 |
 | Active repo | ravenbase-api |
 | Project started | 2026-03-25 |
-| Last entry | 2026-03-27 (STORY-013) |
+| Last entry | 2026-03-27 (STORY-015) |
 
 > **Update this table** after every story entry. Increment stories complete,
 > update current sprint and phase when they change.
@@ -400,7 +400,26 @@ _No entries yet._
 > RAG pipeline, Presidio PII masking, SSE streaming generation.
 > Sprint 11 covers STORY-015 and STORY-016.
 
-_No entries yet._
+### STORY-015 — Hybrid Retrieval Service
+**Date:** 2026-03-27 | **Sprint:** 11 | **Phase:** A | **Repo:** ravenbase-api
+**Quality gate:** ✅ clean — 158 tests passing, 0 ruff errors, 0 pyright errors
+**Commit:** `cade520`
+
+**What was built:**
+RAGService with three-phase retrieval pipeline: (1) Qdrant kNN semantic search with tenant+profile scoping, (2) Neo4j concept-graph traversal via `find_memories_by_concepts()`, (3) re-ranking with formula `semantic×0.6 + recency×0.3 + profile_match×0.1` and content-hash deduplication. New `embed()` single-text method added to `OpenAIAdapter`. 24 unit tests and 8 integration tests added.
+
+**Key decisions:**
+- `is_valid` check uses `IS NULL OR true` to handle Memory nodes written before conflict resolution was in place — avoids filtering out pre-existing nodes that lack the property.
+- Profile-scoped Neo4j query uses `m.profile_id = $profile_id` property filter (no `HAS_MEMORY` traversal) — simpler Cypher and avoids adding a relationship type not yet defined in the schema.
+- Deduplication by SHA-256 content hash: the same chunk may arrive from both Qdrant and Neo4j; hashing ensures deterministic deduplication regardless of source order.
+
+**Gotchas:**
+- `extract_concepts` uses the LLMRouter with `entity_extraction` task key — response must be validated against Pydantic schema before use (RULE 9); invalid JSON from the LLM returns an empty concept list gracefully.
+- Integration tests mock both Qdrant and Neo4j adapters to avoid requiring live infrastructure; async mock setup requires `AsyncMock` not `MagicMock` for coroutine returns.
+
+**Tech debt noted:**
+- `retrieve()` currently runs Qdrant search and Neo4j traversal sequentially; these could be parallelised with `asyncio.gather()` in a future performance story.
+- BM25 sparse-vector hybrid search is stubbed (Qdrant dense-only for now); STORY-016 or a later story should enable sparse vectors once the Qdrant collection is seeded.
 
 ---
 
