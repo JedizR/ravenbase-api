@@ -5,7 +5,7 @@ from arq.connections import RedisSettings
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from src.api.routes import conflict, graph, health, ingest, metadoc
+from src.api.routes import conflict, graph, health, ingest, metadoc, webhooks
 from src.core.config import settings
 from src.core.logging import configure_logging
 
@@ -43,6 +43,7 @@ def create_app() -> FastAPI:
     app.include_router(graph.router)
     app.include_router(conflict.router)
     app.include_router(metadoc.router)
+    app.include_router(webhooks.router)
     return app
 
 
