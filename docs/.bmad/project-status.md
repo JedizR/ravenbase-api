@@ -8,24 +8,24 @@
 ## Current State
 
 **Phase:** A — Backend (Sprints 1–17)
-**Current sprint:** 11
-**Status:** In progress — 11 of 37 stories complete
+**Current sprint:** 12
+**Status:** In progress — 12 of 37 stories complete
 
-**Next story to implement:** STORY-016
-**Story file:** `docs/stories/EPIC-05-metadoc/STORY-016.md`
+**Next story to implement:** STORY-018-BE
+**Story file:** `docs/stories/EPIC-05-metadoc/STORY-018.md`
 
 ---
 
 ## Last Completed Story
 
-**STORY-015 — Hybrid Retrieval Service** (2026-03-27)
-RAGService implemented with three-phase retrieval pipeline: Qdrant kNN semantic search, Neo4j concept-graph traversal, and re-ranking with `semantic×0.6 + recency×0.3 + profile_match×0.1` formula plus content-hash deduplication. 158 tests passing, `make quality` clean.
+**STORY-016 — Meta-Doc Generation Worker + Streaming** (2026-03-28)
+End-to-end Meta-Document pipeline: `POST /v1/metadoc/generate` (credit check → ARQ enqueue → 202), `GET /v1/metadoc/stream/{job_id}` (SSE re-stream from Redis pub/sub), ARQ worker `generate_meta_document` (RAGService retrieval → Presidio PII masking → Anthropic streaming → bleach sanitization → PostgreSQL save → Neo4j CONTAINS edges → credit deduction). 182 tests passing, `make quality` clean.
 
 ---
 
 ## Context for Next Session
 
-STORY-015 merged to main. Hybrid retrieval pipeline is complete: `RAGService.retrieve()` queries Qdrant for semantic chunks, traverses Neo4j concept graph, deduplicates by content hash, and reranks by weighted formula. STORY-016 is Meta-Doc generation (PII masking + LLM streaming).
+STORY-016 merged to main. Meta-Doc generation pipeline is complete. Key patterns: credits checked (402) before ARQ enqueue, deducted only after successful generation (AC-9). SSE auth via `?token=` query param (EventSource can't set headers). `verify_token_query_param` now returns 401 (not 422) for missing token. STORY-017 is frontend-only (Workstation UI) — skip to STORY-018-BE.
 
 ---
 

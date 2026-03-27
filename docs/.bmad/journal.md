@@ -423,6 +423,37 @@ RAGService with three-phase retrieval pipeline: (1) Qdrant kNN semantic search w
 
 ---
 
+### STORY-016 — Meta-Doc Generation Worker + Streaming
+**Date:** 2026-03-28 | **Sprint:** 11 | **Phase:** A | **Repo:** ravenbase-api
+**Quality gate:** ✅ clean — 182 tests passing, 0 ruff errors, 0 pyright errors
+**Commit:** `73c49bf`
+
+**What was built:**
+End-to-end Meta-Document generation pipeline. `POST /v1/metadoc/generate` performs a credit check (402 before enqueueing, deduction only after success) and enqueues an ARQ job. `GET /v1/metadoc/stream/{job_id}` subscribes to Redis pub/sub channel `metadoc:stream:{job_id}` and re-streams SSE events. ARQ worker `generate_meta_document` runs the full pipeline: RAGService hybrid retrieval → optional Presidio PII masking → Anthropic streaming with XML boundary tags → bleach XSS sanitization → PostgreSQL MetaDocument save → Neo4j CONTAINS edges → credit deduction from User + CreditTransaction record → final `done` event. New adapters: `AnthropicAdapter` (lazy import, streaming), `PresidioAdapter` (lazy import, deterministic pseudonymization). 24 new tests added (unit + integration).
+
+| Stat | Count |
+|---|---|
+| Files created | 7 (schemas, 2 adapters, service, worker, route, tests) |
+| Files modified | 5 (neo4j_adapter, errors, auth, api/main, workers/main) |
+| Tests added | 24 |
+| Total tests | 182 |
+
+**Key decisions:**
+- Credit check (402) is in `MetadocService.handle_generate()` before `arq_pool.enqueue_job()`. Credit deduction runs inside the worker after all phases succeed — a worker failure charges nothing.
+- `verify_token_query_param` changed from `Query(...)` (422 on missing) to `Query(None)` + explicit 401 raise — semantically correct for auth failures; EventSource clients cannot set Authorization headers.
+- `asyncio.timeout(300)` wraps the entire worker pipeline — 5-minute hard cap; on `TimeoutError`, publishes error event and returns `{"status": "timeout"}` without charging credits.
+- bleach.clean() import is lazy (`import bleach  # noqa: PLC0415`) inside the worker task to avoid startup overhead (RULE 6).
+
+**Gotchas:**
+- `aioredis.from_url()` is synchronous, not a coroutine — `r = aioredis.from_url(url)` (no `await`). The `publish` call is async. Easy to confuse in tests.
+- `mocker.patch.object(_settings, "ENABLE_PII_MASKING", True)` is required for patching pydantic-settings fields in worker tests — `mocker.patch("src.core.config.settings.ENABLE_PII_MASKING", ...)` is invalid Python mock syntax.
+- `_fake_session_ctx()` in worker tests must be a callable class (not just an async context manager) because `async_session_factory` is called twice in the worker (once for MetaDocument save, once for credit deduction).
+
+**Tech debt noted:**
+- `AnthropicAdapter` is used directly in the worker. CLAUDE.md prefers `LLMRouter` for service-layer LLM calls; however, the Anthropic streaming API is not yet supported by LiteLLM's streaming interface in the current version — track for STORY-018-BE refactor.
+
+---
+
 ## Sprint 12 — Workstation UI
 
 > Streaming Markdown editor, export, auto-save indicator.
