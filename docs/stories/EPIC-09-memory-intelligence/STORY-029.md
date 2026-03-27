@@ -7,6 +7,18 @@
 
 ---
 
+## Functional Requirements
+<!-- Which FR acceptance criteria does this story satisfy? -->
+- FR-13-AC-1: POST /v1/graph/query accepts natural language input
+- FR-13-AC-2: LLMRouter generates safe read-only Cypher
+- FR-13-AC-3: Generated Cypher validated — write operations rejected
+- FR-13-AC-4: Query results returned as GraphResponse
+
+## Component
+COMP-02: GraphEngine
+
+---
+
 > **Before You Start This Story — Read These Files First:**
 > 1. `CLAUDE.md` — architecture rules (mandatory, especially RULE 2 tenant isolation)
 > 2. `docs/architecture/02-database-schema.md` — Neo4j schema (node labels, properties, relationship types)

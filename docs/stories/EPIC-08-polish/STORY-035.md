@@ -7,6 +7,15 @@
 
 ---
 
+## Functional Requirements
+<!-- Which FR acceptance criteria does this story satisfy? -->
+None — data export / right to portability story.
+
+## Component
+COMP-07: PrivacyLayer
+
+---
+
 > **Before You Start — Read These Files First:**
 > 1. `CLAUDE.md` — architecture rules (3-layer, ARQ, structlog)
 > 2. `docs/architecture/02-database-schema.md` — all models being exported

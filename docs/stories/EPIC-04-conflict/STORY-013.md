@@ -7,6 +7,18 @@
 
 ---
 
+## Functional Requirements
+<!-- Which FR acceptance criteria does this story satisfy? -->
+- FR-06-AC-1: POST /v1/conflicts/{id}/resolve accepts resolution_type in {accept_new, keep_old, custom}
+- FR-06-AC-2: Resolution updates Conflict.status and propagates changes to Neo4j
+- FR-06-AC-3: POST /v1/conflicts/{id}/undo reverts the resolution
+- FR-06-AC-4: Resolved conflicts cannot be re-resolved without undoing first
+
+## Component
+COMP-02: GraphEngine
+
+---
+
 > **Before You Start This Story — Read These Files First:**
 > 1. `CLAUDE.md` — architecture rules (mandatory, especially RULE 1: three-layer, RULE 2: tenant isolation)
 > 2. `docs/architecture/03-api-contract.md` — `/v1/conflicts` endpoints full request/response spec

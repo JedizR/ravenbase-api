@@ -7,6 +7,18 @@
 
 ---
 
+## Functional Requirements
+<!-- Which FR acceptance criteria does this story satisfy? -->
+- FR-05-AC-1: Qdrant similarity scan identifies candidate contradictions above threshold per tenant
+- FR-05-AC-2: LLM classifies each candidate as CONTRADICTION, DUPLICATE, or NOT_CONFLICT
+- FR-05-AC-3: Conflict record created in PostgreSQL with status PENDING
+- FR-05-AC-4: Confidence score stored on each Conflict record
+
+## Component
+COMP-02: GraphEngine
+
+---
+
 > **Before You Start This Story — Read These Files First:**
 > 1. `CLAUDE.md` — architecture rules (mandatory, especially RULE 2 tenant isolation)
 > 2. `docs/prd/03-feature-specs/F3-memory-inbox.md` — full 5-step conflict detection algorithm

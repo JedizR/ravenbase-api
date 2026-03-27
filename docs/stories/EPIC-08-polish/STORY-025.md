@@ -7,6 +7,16 @@
 
 ---
 
+## Functional Requirements
+<!-- Which FR acceptance criteria does this story satisfy? -->
+- FR-11-AC-3: Presidio masks PII categories (email, phone, name, financial) before LLM calls
+- FR-11-AC-4: Presidio configuration is consistent across all generation endpoints
+
+## Component
+COMP-07: PrivacyLayer
+
+---
+
 > **Before You Start This Story — Read These Files First:**
 > 1. `CLAUDE.md` — architecture rules (mandatory, especially RULE 5: secrets in env vars, RULE 6: lazy imports)
 > 2. `docs/architecture/05-security-privacy.md` — PII masking requirements, Presidio entity types

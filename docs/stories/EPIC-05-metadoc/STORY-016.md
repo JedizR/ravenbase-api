@@ -7,6 +7,19 @@
 
 ---
 
+## Functional Requirements
+<!-- Which FR acceptance criteria does this story satisfy? -->
+- FR-08-AC-1: POST /v1/generate accepts a natural-language prompt
+- FR-08-AC-2: Hybrid retrieval (FR-07) populates context before generation
+- FR-08-AC-3: PII masked via Presidio before sending to LLM
+- FR-08-AC-4: Output streamed via SSE (token by token)
+- FR-08-AC-5: MetaDocument record created in PostgreSQL
+
+## Component
+COMP-03: RetrievalEngine, COMP-04: GenerationEngine
+
+---
+
 > **Before You Start This Story — Read These Files First:**
 > 1. `CLAUDE.md` — architecture rules (mandatory, especially RULE 3: ARQ, RULE 6: lazy imports)
 > 2. `docs/architecture/04-background-jobs.md` — ARQ task pattern + SSE re-streaming

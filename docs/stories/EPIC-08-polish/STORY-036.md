@@ -7,6 +7,15 @@
 
 ---
 
+## Functional Requirements
+<!-- Which FR acceptance criteria does this story satisfy? -->
+None — internal admin dashboard story.
+
+## Component
+Admin
+
+---
+
 > **Before You Start — Read These Files First:**
 > 1. `CLAUDE.md` — architecture rules (3-layer pattern, `require_user`, lazy imports, structlog)
 > 2. `docs/architecture/03-api-contract.md` — all 5 admin endpoint specs (the `/v1/admin/` section)

@@ -7,6 +7,15 @@
 
 ---
 
+## Functional Requirements
+<!-- Which FR acceptance criteria does this story satisfy? -->
+None — AI chat context import helper story (extends COMP-01 ingestion endpoint).
+
+## Component
+COMP-01: IngestionPipeline
+
+---
+
 > **⚠️ This story spans BOTH repos. Work backend first:**
 >
 > **Part 1 — Backend** (`ravenbase-api/`): `GET /v1/ingest/import-prompt` endpoint

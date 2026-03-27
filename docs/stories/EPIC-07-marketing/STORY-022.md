@@ -7,6 +7,15 @@
 
 ---
 
+## Functional Requirements
+<!-- Which FR acceptance criteria does this story satisfy? -->
+None — Stripe checkout and pricing page story.
+
+## Component
+Marketing
+
+---
+
 > **Before You Start This Story — Read These Files First:**
 > 1. `CLAUDE.md` — architecture rules (mandatory)
 > 2. `docs/design/CLAUDE_FRONTEND.md` — frontend rules (no form tags, Tailwind only, apiFetch)

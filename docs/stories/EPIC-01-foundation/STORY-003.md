@@ -9,6 +9,15 @@
 
 ---
 
+## Functional Requirements
+<!-- Which FR acceptance criteria does this story satisfy? -->
+None — adapter initialization and database constraint setup story.
+
+## Component
+COMP-01: IngestionPipeline, COMP-02: GraphEngine, COMP-03: RetrievalEngine
+
+---
+
 > **Before You Start This Story — Read These Files First:**
 > 1. `CLAUDE.md` — architecture rules (mandatory, especially RULE 2 tenant isolation and RULE 6 lazy imports)
 > 2. `docs/architecture/02-database-schema.md` — Qdrant collection config + Neo4j node labels and constraints

@@ -7,6 +7,18 @@
 
 ---
 
+## Functional Requirements
+<!-- Which FR acceptance criteria does this story satisfy? -->
+- FR-13-AC-1: POST /v1/graph/query accepts natural language input
+- FR-13-AC-2: LLMRouter generates safe read-only Cypher
+- FR-13-AC-3: Generated Cypher validated — write operations rejected
+- FR-13-AC-4: Query results returned as GraphResponse
+
+## Component
+COMP-02: GraphEngine
+
+---
+
 > **Before You Start This Story — Read These Files First:**
 > 1. `CLAUDE.md` (frontend CLAUDE.md in repo root) — frontend rules
 > 2. `docs/design/CLAUDE_FRONTEND.md` — useApiFetch, no form tags, approved packages

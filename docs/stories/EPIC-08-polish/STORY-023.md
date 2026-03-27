@@ -7,6 +7,18 @@
 
 ---
 
+## Functional Requirements
+<!-- Which FR acceptance criteria does this story satisfy? -->
+- FR-10-AC-1: Credits deducted atomically per operation type
+- FR-10-AC-2: CreditTransaction row written for every deduction
+- FR-10-AC-3: 402 INSUFFICIENT_CREDITS returned when balance < cost
+- FR-10-AC-4: Free tier: 200 credits on signup
+
+## Component
+COMP-06: CreditSystem
+
+---
+
 > **Before You Start This Story — Read These Files First:**
 > 1. `CLAUDE.md` — architecture rules (mandatory, especially RULE 2: tenant isolation, RULE 4: schemas first)
 > 2. `docs/architecture/02-database-schema.md` — CreditTransaction model, User.credits_balance field

@@ -7,6 +7,15 @@
 
 ---
 
+## Functional Requirements
+<!-- Which FR acceptance criteria does this story satisfy? -->
+None — dark mode toggle story.
+
+## Component
+UI/Polish
+
+---
+
 > **Before You Start This Story — Read These Files First:**
 > 1. `CLAUDE.md` (frontend rules — especially RULE 9: no forced color mode in route groups)
 > 2. `docs/design/01-design-system.md` — complete CSS token system, dark/light values

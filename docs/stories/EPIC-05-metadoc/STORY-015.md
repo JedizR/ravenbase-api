@@ -7,6 +7,18 @@
 
 ---
 
+## Functional Requirements
+<!-- Which FR acceptance criteria does this story satisfy? -->
+- FR-07-AC-1: Retrieval combines semantic similarity (Qdrant) with graph-neighbor boosting (Neo4j)
+- FR-07-AC-2: Results scoped strictly to authenticated tenant_id
+- FR-07-AC-3: Optional profile_id filter further scopes results
+- FR-07-AC-4: Results ranked by combined relevance score
+
+## Component
+COMP-03: RetrievalEngine
+
+---
+
 > **Before You Start This Story — Read These Files First:**
 > 1. `CLAUDE.md` — architecture rules (mandatory, especially RULE 2: tenant isolation, RULE 4: schemas first)
 > 2. `docs/architecture/00-system-overview.md` — Meta-Document generation data flow

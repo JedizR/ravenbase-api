@@ -9,6 +9,15 @@
 
 ---
 
+## Functional Requirements
+<!-- Which FR acceptance criteria does this story satisfy? -->
+None — infrastructure scaffolding story (repos, Docker Compose, Makefile).
+
+## Component
+Infrastructure
+
+---
+
 > **Before You Start This Story — Read These Files First:**
 > 1. `CLAUDE.md` — architecture rules (mandatory, read completely)
 > 2. `docs/development/00-project-structure.md` — exact directory layout for both repos

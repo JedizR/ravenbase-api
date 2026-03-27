@@ -9,6 +9,15 @@
 
 ---
 
+## Functional Requirements
+<!-- Which FR acceptance criteria does this story satisfy? -->
+None — ARQ worker setup and health endpoint story.
+
+## Component
+COMP-01: IngestionPipeline (ARQ queue foundation)
+
+---
+
 > **Before You Start This Story — Read These Files First:**
 > 1. `CLAUDE.md` — architecture rules (mandatory, especially RULE 3 async jobs >2s)
 > 2. `docs/architecture/04-background-jobs.md` — complete ARQ setup: WorkerSettings, enqueue pattern, SIGTERM handling

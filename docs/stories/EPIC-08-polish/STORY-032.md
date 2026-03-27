@@ -7,6 +7,15 @@
 
 ---
 
+## Functional Requirements
+<!-- Which FR acceptance criteria does this story satisfy? -->
+None — transactional email story.
+
+## Component
+UI/Polish
+
+---
+
 > **Before You Start This Story — Read These Files First:**
 > 1. `CLAUDE.md` — architecture rules (backend: 3-layer pattern, lazy imports)
 > 2. `docs/architecture/05-security-privacy.md` — PII handling; never log email content

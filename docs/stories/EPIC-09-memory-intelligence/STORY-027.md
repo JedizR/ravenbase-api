@@ -7,6 +7,19 @@
 
 ---
 
+## Functional Requirements
+<!-- Which FR acceptance criteria does this story satisfy? -->
+- FR-12-AC-1: POST /v1/chat/sessions creates a new session
+- FR-12-AC-2: POST /v1/chat/sessions/{id}/message streams response via SSE with citations
+- FR-12-AC-3: Citations reference specific Memory node IDs
+- FR-12-AC-4: Multi-turn context preserved within session
+- FR-12-AC-5: Credits deducted per message
+
+## Component
+COMP-04: GenerationEngine
+
+---
+
 > **Before You Start This Story — Read These Files First:**
 > 1. `CLAUDE.md` (the frontend CLAUDE.md in this repo root) — all frontend rules
 > 2. `docs/design/CLAUDE_FRONTEND.md` — useApiFetch (client components), approved packages

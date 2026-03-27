@@ -7,6 +7,20 @@
 
 ---
 
+## Functional Requirements
+<!-- Which FR acceptance criteria does this story satisfy? -->
+- FR-09-AC-1: Every protected endpoint validates JWT via require_user dependency
+- FR-09-AC-2: tenant_id = JWT sub claim — never from body or query
+- FR-09-AC-3: Expired tokens return 403 TOKEN_EXPIRED
+- FR-09-AC-4: Invalid tokens return 403 INVALID_TOKEN
+- FR-09-AC-5: SSE endpoints use verify_token_query_param (JWT in ?token= query param)
+- FR-09-AC-6: Clerk webhook creates User record in PostgreSQL on first sign-up
+
+## Component
+COMP-05: AuthSystem
+
+---
+
 > **Before You Start This Story — Read These Files First:**
 > 1. `CLAUDE.md` — architecture rules (mandatory)
 > 2. `docs/design/CLAUDE_FRONTEND.md` — frontend rules (no form tags, apiFetch pattern)

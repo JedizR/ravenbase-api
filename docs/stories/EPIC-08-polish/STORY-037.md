@@ -7,6 +7,15 @@
 
 ---
 
+## Functional Requirements
+<!-- Which FR acceptance criteria does this story satisfy? -->
+None — cold data lifecycle and inactivity archival story.
+
+## Component
+COMP-07: PrivacyLayer
+
+---
+
 > **Before You Start — Read These Files First:**
 > 1. `CLAUDE.md` — architecture rules (3-layer, ARQ, structlog, lazy imports)
 > 2. `docs/architecture/02-database-schema.md` — User model (`last_active_at`, `is_archived`, `notify_account_deletion`, `DataRetentionLog` table)

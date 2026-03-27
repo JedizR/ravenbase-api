@@ -7,6 +7,15 @@
 
 ---
 
+## Functional Requirements
+<!-- Which FR acceptance criteria does this story satisfy? -->
+None — legal pages story (Privacy Policy, Terms of Service, Cookie Consent).
+
+## Component
+UI/Polish
+
+---
+
 > **Before You Start This Story — Read These Files First:**
 > 1. `CLAUDE.md` (frontend rules — RULE 5: route groups don't force color mode)
 > 2. `docs/design/CLAUDE_FRONTEND.md` — SEO spec (legal pages are SSG, indexable)

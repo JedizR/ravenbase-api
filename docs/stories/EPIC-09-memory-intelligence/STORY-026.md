@@ -7,6 +7,19 @@
 
 ---
 
+## Functional Requirements
+<!-- Which FR acceptance criteria does this story satisfy? -->
+- FR-12-AC-1: POST /v1/chat/sessions creates a new session
+- FR-12-AC-2: POST /v1/chat/sessions/{id}/message streams response via SSE with citations
+- FR-12-AC-3: Citations reference specific Memory node IDs
+- FR-12-AC-4: Multi-turn context preserved within session
+- FR-12-AC-5: Credits deducted per message
+
+## Component
+COMP-04: GenerationEngine
+
+---
+
 > **Before You Start This Story — Read These Files First:**
 > 1. `CLAUDE.md` — architecture rules (mandatory — especially RULE 2 tenant isolation, RULE 6 lazy imports)
 > 2. `docs/architecture/03-api-contract.md` — existing endpoints to understand naming conventions

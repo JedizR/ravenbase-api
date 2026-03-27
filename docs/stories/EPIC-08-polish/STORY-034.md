@@ -7,6 +7,15 @@
 
 ---
 
+## Functional Requirements
+<!-- Which FR acceptance criteria does this story satisfy? -->
+None — referral system story.
+
+## Component
+UI/Polish
+
+---
+
 > **Before You Start — Read These Files First:**
 > 1. `CLAUDE.md` — architecture rules (3-layer, lazy imports, structlog)
 > 2. `docs/prd/05-monetization.md` — referral rules (rewards, caps, code format)

@@ -7,6 +7,15 @@
 
 ---
 
+## Functional Requirements
+<!-- Which FR acceptance criteria does this story satisfy? -->
+- FR-08-AC-4: Output streamed via SSE (token by token)
+
+## Component
+COMP-04: GenerationEngine
+
+---
+
 > **Before You Start This Story — Read These Files First:**
 > 1. `CLAUDE.md` — architecture rules (mandatory)
 > 2. `docs/design/CLAUDE_FRONTEND.md` — frontend rules (apiFetch, no form tags, Tailwind only)

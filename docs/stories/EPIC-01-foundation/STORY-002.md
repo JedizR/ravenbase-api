@@ -9,6 +9,15 @@
 
 ---
 
+## Functional Requirements
+<!-- Which FR acceptance criteria does this story satisfy? -->
+None — database schema and Alembic migrations story.
+
+## Component
+Infrastructure
+
+---
+
 > **Before You Start This Story — Read These Files First:**
 > 1. `CLAUDE.md` — architecture rules (mandatory, especially RULE 4: schemas first)
 > 2. `docs/architecture/02-database-schema.md` — all SQLModel table definitions (copy exactly)

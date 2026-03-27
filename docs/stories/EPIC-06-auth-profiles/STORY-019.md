@@ -7,6 +7,15 @@
 
 ---
 
+## Functional Requirements
+<!-- Which FR acceptance criteria does this story satisfy? -->
+None — onboarding UX story (no directly testable API requirement).
+
+## Component
+COMP-05: AuthSystem
+
+---
+
 > **Before You Start This Story — Read These Files First:**
 > 1. `CLAUDE.md` — architecture rules (mandatory)
 > 2. `docs/design/CLAUDE_FRONTEND.md` — frontend rules (no form tags, Tailwind only, apiFetch)

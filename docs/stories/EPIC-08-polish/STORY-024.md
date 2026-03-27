@@ -7,6 +7,16 @@
 
 ---
 
+## Functional Requirements
+<!-- Which FR acceptance criteria does this story satisfy? -->
+- FR-11-AC-1: DELETE /v1/account triggers cascade deletion across PostgreSQL, Qdrant, Neo4j, and Supabase Storage
+- FR-11-AC-2: Deletion completes within 60 seconds for typical accounts
+
+## Component
+COMP-07: PrivacyLayer
+
+---
+
 > **Before You Start This Story — Read These Files First:**
 > 1. `CLAUDE.md` — architecture rules (mandatory)
 > 2. `docs/architecture/05-security-privacy.md` — GDPR deletion spec, cascade order, audit logging
