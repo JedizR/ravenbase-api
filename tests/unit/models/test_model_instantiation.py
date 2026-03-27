@@ -24,11 +24,10 @@ def test_user_default_fields() -> None:
     assert user.notify_ingestion_complete is True
     assert user.notify_account_deletion is True
     assert user.referred_by_user_id is None
-    assert isinstance(user.id, uuid.UUID)
 
 
 def test_system_profile_default_fields() -> None:
-    uid = uuid.uuid4()
+    uid = "user_test_abc123"
     profile = SystemProfile(user_id=uid, name="Work")
     assert profile.is_default is False
     assert profile.description is None
@@ -38,7 +37,7 @@ def test_system_profile_default_fields() -> None:
 
 
 def test_source_default_fields() -> None:
-    uid = uuid.uuid4()
+    uid = "user_test_abc123"
     source = Source(
         user_id=uid,
         original_filename="notes.pdf",
@@ -56,13 +55,13 @@ def test_source_default_fields() -> None:
 
 
 def test_source_authority_weight_defaults() -> None:
-    uid = uuid.uuid4()
+    uid = "user_test_abc123"
     saw = SourceAuthorityWeight(user_id=uid, source_type="pdf")
     assert saw.weight == 5
 
 
 def test_conflict_default_fields() -> None:
-    uid = uuid.uuid4()
+    uid = "user_test_abc123"
     conflict = Conflict(
         user_id=uid,
         incumbent_memory_id="mem-001",
@@ -80,7 +79,7 @@ def test_conflict_default_fields() -> None:
 
 
 def test_meta_document_default_fields() -> None:
-    uid = uuid.uuid4()
+    uid = "user_test_abc123"
     doc = MetaDocument(
         user_id=uid,
         title="My Knowledge Summary",
@@ -95,13 +94,13 @@ def test_meta_document_default_fields() -> None:
 
 
 def test_credit_transaction_fields() -> None:
-    uid = uuid.uuid4()
+    uid = "user_test_abc123"
     tx = CreditTransaction(user_id=uid, amount=-5, balance_after=195, operation="ingest_page")
     assert tx.reference_id is None
 
 
 def test_job_status_default_fields() -> None:
-    uid = uuid.uuid4()
+    uid = "user_test_abc123"
     job = JobStatus(id="arq:job:abc123", user_id=uid, job_type="ingestion")
     assert job.status == "queued"
     assert job.progress_pct == 0
