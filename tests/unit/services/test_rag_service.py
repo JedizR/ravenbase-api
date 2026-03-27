@@ -3,6 +3,8 @@ import uuid as _uuid
 from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock
 
+import pytest
+
 from src.adapters.neo4j_adapter import Neo4jAdapter
 from src.adapters.openai_adapter import OpenAIAdapter
 from src.adapters.qdrant_adapter import QdrantAdapter
@@ -268,3 +270,114 @@ def test_rag_service_cleanup_clears_adapters() -> None:
     svc = RAGService(qdrant=qdrant)
     svc.cleanup()
     qdrant.cleanup.assert_called_once()
+
+
+# ---------------------------------------------------------------------------
+# Part E: retrieve() pipeline tests
+# ---------------------------------------------------------------------------
+
+
+# Local fixtures for retrieve() pipeline tests
+@pytest.fixture
+def mock_neo4j_svc():
+    a = MagicMock(spec=Neo4jAdapter)
+    a.find_memories_by_concepts = AsyncMock(return_value=[])
+    return a
+
+
+@pytest.fixture
+def mock_qdrant_svc():
+    a = MagicMock(spec=QdrantAdapter)
+    a.search = AsyncMock(return_value=[])
+    a.upsert = AsyncMock()
+    a.delete_by_filter = AsyncMock()
+    a.count = AsyncMock(return_value=0)
+    a.verify_connectivity = AsyncMock(return_value=True)
+    return a
+
+
+async def test_retrieve_calls_all_three_phases(mock_qdrant_svc, mock_neo4j_svc) -> None:
+    mock_openai = MagicMock(spec=OpenAIAdapter)
+    mock_openai.embed = AsyncMock(return_value=[0.1] * 1536)
+
+    source_id = str(uuid.uuid4())
+    mock_point = _make_scored_point("c1", "Python is great", source_id=source_id, score=0.85)
+    mock_qdrant_svc.search = AsyncMock(return_value=[mock_point])
+    mock_neo4j_svc.find_memories_by_concepts = AsyncMock(return_value=[])
+
+    svc = RAGService(qdrant=mock_qdrant_svc, neo4j=mock_neo4j_svc, openai=mock_openai)
+    results = await svc.retrieve("Python development", tenant_id="t-1")
+
+    mock_openai.embed.assert_called_once_with("Python development")
+    mock_qdrant_svc.search.assert_called_once()
+    call_kwargs = mock_qdrant_svc.search.call_args.kwargs
+    assert call_kwargs["tenant_id"] == "t-1"
+    assert len(results) == 1
+
+
+async def test_retrieve_qdrant_search_includes_tenant_id(mock_qdrant_svc, mock_neo4j_svc) -> None:
+    mock_openai = MagicMock(spec=OpenAIAdapter)
+    mock_openai.embed = AsyncMock(return_value=[0.1] * 1536)
+    mock_qdrant_svc.search = AsyncMock(return_value=[])
+    mock_neo4j_svc.find_memories_by_concepts = AsyncMock(return_value=[])
+
+    svc = RAGService(qdrant=mock_qdrant_svc, neo4j=mock_neo4j_svc, openai=mock_openai)
+    await svc.retrieve("test prompt", tenant_id="tenant-xyz")
+
+    search_kwargs = mock_qdrant_svc.search.call_args.kwargs
+    assert search_kwargs["tenant_id"] == "tenant-xyz"
+
+
+async def test_retrieve_neo4j_includes_tenant_id(mock_qdrant_svc, mock_neo4j_svc) -> None:
+    mock_openai = MagicMock(spec=OpenAIAdapter)
+    mock_openai.embed = AsyncMock(return_value=[0.1] * 1536)
+    mock_qdrant_svc.search = AsyncMock(return_value=[])
+    mock_neo4j_svc.find_memories_by_concepts = AsyncMock(return_value=[])
+
+    svc = RAGService(qdrant=mock_qdrant_svc, neo4j=mock_neo4j_svc, openai=mock_openai)
+    await svc.retrieve("python fastapi", tenant_id="tenant-xyz")
+
+    neo4j_kwargs = mock_neo4j_svc.find_memories_by_concepts.call_args.kwargs
+    assert neo4j_kwargs["tenant_id"] == "tenant-xyz"
+
+
+async def test_retrieve_empty_prompt_returns_empty(mock_qdrant_svc, mock_neo4j_svc) -> None:
+    mock_openai = MagicMock(spec=OpenAIAdapter)
+    mock_openai.embed = AsyncMock(return_value=[0.1] * 1536)
+
+    svc = RAGService(qdrant=mock_qdrant_svc, neo4j=mock_neo4j_svc, openai=mock_openai)
+    results = await svc.retrieve("", tenant_id="t-1")
+
+    assert results == []
+    mock_openai.embed.assert_not_called()
+
+
+async def test_retrieve_respects_limit(mock_qdrant_svc, mock_neo4j_svc) -> None:
+    mock_openai = MagicMock(spec=OpenAIAdapter)
+    mock_openai.embed = AsyncMock(return_value=[0.1] * 1536)
+    points = [
+        _make_scored_point(f"c{i}", f"Content chunk {i}", score=float(i) / 10) for i in range(5)
+    ]
+    mock_qdrant_svc.search = AsyncMock(return_value=points)
+    mock_neo4j_svc.find_memories_by_concepts = AsyncMock(return_value=[])
+
+    svc = RAGService(qdrant=mock_qdrant_svc, neo4j=mock_neo4j_svc, openai=mock_openai)
+    results = await svc.retrieve("test", tenant_id="t-1", limit=3)
+
+    assert len(results) == 3
+
+
+async def test_retrieve_with_profile_id_passes_to_qdrant(mock_qdrant_svc, mock_neo4j_svc) -> None:
+    mock_openai = MagicMock(spec=OpenAIAdapter)
+    mock_openai.embed = AsyncMock(return_value=[0.1] * 1536)
+    mock_qdrant_svc.search = AsyncMock(return_value=[])
+    mock_neo4j_svc.find_memories_by_concepts = AsyncMock(return_value=[])
+
+    svc = RAGService(qdrant=mock_qdrant_svc, neo4j=mock_neo4j_svc, openai=mock_openai)
+    await svc.retrieve("test", tenant_id="t-1", profile_id="prof-abc")
+
+    search_kwargs = mock_qdrant_svc.search.call_args.kwargs
+    filters = search_kwargs.get("additional_filters")
+    assert filters is not None
+    must_conditions = filters.must
+    assert any(getattr(cond, "key", None) == "profile_id" for cond in (must_conditions or []))
