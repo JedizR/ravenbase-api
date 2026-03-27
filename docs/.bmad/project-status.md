@@ -8,24 +8,24 @@
 ## Current State
 
 **Phase:** A — Backend (Sprints 1–17)
-**Current sprint:** 7
-**Status:** In progress — 8 of 37 stories complete
+**Current sprint:** 9
+**Status:** In progress — 9 of 37 stories complete
 
-**Next story to implement:** STORY-012
-**Story file:** `docs/stories/EPIC-04-conflict/STORY-012.md`
+**Next story to implement:** STORY-013
+**Story file:** `docs/stories/EPIC-04-conflict/STORY-013.md`
 
 ---
 
 ## Last Completed Story
 
-**STORY-010 — Graph API Endpoints (nodes + neighborhood)** (2026-03-27)
-`GET /v1/graph/nodes` and `GET /v1/graph/neighborhood/{node_id}` endpoints. `GraphNode`, `GraphEdge`, `GraphResponse` Pydantic schemas. `GraphService.get_nodes_for_explorer()` and `get_neighborhood()` with N-hop Cypher traversal. Profile filter via `n.profile_id` property. 102 tests passing, `make quality` clean.
+**STORY-012 — Conflict Detection Worker** (2026-03-27)
+Qdrant similarity scan (0.87 threshold, tenant-scoped) + LLM classification via Gemini 2.5 Flash / Haiku fallback. Conflict records written to PostgreSQL, CONTRADICTS / TEMPORAL_LINK Neo4j edges written. Auto-resolution when challenger authority delta ≥ 3. Redis pub/sub notification on `conflict:new:{tenant_id}` after commit. 111 tests passing, `make quality` clean.
 
 ---
 
 ## Context for Next Session
 
-STORY-010 merged to main. Graph API endpoints live at `GET /v1/graph/nodes` and `GET /v1/graph/neighborhood/{node_id}`. STORY-011 (Graph Explorer UI) is a frontend story in ravenbase-web and will be implemented in Phase B. Next backend story is STORY-012 (Conflict detection worker — staying in ravenbase-api).
+STORY-012 merged to main. Conflict detection pipeline is live: `parse_document → graph_extraction → scan_for_conflicts` chain. Conflict records appear in PostgreSQL `conflicts` table and CONTRADICTS edges in Neo4j. Next backend story is STORY-013 (Conflict API — list, resolve, undo endpoints).
 
 ---
 

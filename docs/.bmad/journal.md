@@ -12,12 +12,12 @@
 
 | Field | Value |
 |---|---|
-| Total stories complete | 8 / 37 |
+| Total stories complete | 9 / 37 |
 | Current phase | Phase A — Backend (Sprints 1–17) |
-| Current sprint | 7 |
+| Current sprint | 9 |
 | Active repo | ravenbase-api |
 | Project started | 2026-03-25 |
-| Last entry | 2026-03-27 (STORY-010) |
+| Last entry | 2026-03-27 (STORY-012) |
 
 > **Update this table** after every story entry. Increment stories complete,
 > update current sprint and phase when they change.
@@ -338,7 +338,28 @@ _No entries yet._
 > Qdrant similarity scan, conflict classification, resolve/undo endpoints.
 > Sprint 9 covers STORY-012 and STORY-013.
 
-_No entries yet._
+### STORY-012 — Conflict Detection Worker
+**Date:** 2026-03-27 | **Sprint:** 9 | **Phase:** A | **Repo:** ravenbase-api
+**Quality gate:** ✅ clean
+**Commit:** TBD
+
+**What was built:**
+Qdrant similarity scan (cosine threshold 0.87, always tenant-scoped via `_tenant_filter`) identifies candidate contradiction pairs after each ingestion. LLM classification via `LLMRouter("conflict_classification")` routes to Gemini 2.5 Flash (primary) / Claude Haiku (fallback) and returns `{classification, confidence, reasoning}` validated by `ConflictClassificationResult`. CONTRADICTION/UPDATE pairs create `Conflict` PostgreSQL records; COMPLEMENT pairs write `TEMPORAL_LINK` Neo4j edges only. Auto-resolution fires when challenger authority weight exceeds incumbent by ≥3 points. Redis pub/sub notification published on `conflict:new:{tenant_id}` after DB commit. Batch capped at 5 to prevent notification fatigue. 111 tests passing.
+
+**Key decisions:**
+- Retry suppression (no re-raise in `scan_for_conflicts` task): conflict detection is best-effort — a transient failure is non-critical and retrying risks duplicate Conflict records if the first attempt partially succeeded. Consistent with `graph_tasks.py` design.
+- `scroll_by_source_with_vectors()` added to `QdrantAdapter` to fetch chunk vectors without re-embedding — avoids OpenAI API cost on every conflict scan.
+- `_find_candidates()` uses Qdrant `must_not` filter on `source_id` to exclude self-matches; `search()` signature extended with optional `score_threshold` and `must_not` forwarding.
+- RULE 10 compliance: `<statement_a>` / `<statement_b>` XML tags wrap incumbent/challenger text in the classification prompt.
+
+**Gotchas:**
+- Local postgres uses `TIMESTAMP WITHOUT TIME ZONE`; `Conflict.created_at` default factory uses `datetime.now(UTC)` (tz-aware). Integration tests must patch `src.models.conflict.datetime` to return naive UTC — same pattern as ingestion tests.
+- `arq_ctx = {}` in existing `test_graph_tasks.py` fixtures broke when `graph_extraction` gained the `ctx["redis"].enqueue_job(...)` call. Updated fixture to include `{"redis": MagicMock(enqueue_job=AsyncMock())}`.
+- `AsyncQdrantClient` uses `query_points()` (not `search()`); pyright enforces this. Score threshold is supported as a `query_points` parameter.
+
+**Tech debt noted:**
+- `_publish_conflict_notification()` opens a fresh Redis connection per call rather than reusing the ARQ worker's `ctx["redis"]` pool. Future refactor: inject `redis_client` into `ConflictService.__init__` alongside `qdrant`, `neo4j`, `llm_router`.
+- `_load_authority_weight_by_type` opens a second DB session inside the outer session loop. Could be consolidated to one session per batch.
 
 ---
 
