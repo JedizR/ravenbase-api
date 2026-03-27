@@ -4,6 +4,8 @@
 **Priority:** P0
 **Complexity:** Small
 **Depends on:** STORY-002, STORY-003
+**Type:** Backend
+**Repo:** ravenbase-api
 
 ---
 

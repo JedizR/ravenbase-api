@@ -70,7 +70,10 @@ See `docs/PARALLEL_DEV_GUIDE.md` for the full list of cross-repo stories.
 │     In docs/.bmad/project-status.md:                            │
 │     → Update current sprint, next story, last completed story   │
 │     In docs/.bmad/story-counter.txt:                            │
-│     → Increment by 1 (e.g. "005" → "006")                       │
+│     → Set to the next backend story ID in the sequence.          │
+│       Backend: 001→002→…→009→010→012→013→015→016→018-BE          │
+│       →023→024→025→026→028-BE→029→[GATE]→036-BE→037             │
+│       Frontend-only stories (011,014,017,etc) are skipped here.  │
 │                                                                 │
 │  9. JOURNAL ENTRY (mandatory — never skip)                      │
 │     Open docs/.bmad/journal.md                                  │

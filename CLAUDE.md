@@ -495,7 +495,9 @@ that uses a library you haven't worked with recently.
 □ Did I run make quality && make test?
 □ Are all acceptance criteria met?
 □ Did I update docs/stories/epics.md → changed this story's 🔲 to ✅?
-□ Did I increment docs/.bmad/story-counter.txt by 1?
+□ Did I set docs/.bmad/story-counter.txt to the next backend story ID in the sequence?
+  Backend sequence: 001→002→003→004→005→006→007-BE→008-BE→009→010→012→013→015→016→018-BE→023→024→025→026→028-BE→029→[BACKEND GATE]→036-BE→037
+  (skips frontend-only stories: 011, 014, 017, 019-022, 027, 030-035, 036-FE)
 □ Did I update docs/.bmad/project-status.md with current sprint and next story?
 □ Did I append an entry to docs/.bmad/journal.md? (all 6 fields filled, stats table updated)
 □ Did I commit ALL FOUR files in one commit: epics.md + project-status.md + story-counter.txt + journal.md?

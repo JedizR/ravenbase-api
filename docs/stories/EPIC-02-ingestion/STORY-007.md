@@ -4,6 +4,8 @@
 **Priority:** P0
 **Complexity:** Medium
 **Depends on:** STORY-005
+**Type:** Cross-repo
+**Repo:** ravenbase-api + ravenbase-web
 
 ---
 
