@@ -17,7 +17,7 @@ def _make_user(
     tier: str = "free", preferred_model: str = "claude-haiku-4-5-20251001", credits: int = 100
 ) -> User:
     return User(
-        id=uuid.uuid4(),
+        id="user_test_abc",
         email="test@example.com",
         tier=tier,
         preferred_model=preferred_model,

@@ -68,7 +68,7 @@ class MetadocService(BaseService):
         log = logger.bind(tenant_id=tenant_id)
 
         # Fetch user for tier + credits + preferred_model
-        user = await db.get(User, uuid.UUID(tenant_id))
+        user = await db.get(User, tenant_id)
         if user is None:
             raise HTTPException(
                 status_code=404,
@@ -76,7 +76,12 @@ class MetadocService(BaseService):
             )
 
         model, credit_cost = MetadocService.resolve_model(model_alias, user)
-        log.info("metadoc_service.credit_check", model=model, cost=credit_cost, balance=user.credits_balance)
+        log.info(
+            "metadoc_service.credit_check",
+            model=model,
+            cost=credit_cost,
+            balance=user.credits_balance,
+        )
 
         if user.credits_balance < credit_cost:
             raise HTTPException(

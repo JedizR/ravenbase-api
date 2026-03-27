@@ -15,13 +15,12 @@ from src.api.dependencies.db import get_db
 from src.api.main import app
 from src.models.user import User
 
-TEST_TENANT_ID = str(uuid.uuid4())
-TEST_USER_ID = uuid.UUID(TEST_TENANT_ID)
+TEST_TENANT_ID = "user_test_" + str(uuid.uuid4()).replace("-", "")[:16]
 
 
 def _make_user(credits: int = 100, tier: str = "free") -> User:
     return User(
-        id=TEST_USER_ID,
+        id=TEST_TENANT_ID,
         email="test@example.com",
         credits_balance=credits,
         tier=tier,
