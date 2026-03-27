@@ -67,7 +67,7 @@ async def clerk_webhook(
 async def _handle_user_created(
     data: dict,
     db: AsyncSession,
-    log,
+    log: structlog.stdlib.BoundLogger,
 ) -> None:
     clerk_user_id: str = data["id"]
 
@@ -83,6 +83,10 @@ async def _handle_user_created(
         (e["email_address"] for e in email_addresses if e["id"] == primary_id),
         email_addresses[0]["email_address"] if email_addresses else "",
     )
+
+    if not email:
+        log.warning("webhook.user_created_no_email", user_id=clerk_user_id)
+        return
 
     first_name = data.get("first_name") or ""
     last_name = data.get("last_name") or ""
@@ -100,5 +104,9 @@ async def _handle_user_created(
         referral_code=referral_code,
     )
     db.add(user)
-    await db.commit()
+    try:
+        await db.commit()
+    except Exception as exc:
+        log.error("webhook.user_created_db_error", user_id=clerk_user_id, error=str(exc))
+        raise
     log.info("webhook.user_created", user_id=clerk_user_id, email=email)
