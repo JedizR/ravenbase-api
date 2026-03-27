@@ -12,12 +12,12 @@
 
 | Field | Value |
 |---|---|
-| Total stories complete | 9 / 37 |
+| Total stories complete | 10 / 37 |
 | Current phase | Phase A — Backend (Sprints 1–17) |
 | Current sprint | 9 |
 | Active repo | ravenbase-api |
 | Project started | 2026-03-25 |
-| Last entry | 2026-03-27 (STORY-012) |
+| Last entry | 2026-03-27 (STORY-013) |
 
 > **Update this table** after every story entry. Increment stories complete,
 > update current sprint and phase when they change.
@@ -360,6 +360,29 @@ Qdrant similarity scan (cosine threshold 0.87, always tenant-scoped via `_tenant
 **Tech debt noted:**
 - `_publish_conflict_notification()` opens a fresh Redis connection per call rather than reusing the ARQ worker's `ctx["redis"]` pool. Future refactor: inject `redis_client` into `ConflictService.__init__` alongside `qdrant`, `neo4j`, `llm_router`.
 - `_load_authority_weight_by_type` opens a second DB session inside the outer session loop. Could be consolidated to one session per batch.
+
+### STORY-013 — Conflict API (List, Resolve, Undo)
+**Date:** 2026-03-27 | **Sprint:** 9 | **Phase:** A | **Repo:** ravenbase-api
+**Quality gate:** ✅ clean — 126 tests passing, 0 ruff errors, 0 pyright errors
+**Commit:** `TBD`
+
+**What was built:**
+Three REST endpoints exposing the conflict resolution workflow: `GET /v1/conflicts` (paginated, optional `status` filter, newest first); `POST /v1/conflicts/{id}/resolve` supporting ACCEPT_NEW (atomic SUPERSEDES Neo4j edge + `is_valid` flags in one `run_query` call), KEEP_OLD (status-only), and CUSTOM (LLMRouter `custom_resolution` task → `GraphMutations` schema → optional SUPERSEDES edge); `POST /v1/conflicts/{id}/undo` (30-second window, reverses SUPERSEDES + `is_valid` for ACCEPT_NEW). Ownership checks on every mutation (403). `raise_403`, `raise_409` helpers added to `errors.py` with `-> NoReturn` type annotation. `custom_resolution` task added to `_TASK_ROUTING` in `llm_router.py`.
+
+**Key decisions:**
+- `-> NoReturn` on all `raise_*` helpers in `errors.py` — pyright cannot infer that HTTPException-raising helpers never return, causing false "attribute of None" errors on every post-raise access. `NoReturn` fixes this without guard assertions.
+- ACCEPT_NEW uses a single `run_query` Cypher (MATCH + MATCH + MERGE + SET) rather than separate `write_relationships` + `write_nodes` calls — ensures the SUPERSEDES edge and `is_valid` flag changes are atomic in one Neo4j session.
+- `custom_resolution` routes to Gemini 2.5 Flash + Haiku fallback (same as `conflict_classification`) — it's a background-style synthesis task, not user-facing streaming, so the cost-optimized tier is appropriate.
+- FastAPI dependency override in tests must use a named `async def _db_override(): yield mock_db` function, not `lambda: _mock_db_gen(mock_db)`. The lambda pattern returns an async generator object directly; FastAPI does not automatically iterate it when used as an override.
+
+**Gotchas:**
+- `StrEnum` (Python 3.11+) required instead of `class Foo(str, Enum)` — ruff UP042 rule rejects the old pattern. Schemas file uses `from enum import StrEnum`.
+- `PaginatedResponse` re-export in `schemas/conflict.py` triggered ruff PLC0414 (alias doesn't rename). Fixed with `# noqa: PLC0414` comment.
+- `_CUSTOM_PROMPT` as a local variable in `_apply_custom_resolution` triggers ruff N806 (function variables should be lowercase). Moved to module level as `_CUSTOM_RESOLUTION_PROMPT`.
+
+**Tech debt noted:**
+- CUSTOM resolution applies LLM-suggested `GraphMutations` but does not attempt to reverse them on undo (only status is reset). A future story could store the mutations JSON in `Conflict.resolution_note` for reversibility.
+- `ConflictService` is instantiated fresh per request in route handlers. Could use a request-scoped singleton via FastAPI's dependency injection if adapter init latency becomes measurable.
 
 ---
 

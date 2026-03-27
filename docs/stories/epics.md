@@ -57,7 +57,7 @@
 | Story | Title | Priority | Complexity | Status |
 |---|---|---|---|---|
 | STORY-012 | Conflict detection worker (Qdrant scan + LLM classify) | P0 | Large | ✅ |
-| STORY-013 | Conflict API (list, resolve, undo) | P0 | Medium | 🔲 |
+| STORY-013 | Conflict API (list, resolve, undo) | P0 | Medium | ✅ |
 | STORY-014 | Memory Inbox UI (keyboard navigation, 3 flows) | P0 | Large | 🔲 |
 
 ---

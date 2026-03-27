@@ -9,23 +9,23 @@
 
 **Phase:** A — Backend (Sprints 1–17)
 **Current sprint:** 9
-**Status:** In progress — 9 of 37 stories complete
+**Status:** In progress — 10 of 37 stories complete
 
-**Next story to implement:** STORY-013
-**Story file:** `docs/stories/EPIC-04-conflict/STORY-013.md`
+**Next story to implement:** STORY-015
+**Story file:** `docs/stories/EPIC-05-rag/STORY-015.md`
 
 ---
 
 ## Last Completed Story
 
-**STORY-012 — Conflict Detection Worker** (2026-03-27)
-Qdrant similarity scan (0.87 threshold, tenant-scoped) + LLM classification via Gemini 2.5 Flash / Haiku fallback. Conflict records written to PostgreSQL, CONTRADICTS / TEMPORAL_LINK Neo4j edges written. Auto-resolution when challenger authority delta ≥ 3. Redis pub/sub notification on `conflict:new:{tenant_id}` after commit. 111 tests passing, `make quality` clean.
+**STORY-013 — Conflict API (List, Resolve, Undo)** (2026-03-27)
+Three endpoints added: `GET /v1/conflicts` (paginated, status filter), `POST /v1/conflicts/{id}/resolve` (ACCEPT_NEW / KEEP_OLD / CUSTOM actions, atomic SUPERSEDES Neo4j edge), `POST /v1/conflicts/{id}/undo` (30-second window with Neo4j rollback). 126 tests passing, `make quality` clean.
 
 ---
 
 ## Context for Next Session
 
-STORY-012 merged to main. Conflict detection pipeline is live: `parse_document → graph_extraction → scan_for_conflicts` chain. Conflict records appear in PostgreSQL `conflicts` table and CONTRADICTS edges in Neo4j. Next backend story is STORY-013 (Conflict API — list, resolve, undo endpoints).
+STORY-013 merged to main. Conflict pipeline is fully usable: detection (STORY-012) + API resolution (STORY-013). STORY-014 is the Memory Inbox UI (frontend-only, skipped in backend sequence). Next backend story is STORY-015 (Hybrid RAG retrieval).
 
 ---
 
