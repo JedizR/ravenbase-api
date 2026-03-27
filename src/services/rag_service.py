@@ -17,20 +17,118 @@ from src.services.base import BaseService
 
 logger = get_logger()
 
-_STOP_WORDS: frozenset[str] = frozenset({
-    "the", "and", "for", "are", "but", "not", "you", "all", "can", "her",
-    "was", "one", "our", "out", "day", "get", "has", "him", "his", "how",
-    "its", "may", "new", "now", "old", "see", "two", "who", "did", "with",
-    "that", "this", "they", "from", "have", "more", "when", "will", "your",
-    "been", "does", "each", "just", "know", "made", "make", "most", "over",
-    "said", "some", "than", "them", "then", "time", "very", "well", "were",
-    "what", "about", "which", "their", "there", "would", "could", "should",
-    "tell", "give", "take", "come", "goes", "went", "like", "look", "also",
-    "into", "onto", "upon", "even", "ever", "here", "away", "also", "back",
-    "much", "many", "such", "both", "long", "good", "high", "last", "next",
-    "open", "same", "help", "with", "want", "need", "find", "show", "feel",
-    "keep", "hold", "move", "live", "mean", "seem", "turn", "left", "puts",
-})
+_STOP_WORDS: frozenset[str] = frozenset(
+    {
+        "the",
+        "and",
+        "for",
+        "are",
+        "but",
+        "not",
+        "you",
+        "all",
+        "can",
+        "her",
+        "was",
+        "one",
+        "our",
+        "out",
+        "day",
+        "get",
+        "has",
+        "him",
+        "his",
+        "how",
+        "its",
+        "may",
+        "new",
+        "now",
+        "old",
+        "see",
+        "two",
+        "who",
+        "did",
+        "with",
+        "that",
+        "this",
+        "they",
+        "from",
+        "have",
+        "more",
+        "when",
+        "will",
+        "your",
+        "been",
+        "does",
+        "each",
+        "just",
+        "know",
+        "made",
+        "make",
+        "most",
+        "over",
+        "said",
+        "some",
+        "than",
+        "them",
+        "then",
+        "time",
+        "very",
+        "well",
+        "were",
+        "what",
+        "about",
+        "which",
+        "their",
+        "there",
+        "would",
+        "could",
+        "should",
+        "tell",
+        "give",
+        "take",
+        "come",
+        "goes",
+        "went",
+        "like",
+        "look",
+        "also",
+        "into",
+        "onto",
+        "upon",
+        "even",
+        "ever",
+        "here",
+        "away",
+        "back",
+        "much",
+        "many",
+        "such",
+        "both",
+        "long",
+        "good",
+        "high",
+        "last",
+        "next",
+        "open",
+        "same",
+        "help",
+        "want",
+        "need",
+        "find",
+        "show",
+        "feel",
+        "keep",
+        "hold",
+        "move",
+        "live",
+        "mean",
+        "seem",
+        "turn",
+        "left",
+        "puts",
+    }
+)
 
 
 def extract_concepts(prompt: str) -> list[str]:
@@ -59,9 +157,7 @@ def _build_profile_filter(profile_id: str | None):  # type: ignore[return]
         return None
     from qdrant_client.models import FieldCondition, Filter, MatchValue  # noqa: PLC0415
 
-    return Filter(
-        must=[FieldCondition(key="profile_id", match=MatchValue(value=profile_id))]
-    )
+    return Filter(must=[FieldCondition(key="profile_id", match=MatchValue(value=profile_id))])
 
 
 def _content_hash(content: str) -> str:
@@ -136,9 +232,7 @@ def merge_and_deduplicate(
                 source_id=str(source_id_val) if source_id_val else "",
                 memory_id=str(mem["memory_id"]) if mem.get("memory_id") else None,
                 semantic_score=0.0,
-                created_at=_parse_created_at(
-                    mem.get("created_at", datetime.now(UTC))
-                ),
+                created_at=_parse_created_at(mem.get("created_at", datetime.now(UTC))),
                 profile_id=mem.get("profile_id"),
                 page_number=None,
                 content_hash=h,
@@ -165,18 +259,14 @@ def rerank(candidates: list[_Candidate]) -> list[RetrievedChunk]:
         recency_weight = 1.0 / (1.0 + age_days / 30)
         profile_match = 1.0 if c["profile_id"] else 0.5
 
-        final_score = (
-            c["semantic_score"] * 0.6
-            + recency_weight * 0.3
-            + profile_match * 0.1
-        )
+        final_score = c["semantic_score"] * 0.6 + recency_weight * 0.3 + profile_match * 0.1
 
         try:
             source_uuid = _uuid_mod.UUID(str(c["source_id"]))
         except (ValueError, AttributeError):
             source_uuid = _uuid_mod.uuid4()
 
-        memory_id_val = c.get("memory_id")
+        memory_id_val = c["memory_id"]
         try:
             memory_uuid = _uuid_mod.UUID(str(memory_id_val)) if memory_id_val else None
         except (ValueError, AttributeError):
@@ -191,7 +281,7 @@ def rerank(candidates: list[_Candidate]) -> list[RetrievedChunk]:
                 final_score=final_score,
                 semantic_score=c["semantic_score"],
                 recency_weight=recency_weight,
-                page_number=c.get("page_number"),
+                page_number=c["page_number"],
             )
         )
 

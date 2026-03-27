@@ -1,7 +1,19 @@
 import uuid
+import uuid as _uuid
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock
 
+from src.adapters.neo4j_adapter import Neo4jAdapter
+from src.adapters.openai_adapter import OpenAIAdapter
+from src.adapters.qdrant_adapter import QdrantAdapter
 from src.schemas.rag import RetrievedChunk
+from src.services.rag_service import (
+    RAGService,
+    _content_hash,
+    extract_concepts,
+    merge_and_deduplicate,
+    rerank,
+)
 
 
 def test_retrieved_chunk_required_fields() -> None:
@@ -36,8 +48,6 @@ def test_retrieved_chunk_with_all_fields() -> None:
 
 
 async def test_openai_embed_returns_single_vector() -> None:
-    from src.adapters.openai_adapter import OpenAIAdapter
-
     adapter = OpenAIAdapter()
     adapter.embed_chunks = AsyncMock(return_value=[[0.1, 0.2, 0.3]])
     result = await adapter.embed("hello world")
@@ -46,25 +56,17 @@ async def test_openai_embed_returns_single_vector() -> None:
 
 
 async def test_neo4j_find_memories_empty_concepts_returns_empty() -> None:
-    from src.adapters.neo4j_adapter import Neo4jAdapter
-
     adapter = Neo4jAdapter()
     adapter.run_query = AsyncMock(return_value=[])
-    result = await adapter.find_memories_by_concepts(
-        concept_names=[], tenant_id="t-1"
-    )
+    result = await adapter.find_memories_by_concepts(concept_names=[], tenant_id="t-1")
     assert result == []
     adapter.run_query.assert_not_called()
 
 
 async def test_neo4j_find_memories_passes_tenant_id_as_param() -> None:
-    from src.adapters.neo4j_adapter import Neo4jAdapter
-
     adapter = Neo4jAdapter()
     adapter.run_query = AsyncMock(return_value=[])
-    await adapter.find_memories_by_concepts(
-        concept_names=["python"], tenant_id="tenant-abc"
-    )
+    await adapter.find_memories_by_concepts(concept_names=["python"], tenant_id="tenant-abc")
     call_kwargs = adapter.run_query.call_args.kwargs
     assert call_kwargs.get("tenant_id") == "tenant-abc"
     # Verify tenant_id not interpolated into query string
@@ -78,8 +80,6 @@ async def test_neo4j_find_memories_passes_tenant_id_as_param() -> None:
 
 
 def test_extract_concepts_returns_meaningful_words() -> None:
-    from src.services.rag_service import extract_concepts
-
     concepts = extract_concepts("Tell me about Python and FastAPI development")
     assert "python" in concepts
     assert "fastapi" in concepts
@@ -88,22 +88,16 @@ def test_extract_concepts_returns_meaningful_words() -> None:
 
 
 def test_extract_concepts_empty_prompt_returns_empty() -> None:
-    from src.services.rag_service import extract_concepts
-
     assert extract_concepts("") == []
     assert extract_concepts("   ") == []
 
 
 def test_extract_concepts_deduplicates() -> None:
-    from src.services.rag_service import extract_concepts
-
     concepts = extract_concepts("Python Python Python is great")
     assert concepts.count("python") == 1
 
 
 def test_extract_concepts_max_ten() -> None:
-    from src.services.rag_service import extract_concepts
-
     long_prompt = " ".join(f"keyword{i}" for i in range(20))
     concepts = extract_concepts(long_prompt)
     assert len(concepts) <= 10
@@ -112,9 +106,6 @@ def test_extract_concepts_max_ten() -> None:
 # ---------------------------------------------------------------------------
 # Part B: merge_and_deduplicate tests
 # ---------------------------------------------------------------------------
-
-import uuid as _uuid
-from datetime import datetime, UTC
 
 
 def _make_scored_point(
@@ -142,8 +133,6 @@ def _make_scored_point(
 
 
 def test_merge_deduplicates_by_content_hash() -> None:
-    from src.services.rag_service import merge_and_deduplicate
-
     source_id = str(_uuid.uuid4())
     qdrant_pts = [_make_scored_point("c1", "Python is great", source_id=source_id)]
     neo4j_mems = [
@@ -162,8 +151,6 @@ def test_merge_deduplicates_by_content_hash() -> None:
 
 
 def test_merge_keeps_both_when_different_content() -> None:
-    from src.services.rag_service import merge_and_deduplicate
-
     qdrant_pts = [_make_scored_point("c1", "Python is great")]
     neo4j_mems = [
         {
@@ -181,16 +168,12 @@ def test_merge_keeps_both_when_different_content() -> None:
 
 
 def test_merge_qdrant_result_has_semantic_score() -> None:
-    from src.services.rag_service import merge_and_deduplicate
-
     qdrant_pts = [_make_scored_point("c1", "Python is great", score=0.92)]
     combined = merge_and_deduplicate(qdrant_pts, [])
     assert combined[0]["semantic_score"] == 0.92
 
 
 def test_merge_neo4j_only_result_has_zero_semantic_score() -> None:
-    from src.services.rag_service import merge_and_deduplicate
-
     neo4j_mems = [
         {
             "memory_id": str(_uuid.uuid4()),
@@ -212,8 +195,6 @@ def test_merge_neo4j_only_result_has_zero_semantic_score() -> None:
 
 
 def test_rerank_applies_scoring_formula() -> None:
-    from src.services.rag_service import rerank, _content_hash
-
     now = datetime.now(UTC)
     candidates = [
         {
@@ -246,9 +227,6 @@ def test_rerank_applies_scoring_formula() -> None:
 
 
 def test_rerank_returns_retrieved_chunk_instances() -> None:
-    from src.services.rag_service import rerank, _content_hash
-    from src.schemas.rag import RetrievedChunk
-
     candidates = [
         {
             "chunk_id": "c1",
@@ -269,8 +247,6 @@ def test_rerank_returns_retrieved_chunk_instances() -> None:
 
 
 def test_rerank_empty_input_returns_empty() -> None:
-    from src.services.rag_service import rerank
-
     assert rerank([]) == []
 
 
@@ -280,11 +256,6 @@ def test_rerank_empty_input_returns_empty() -> None:
 
 
 def test_rag_service_instantiates_with_injected_adapters() -> None:
-    from src.services.rag_service import RAGService
-    from src.adapters.qdrant_adapter import QdrantAdapter
-    from src.adapters.neo4j_adapter import Neo4jAdapter
-    from src.adapters.openai_adapter import OpenAIAdapter
-
     qdrant = MagicMock(spec=QdrantAdapter)
     neo4j = MagicMock(spec=Neo4jAdapter)
     openai = MagicMock(spec=OpenAIAdapter)
@@ -293,9 +264,6 @@ def test_rag_service_instantiates_with_injected_adapters() -> None:
 
 
 def test_rag_service_cleanup_clears_adapters() -> None:
-    from src.services.rag_service import RAGService
-    from src.adapters.qdrant_adapter import QdrantAdapter
-
     qdrant = MagicMock(spec=QdrantAdapter)
     svc = RAGService(qdrant=qdrant)
     svc.cleanup()
