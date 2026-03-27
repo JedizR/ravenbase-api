@@ -21,6 +21,10 @@ _TASK_ROUTING: dict[str, tuple[str, str]] = {
         "gemini/gemini-2.5-flash",
         "anthropic/claude-haiku-4-5-20251001",
     ),
+    "custom_resolution": (
+        "gemini/gemini-2.5-flash",
+        "anthropic/claude-haiku-4-5-20251001",
+    ),
 }
 
 _MAX_PRIMARY_ATTEMPTS = 2  # tries before falling back to fallback model

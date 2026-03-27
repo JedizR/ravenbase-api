@@ -1,17 +1,30 @@
 # src/services/conflict_service.py
 from __future__ import annotations
 
+import json
 import uuid
+from datetime import UTC, datetime, timedelta
 
 import structlog
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlmodel import func, select
 
 from src.adapters.llm_router import LLMRouter
 from src.adapters.neo4j_adapter import Neo4jAdapter
 from src.adapters.qdrant_adapter import QdrantAdapter
 from src.api.dependencies.db import async_session_factory
+from src.core.errors import ErrorCode, raise_403, raise_404, raise_409
 from src.models.conflict import Conflict, ConflictStatus
 from src.models.source import Source, SourceAuthorityWeight
-from src.schemas.conflict import ConflictClassificationResult
+from src.schemas.common import PaginatedResponse
+from src.schemas.conflict import (
+    ConflictClassificationResult,
+    ConflictResponse,
+    GraphMutations,
+    ResolveAction,
+    ResolveResponse,
+    UndoResponse,
+)
 from src.services.base import BaseService
 
 logger = structlog.get_logger()
@@ -24,6 +37,18 @@ _MAX_CONFLICTS_PER_BATCH = 5
 
 # Classifications that result in a Conflict DB record
 _CONFLICT_CLASSIFICATIONS = {"CONTRADICTION", "UPDATE"}
+
+_CUSTOM_RESOLUTION_PROMPT = (
+    "You are resolving a memory conflict. "
+    "Given the user instruction and the two conflicting memory statements, "
+    "output JSON with keys: "
+    "active_memory_id (the memory that should be marked active), "
+    "superseded_memory_id (the one that should be superseded, or null), "
+    "new_tags (list of tag strings, may be empty).\n\n"
+    "<incumbent>{incumbent}</incumbent>\n"
+    "<challenger>{challenger}</challenger>\n"
+    "<user_instruction>{instruction}</user_instruction>"
+)
 
 _CLASSIFY_PROMPT = """\
 Classify the relationship between these two statements about the same person.
@@ -250,6 +275,225 @@ class ConflictService(BaseService):
             "skipped_count": skipped_count,
             "auto_resolved_count": auto_resolved_count,
         }
+
+    # ------------------------------------------------------------------
+    # API-facing methods (STORY-013)
+    # ------------------------------------------------------------------
+
+    async def list_conflicts(
+        self,
+        user_id: str,
+        status: str | None,
+        page: int,
+        page_size: int,
+        db: AsyncSession,
+    ) -> PaginatedResponse[ConflictResponse]:
+        """Return paginated conflicts for the given user, newest first."""
+        uid = uuid.UUID(user_id)
+        base = select(Conflict).where(Conflict.user_id == uid)
+        if status is not None:
+            base = base.where(Conflict.status == status)
+
+        count_stmt = select(func.count()).select_from(base.subquery())
+        count_result = await db.exec(count_stmt)  # type: ignore[arg-type]
+        total: int = count_result.one()
+
+        offset = (page - 1) * page_size
+        rows_stmt = (
+            base.order_by(Conflict.created_at.desc())  # type: ignore[arg-type]
+            .offset(offset)
+            .limit(page_size)
+        )
+        rows_result = await db.exec(rows_stmt)  # type: ignore[arg-type]
+        conflicts = rows_result.all()
+
+        items = [
+            ConflictResponse(
+                id=c.id,
+                incumbent_content=c.incumbent_content,
+                challenger_content=c.challenger_content,
+                ai_classification=c.ai_classification,
+                ai_proposed_resolution=c.ai_proposed_resolution,
+                confidence_score=c.confidence_score,
+                incumbent_source_id=c.incumbent_source_id,
+                challenger_source_id=c.challenger_source_id,
+                status=c.status,
+                created_at=c.created_at,
+            )
+            for c in conflicts
+        ]
+        return PaginatedResponse(
+            items=items,
+            total=total,
+            page=page,
+            page_size=page_size,
+            has_more=(offset + len(items)) < total,
+        )
+
+    async def resolve_conflict(
+        self,
+        conflict_id: str,
+        user_id: str,
+        action: ResolveAction,
+        custom_text: str | None,
+        db: AsyncSession,
+    ) -> ResolveResponse:
+        """Apply a resolution action to a pending conflict."""
+        log = logger.bind(conflict_id=conflict_id, user_id=user_id, action=action)
+
+        conflict = await db.get(Conflict, uuid.UUID(conflict_id))
+        if conflict is None:
+            raise_404(ErrorCode.CONFLICT_NOT_FOUND, "Conflict not found.")
+
+        if conflict.user_id != uuid.UUID(user_id):
+            raise_403(ErrorCode.CONFLICT_FORBIDDEN, "You do not own this conflict.")
+
+        if conflict.status != ConflictStatus.PENDING:
+            raise_409(
+                ErrorCode.CONFLICT_ALREADY_RESOLVED,
+                "Conflict has already been resolved. Undo first.",
+            )
+
+        mutations = GraphMutations()
+
+        if action == ResolveAction.ACCEPT_NEW:
+            await self._get_neo4j().run_query(
+                "MATCH (c:Memory {memory_id: $challenger_id}) "
+                "MATCH (i:Memory {memory_id: $incumbent_id}) "
+                "WHERE c.tenant_id = $tenant_id AND i.tenant_id = $tenant_id "
+                "MERGE (c)-[r:SUPERSEDES]->(i) "
+                "SET c.is_valid = true, i.is_valid = false",
+                challenger_id=conflict.challenger_memory_id,
+                incumbent_id=conflict.incumbent_memory_id,
+                tenant_id=user_id,
+            )
+            mutations = GraphMutations(
+                superseded_memory_id=conflict.incumbent_memory_id,
+                active_memory_id=conflict.challenger_memory_id,
+            )
+            conflict.status = ConflictStatus.RESOLVED_ACCEPT_NEW
+
+        elif action == ResolveAction.KEEP_OLD:
+            conflict.status = ConflictStatus.RESOLVED_KEEP_OLD
+
+        else:  # CUSTOM
+            mutations = await self._apply_custom_resolution(conflict, custom_text or "", user_id)
+            conflict.status = ConflictStatus.RESOLVED_CUSTOM
+
+        conflict.resolved_at = datetime.now(UTC)
+        db.add(conflict)
+        await db.commit()
+        log.info("conflict_service.resolved", status=conflict.status)
+        return ResolveResponse(
+            conflict_id=conflict.id,
+            status=conflict.status,
+            graph_mutations=mutations,
+        )
+
+    async def undo_resolution(
+        self,
+        conflict_id: str,
+        user_id: str,
+        db: AsyncSession,
+    ) -> UndoResponse:
+        """Revert a resolution within the 30-second undo window."""
+        log = logger.bind(conflict_id=conflict_id, user_id=user_id)
+
+        conflict = await db.get(Conflict, uuid.UUID(conflict_id))
+        if conflict is None:
+            raise_404(ErrorCode.CONFLICT_NOT_FOUND, "Conflict not found.")
+
+        if conflict.user_id != uuid.UUID(user_id):
+            raise_403(ErrorCode.CONFLICT_FORBIDDEN, "You do not own this conflict.")
+
+        if conflict.status == ConflictStatus.PENDING:
+            raise_409(ErrorCode.CONFLICT_NOT_RESOLVED, "Conflict has not been resolved.")
+
+        if conflict.resolved_at is None or (
+            datetime.now(UTC) - conflict.resolved_at.replace(tzinfo=UTC) > timedelta(seconds=30)
+        ):
+            raise_409(
+                ErrorCode.UNDO_WINDOW_EXPIRED,
+                "Undo window (30 seconds) has expired.",
+            )
+
+        if conflict.status == ConflictStatus.RESOLVED_ACCEPT_NEW:
+            try:
+                await self._get_neo4j().run_query(
+                    "MATCH (c:Memory {memory_id: $challenger_id})"
+                    "-[r:SUPERSEDES]->"
+                    "(i:Memory {memory_id: $incumbent_id}) "
+                    "WHERE c.tenant_id = $tenant_id AND i.tenant_id = $tenant_id "
+                    "DELETE r "
+                    "REMOVE c.is_valid, i.is_valid",
+                    challenger_id=conflict.challenger_memory_id,
+                    incumbent_id=conflict.incumbent_memory_id,
+                    tenant_id=user_id,
+                )
+            except Exception as exc:
+                log.warning("conflict_service.undo_neo4j_failed", error=str(exc))
+
+        conflict.status = ConflictStatus.PENDING
+        conflict.resolved_at = None
+        conflict.resolution_note = None
+        db.add(conflict)
+        await db.commit()
+        log.info("conflict_service.undone")
+        return UndoResponse(
+            conflict_id=conflict.id,
+            status="pending",
+            message="Resolution undone successfully.",
+        )
+
+    async def _apply_custom_resolution(
+        self,
+        conflict: Conflict,
+        custom_text: str,
+        user_id: str,
+    ) -> GraphMutations:
+        """Call LLM to determine graph mutations for a custom resolution."""
+        prompt = _CUSTOM_RESOLUTION_PROMPT.format(
+            incumbent=conflict.incumbent_content,
+            challenger=conflict.challenger_content,
+            instruction=custom_text,
+        )
+        raw = await self._get_llm_router().complete(
+            task="custom_resolution",
+            messages=[{"role": "user", "content": prompt}],
+            response_format={"type": "json_object"},
+            max_tokens=256,
+            tenant_id=user_id,
+        )
+        try:
+            data = json.loads(raw)
+            mutations = GraphMutations.model_validate(data)
+        except Exception as exc:
+            logger.warning(
+                "conflict_service.custom_resolution_parse_failed",
+                error=str(exc),
+                tenant_id=user_id,
+            )
+            return GraphMutations()
+
+        if mutations.superseded_memory_id and mutations.active_memory_id:
+            try:
+                await self._get_neo4j().write_relationships(
+                    from_label="Memory",
+                    from_id_key="memory_id",
+                    from_id=mutations.active_memory_id,
+                    to_label="Memory",
+                    to_id_key="memory_id",
+                    to_id=mutations.superseded_memory_id,
+                    rel_type="SUPERSEDES",
+                    tenant_id=user_id,
+                )
+            except Exception as exc:
+                logger.warning(
+                    "conflict_service.custom_supersedes_failed",
+                    error=str(exc),
+                    tenant_id=user_id,
+                )
+        return mutations
 
     # ------------------------------------------------------------------
     # Private helpers
