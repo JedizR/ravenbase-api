@@ -9,6 +9,18 @@
 
 ---
 
+## Functional Requirements
+<!-- Which FR acceptance criteria does this story satisfy? -->
+- FR-01-AC-4: Source record created in PostgreSQL with status PENDING → PROCESSING → INDEXING → COMPLETED transitions
+- FR-01-AC-5: Chunks upserted to Qdrant with tenant_id in payload
+- FR-01-AC-6: Progress published to Redis pub/sub at each status transition
+- FR-01-AC-7: graph_extraction enqueued after COMPLETED
+
+## Component
+COMP-01: IngestionPipeline
+
+---
+
 > **Before You Start This Story — Read These Files First:**
 > 1. `CLAUDE.md` — architecture rules (mandatory, especially RULE 3: ARQ, RULE 6: lazy imports)
 > 2. `docs/architecture/04-background-jobs.md` — ARQ task patterns, `publish_progress()` pattern

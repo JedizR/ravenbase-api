@@ -9,6 +9,22 @@
 
 ---
 
+## Functional Requirements
+<!-- Which FR acceptance criteria does this story satisfy? -->
+- FR-03-AC-1: graph_extraction triggered automatically after ingestion COMPLETED
+- FR-03-AC-2: Each chunk sent to LLMRouter (Gemini Flash primary, Haiku fallback) for entity extraction
+- FR-03-AC-3: Concept nodes use MERGE — no duplicates per {name, tenant_id}
+- FR-03-AC-4: Memory nodes use CREATE — each extraction is unique
+- FR-03-AC-5: EXTRACTED_FROM relationship links Memory → Concept
+- FR-03-AC-6: RELATES_TO relationship links Concept → Concept
+- FR-03-AC-7: All nodes include tenant_id — no cross-tenant leakage
+- FR-03-AC-8: Chunks below confidence threshold 0.6 are discarded
+
+## Component
+COMP-02: GraphEngine
+
+---
+
 > **Before You Start This Story — Read These Files First:**
 > 1. `CLAUDE.md` — architecture rules (mandatory, especially RULE 2 tenant isolation, RULE 6 lazy imports)
 > 2. `docs/architecture/02-database-schema.md` — Neo4j node labels, relationship types, Key Cypher Queries

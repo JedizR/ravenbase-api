@@ -9,6 +9,15 @@
 
 ---
 
+## Functional Requirements
+<!-- Which FR acceptance criteria does this story satisfy? -->
+- FR-01-AC-6: Progress published to Redis pub/sub at each status transition (SSE stream to client)
+
+## Component
+COMP-01: IngestionPipeline
+
+---
+
 > **Before You Start This Story — Read These Files First:**
 > 1. `CLAUDE.md` — architecture rules (mandatory)
 > 2. `docs/architecture/04-background-jobs.md` — SSE section, Redis pub/sub pattern

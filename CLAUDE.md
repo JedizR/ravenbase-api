@@ -481,6 +481,28 @@ that uses a library you haven't worked with recently.
 
 ---
 
+## Documentation Architecture
+
+The docs corpus is organized into four layers per SC.08 principles:
+
+| Layer | Location | Purpose |
+|---|---|---|
+| Control | CLAUDE.md | Rules the agent must follow |
+| Requirements | docs/requirements/ | What the system must do (FRs) |
+| Components | docs/components/ | How FRs map to implementation boundaries |
+| Decisions | docs/adr/ | Why major architectural choices were made |
+| Operations | docs/.bmad/ | Project state, journal, sprint tracking |
+| Proof | tests/ + docs/requirements/test-traceability.md | Evidence that behavior matches spec |
+
+**When starting a new story:** read the story's "Functional Requirements"
+and "Component" fields, then read the relevant component spec in
+docs/components/README.md before writing any code.
+
+**When writing tests:** add a row to docs/requirements/test-traceability.md
+linking each new test to the FR-AC it proves.
+
+---
+
 ## Before Every Implementation: Agent Checklist
 
 ```

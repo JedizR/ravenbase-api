@@ -9,6 +9,19 @@
 
 ---
 
+## Functional Requirements
+<!-- Which FR acceptance criteria does this story satisfy? -->
+- FR-02-AC-1: POST /v1/ingest/text accepts content up to 50,000 chars
+- FR-02-AC-2: Content exceeding 50,000 chars returns 422 TEXT_TOO_LONG
+- FR-02-AC-3: Source record created with file_type="direct_input"
+- FR-02-AC-4: Tags stored in Qdrant payload
+- FR-02-AC-5: graph_extraction enqueued after indexing completes
+
+## Component
+COMP-01: IngestionPipeline
+
+---
+
 > **Before You Start This Story — Read These Files First:**
 > 1. `CLAUDE.md` — architecture rules (mandatory)
 > 2. `docs/design/CLAUDE_FRONTEND.md` — frontend rules (no form tags, apiFetch, Zod validation)

@@ -9,6 +9,20 @@
 
 ---
 
+## Functional Requirements
+<!-- Which FR acceptance criteria does this story satisfy? -->
+- FR-01-AC-1: POST /v1/ingest/upload accepts PDF and DOCX files up to 200 MB (pro) or 50 MB (free)
+- FR-01-AC-2: Duplicate files (same SHA-256 hash per tenant) return status="duplicate" without re-processing
+- FR-01-AC-3: Unsupported MIME types return 422 INVALID_FILE_TYPE
+- FR-01-AC-4: Source record created in PostgreSQL with status PENDING → PROCESSING → INDEXING → COMPLETED transitions
+- FR-01-AC-5: Chunks upserted to Qdrant with tenant_id in payload
+- FR-01-AC-6: Progress published to Redis pub/sub at each status transition
+
+## Component
+COMP-01: IngestionPipeline
+
+---
+
 > **Before You Start This Story — Read These Files First:**
 > 1. `CLAUDE.md` — architecture rules (mandatory)
 > 2. `docs/architecture/03-api-contract.md` — `POST /v1/ingest/upload` full request/response spec
