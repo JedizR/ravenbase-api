@@ -341,7 +341,7 @@ _No entries yet._
 ### STORY-012 — Conflict Detection Worker
 **Date:** 2026-03-27 | **Sprint:** 9 | **Phase:** A | **Repo:** ravenbase-api
 **Quality gate:** ✅ clean
-**Commit:** TBD
+**Commit:** `45f2c16`
 
 **What was built:**
 Qdrant similarity scan (cosine threshold 0.87, always tenant-scoped via `_tenant_filter`) identifies candidate contradiction pairs after each ingestion. LLM classification via `LLMRouter("conflict_classification")` routes to Gemini 2.5 Flash (primary) / Claude Haiku (fallback) and returns `{classification, confidence, reasoning}` validated by `ConflictClassificationResult`. CONTRADICTION/UPDATE pairs create `Conflict` PostgreSQL records; COMPLEMENT pairs write `TEMPORAL_LINK` Neo4j edges only. Auto-resolution fires when challenger authority weight exceeds incumbent by ≥3 points. Redis pub/sub notification published on `conflict:new:{tenant_id}` after DB commit. Batch capped at 5 to prevent notification fatigue. 111 tests passing.
