@@ -56,5 +56,10 @@ class OpenAIAdapter(BaseAdapter):
         log.info("openai.embed.completed", vector_count=len(embeddings))
         return embeddings
 
+    async def embed(self, text: str) -> list[float]:
+        """Embed a single text string. Delegates to embed_chunks for consistency."""
+        results = await self.embed_chunks([text])
+        return results[0]
+
     def cleanup(self) -> None:
         self._client = None

@@ -1,4 +1,6 @@
 import uuid
+from unittest.mock import AsyncMock, MagicMock
+
 from src.schemas.rag import RetrievedChunk
 
 
@@ -31,3 +33,13 @@ def test_retrieved_chunk_with_all_fields() -> None:
     )
     assert chunk.memory_id == mid
     assert chunk.page_number == 3
+
+
+async def test_openai_embed_returns_single_vector() -> None:
+    from src.adapters.openai_adapter import OpenAIAdapter
+
+    adapter = OpenAIAdapter()
+    adapter.embed_chunks = AsyncMock(return_value=[[0.1, 0.2, 0.3]])
+    result = await adapter.embed("hello world")
+    adapter.embed_chunks.assert_called_once_with(["hello world"])
+    assert result == [0.1, 0.2, 0.3]
