@@ -9,11 +9,11 @@
 
 | Component | ID | FRs | Key Source Files | Stories |
 |---|---|---|---|---|
-| IngestionPipeline | COMP-01 | FR-01, FR-02 | src/services/ingestion_service.py, src/workers/ingestion_tasks.py, src/adapters/storage_adapter.py, src/adapters/docling_adapter.py, src/adapters/openai_adapter.py, src/adapters/moderation_adapter.py | 005, 006, 007, 008 |
+| IngestionPipeline | COMP-01 | FR-01, FR-02 | src/api/routes/ingest.py, src/services/ingestion_service.py, src/workers/ingestion_tasks.py, src/adapters/storage_adapter.py, src/adapters/docling_adapter.py, src/adapters/openai_adapter.py, src/adapters/moderation_adapter.py | 005, 006, 007, 008 |
 | GraphEngine | COMP-02 | FR-03, FR-04, FR-05, FR-06, FR-13 | src/services/graph_service.py, src/workers/graph_tasks.py, src/adapters/neo4j_adapter.py, src/adapters/llm_router.py, src/api/routes/graph.py | 009, 010, 012, 013, 029 |
 | RetrievalEngine | COMP-03 | FR-07, FR-08 | src/services/retrieval_service.py, src/adapters/qdrant_adapter.py | 015, 016 |
 | GenerationEngine | COMP-04 | FR-08, FR-12 | src/services/generation_service.py, src/workers/generation_tasks.py | 016, 026 |
-| AuthSystem | COMP-05 | FR-09 | src/api/dependencies/auth.py | 018-BE |
+| AuthSystem | COMP-05 | FR-09 | src/api/dependencies/auth.py | 018 |
 | CreditSystem | COMP-06 | FR-10 | src/services/credit_service.py | 023 |
 | PrivacyLayer | COMP-07 | FR-11 | src/services/privacy_service.py, src/adapters/presidio_adapter.py | 024, 025 |
 

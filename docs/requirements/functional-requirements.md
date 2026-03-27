@@ -167,7 +167,7 @@ from the JWT and never accepted from request parameters.
   first sign-up
 
 **Implemented by:** COMP-05 (AuthSystem)
-**Stories:** STORY-018-BE
+**Stories:** STORY-018
 
 ---
 
