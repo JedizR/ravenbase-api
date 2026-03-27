@@ -128,6 +128,69 @@ class Neo4jAdapter(BaseAdapter):
             params["rel_props"] = rel_properties
         await self.run_query(query, **params)
 
+    async def find_memories_by_concepts(
+        self,
+        concept_names: list[str],
+        tenant_id: str,
+        profile_id: str | None = None,
+        limit: int = 30,
+    ) -> list[dict]:
+        """Find Memory nodes related to concept names, scoped by tenant_id.
+
+        RULE 11: tenant_id and all parameters are always passed as Cypher params.
+        Returns list of dicts with keys: memory_id, content, created_at, confidence,
+        source_id, chunk_id, profile_id.
+        """
+        if not concept_names:
+            return []
+
+        concept_names_lower = [c.lower() for c in concept_names]
+
+        if profile_id:
+            query = """
+            MATCH (m:Memory)-[:EXTRACTED_FROM]->(c:Concept)
+            OPTIONAL MATCH (m)-[:EXTRACTED_FROM]->(s:Source)
+            WHERE m.tenant_id = $tenant_id
+              AND c.tenant_id = $tenant_id
+              AND toLower(c.name) IN $concept_names_lower
+              AND m.profile_id = $profile_id
+              AND (m.is_valid IS NULL OR m.is_valid = true)
+            RETURN m.memory_id AS memory_id, m.content AS content,
+                   m.created_at AS created_at, m.confidence AS confidence,
+                   s.source_id AS source_id, m.embedding_id AS chunk_id,
+                   $profile_id AS profile_id
+            ORDER BY m.created_at DESC
+            LIMIT $limit
+            """
+            return await self.run_query(
+                query,
+                concept_names_lower=concept_names_lower,
+                tenant_id=tenant_id,
+                profile_id=profile_id,
+                limit=limit,
+            )
+        else:
+            query = """
+            MATCH (m:Memory)-[:EXTRACTED_FROM]->(c:Concept)
+            OPTIONAL MATCH (m)-[:EXTRACTED_FROM]->(s:Source)
+            WHERE m.tenant_id = $tenant_id
+              AND c.tenant_id = $tenant_id
+              AND toLower(c.name) IN $concept_names_lower
+              AND (m.is_valid IS NULL OR m.is_valid = true)
+            RETURN m.memory_id AS memory_id, m.content AS content,
+                   m.created_at AS created_at, m.confidence AS confidence,
+                   s.source_id AS source_id, m.embedding_id AS chunk_id,
+                   m.profile_id AS profile_id
+            ORDER BY m.created_at DESC
+            LIMIT $limit
+            """
+            return await self.run_query(
+                query,
+                concept_names_lower=concept_names_lower,
+                tenant_id=tenant_id,
+                limit=limit,
+            )
+
     async def verify_connectivity(self) -> bool:
         try:
             await self._get_driver().verify_connectivity()

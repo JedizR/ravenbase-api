@@ -43,3 +43,30 @@ async def test_openai_embed_returns_single_vector() -> None:
     result = await adapter.embed("hello world")
     adapter.embed_chunks.assert_called_once_with(["hello world"])
     assert result == [0.1, 0.2, 0.3]
+
+
+async def test_neo4j_find_memories_empty_concepts_returns_empty() -> None:
+    from src.adapters.neo4j_adapter import Neo4jAdapter
+
+    adapter = Neo4jAdapter()
+    adapter.run_query = AsyncMock(return_value=[])
+    result = await adapter.find_memories_by_concepts(
+        concept_names=[], tenant_id="t-1"
+    )
+    assert result == []
+    adapter.run_query.assert_not_called()
+
+
+async def test_neo4j_find_memories_passes_tenant_id_as_param() -> None:
+    from src.adapters.neo4j_adapter import Neo4jAdapter
+
+    adapter = Neo4jAdapter()
+    adapter.run_query = AsyncMock(return_value=[])
+    await adapter.find_memories_by_concepts(
+        concept_names=["python"], tenant_id="tenant-abc"
+    )
+    call_kwargs = adapter.run_query.call_args.kwargs
+    assert call_kwargs.get("tenant_id") == "tenant-abc"
+    # Verify tenant_id not interpolated into query string
+    query_str = adapter.run_query.call_args.args[0]
+    assert "tenant-abc" not in query_str
