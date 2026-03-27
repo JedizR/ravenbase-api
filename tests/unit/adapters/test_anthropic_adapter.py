@@ -3,6 +3,7 @@
 
 AsyncAnthropic is mocked so tests run without an API key.
 """
+
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -11,7 +12,7 @@ import pytest
 @pytest.mark.asyncio
 async def test_stream_completion_yields_tokens():
     """stream_completion() yields individual text tokens from the stream."""
-    from src.adapters.anthropic_adapter import AnthropicAdapter
+    from src.adapters.anthropic_adapter import AnthropicAdapter  # noqa: PLC0415
 
     mock_stream_ctx = MagicMock()
     # async context manager
@@ -43,7 +44,7 @@ async def test_stream_completion_yields_tokens():
 @pytest.mark.asyncio
 async def test_stream_completion_passes_correct_model():
     """stream_completion() passes the model argument to the Anthropic client."""
-    from src.adapters.anthropic_adapter import AnthropicAdapter
+    from src.adapters.anthropic_adapter import AnthropicAdapter  # noqa: PLC0415
 
     mock_stream_ctx = MagicMock()
     mock_stream_ctx.__aenter__ = AsyncMock(return_value=mock_stream_ctx)

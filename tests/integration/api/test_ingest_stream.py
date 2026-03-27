@@ -184,13 +184,13 @@ async def test_stream_always_unsubscribes_on_disconnect(mocker):
 
 
 @pytest.mark.asyncio
-async def test_stream_missing_token_returns_422():
-    """Missing ?token= → 422 Unprocessable Entity (FastAPI Query validation)."""
+async def test_stream_missing_token_returns_401():
+    """Missing ?token= → 401 Unauthorized."""
     app.dependency_overrides.pop(verify_token_query_param, None)
     try:
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
             response = await ac.get(f"/v1/ingest/stream/{TEST_SOURCE_ID}")
-        assert response.status_code == 422
+        assert response.status_code == 401
     finally:
         app.dependency_overrides[verify_token_query_param] = lambda: {
             "user_id": TEST_TENANT_ID,

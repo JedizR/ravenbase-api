@@ -3,7 +3,7 @@
 
 All external dependencies mocked. Tests run without live DB, Redis, or Anthropic.
 """
-import json
+
 import uuid
 from unittest.mock import AsyncMock, MagicMock
 
