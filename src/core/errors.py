@@ -13,6 +13,7 @@ class ErrorCode:
     CONFLICT_NOT_RESOLVED = "CONFLICT_NOT_RESOLVED"
     UNDO_WINDOW_EXPIRED = "UNDO_WINDOW_EXPIRED"
     QUOTA_EXCEEDED = "QUOTA_EXCEEDED"
+    INSUFFICIENT_CREDITS = "INSUFFICIENT_CREDITS"
     INVALID_FILE_TYPE = "INVALID_FILE_TYPE"
     TEXT_TOO_LONG = "TEXT_TOO_LONG"
     MISSING_AUTH = "MISSING_AUTH"
@@ -38,3 +39,7 @@ def raise_409(code: str, detail: str) -> NoReturn:
 
 def raise_429(code: str, detail: str) -> NoReturn:
     raise HTTPException(status_code=429, detail={"code": code, "message": detail})
+
+
+def raise_402(code: str, detail: str) -> NoReturn:
+    raise HTTPException(status_code=402, detail={"code": code, "message": detail})
