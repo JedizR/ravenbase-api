@@ -128,6 +128,36 @@ class Neo4jAdapter(BaseAdapter):
             params["rel_props"] = rel_properties
         await self.run_query(query, **params)
 
+    async def write_contains_edges(
+        self,
+        doc_id: str,
+        memory_ids: list[str],
+        tenant_id: str,
+    ) -> None:
+        """MERGE a MetaDocument node and CONTAINS edges to each contributing Memory.
+
+        Called after generation completes (AC-8). Each memory_id is a separate
+        MERGE to avoid Cypher cartesian-product issues with large lists.
+        """
+        # 1. MERGE MetaDocument node
+        await self.run_query(
+            "MERGE (d:MetaDocument {doc_id: $doc_id}) "
+            "SET d.tenant_id = $tenant_id",
+            doc_id=doc_id,
+            tenant_id=tenant_id,
+        )
+        # 2. MERGE one CONTAINS edge per contributing memory
+        for memory_id in memory_ids:
+            await self.run_query(
+                "MATCH (d:MetaDocument {doc_id: $doc_id}) "
+                "MATCH (m:Memory {memory_id: $memory_id}) "
+                "WHERE d.tenant_id = $tenant_id AND m.tenant_id = $tenant_id "
+                "MERGE (d)-[:CONTAINS]->(m)",
+                doc_id=doc_id,
+                memory_id=memory_id,
+                tenant_id=tenant_id,
+            )
+
     async def find_memories_by_concepts(
         self,
         concept_names: list[str],
