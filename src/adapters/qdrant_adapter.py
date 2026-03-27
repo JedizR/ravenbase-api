@@ -45,15 +45,20 @@ class QdrantAdapter(BaseAdapter):
         tenant_id: str,
         limit: int = 10,
         additional_filters: Filter | None = None,
+        score_threshold: float | None = None,
     ) -> list:
         must_conditions: list[Condition] = list(self._tenant_filter(tenant_id).must or [])  # type: ignore[arg-type]
         if additional_filters and additional_filters.must:
             must_conditions.extend(additional_filters.must)  # type: ignore[arg-type]
-        combined = Filter(must=must_conditions)
+        must_not_conditions: list[Condition] = []
+        if additional_filters and additional_filters.must_not:
+            must_not_conditions.extend(additional_filters.must_not)  # type: ignore[arg-type]
+        combined = Filter(must=must_conditions, must_not=must_not_conditions or None)
         result = await self._get_client().query_points(
             collection_name=self.COLLECTION_NAME,
             query=query_vector,
             query_filter=combined,
+            score_threshold=score_threshold,
             limit=limit,
         )
         return result.points
@@ -121,6 +126,43 @@ class QdrantAdapter(BaseAdapter):
                 break
             offset = next_offset
         return payloads
+
+    async def scroll_by_source_with_vectors(
+        self,
+        source_id: str,
+        tenant_id: str,
+    ) -> list[tuple[str, list, dict]]:  # type: ignore[type-arg]
+        """Return (point_id, vector, payload) for all chunks of a source.
+
+        Enforces tenant_id + source_id filter. Returns vectors to avoid re-embedding cost.
+        Used by conflict detection to search for similar chunks in other sources.
+        """
+        must_conditions: list[Condition] = list(self._tenant_filter(tenant_id).must or [])  # type: ignore[arg-type]
+        must_conditions.append(FieldCondition(key="source_id", match=MatchValue(value=source_id)))
+        f = Filter(must=must_conditions)
+
+        results: list[tuple[str, list, dict]] = []  # type: ignore[type-arg]
+        offset: object = None
+        while True:
+            records, next_offset = await self._get_client().scroll(
+                collection_name=self.COLLECTION_NAME,
+                scroll_filter=f,
+                with_payload=True,
+                with_vectors=True,
+                limit=100,
+                offset=offset,
+            )
+            for record in records:
+                if record.payload and record.vector is not None:
+                    vec = record.vector
+                    # vector may be a named dict (named vectors) or a plain list
+                    if isinstance(vec, dict):
+                        vec = list(next(iter(vec.values())))
+                    results.append((str(record.id), list(vec), dict(record.payload)))  # type: ignore[arg-type]
+            if next_offset is None:
+                break
+            offset = next_offset
+        return results
 
     async def verify_connectivity(self) -> bool:
         try:

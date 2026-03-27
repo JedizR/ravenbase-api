@@ -4,14 +4,17 @@
 All external dependencies are mocked — this tests task wiring, not Neo4j/Qdrant.
 """
 
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 
 @pytest.fixture
 def arq_ctx() -> dict:
-    return {}
+    """ARQ context dict with a mock redis pool (required by graph_extraction → enqueue_job)."""
+    redis_mock = MagicMock()
+    redis_mock.enqueue_job = AsyncMock()
+    return {"redis": redis_mock}
 
 
 @pytest.mark.asyncio

@@ -27,6 +27,15 @@ async def graph_extraction(
         service = GraphService()
         stats = await service.extract_and_write(source_id=source_id, tenant_id=tenant_id)
         log.info("graph_extraction.completed", **stats)
+
+        # ── Enqueue conflict scan (STORY-012) ──────────────────────────────────
+        await ctx["redis"].enqueue_job(
+            "scan_for_conflicts",
+            source_id=source_id,
+            tenant_id=tenant_id,
+        )
+        log.info("graph_extraction.conflict_scan_enqueued")
+
         return {"status": "ok", "source_id": source_id, **stats}
     except Exception as exc:
         log.error("graph_extraction.failed", error=str(exc), exc_info=True)
