@@ -8,24 +8,24 @@
 ## Current State
 
 **Phase:** A — Backend (Sprints 1–17)
-**Current sprint:** 12
-**Status:** In progress — 12 of 37 stories complete
+**Current sprint:** 13
+**Status:** In progress — 13 of 37 stories complete
 
-**Next story to implement:** STORY-018-BE
-**Story file:** `docs/stories/EPIC-05-metadoc/STORY-018.md`
+**Next story to implement:** STORY-023
+**Story file:** `docs/stories/EPIC-08-polish/STORY-023.md`
 
 ---
 
 ## Last Completed Story
 
-**STORY-016 — Meta-Doc Generation Worker + Streaming** (2026-03-28)
-End-to-end Meta-Document pipeline: `POST /v1/metadoc/generate` (credit check → ARQ enqueue → 202), `GET /v1/metadoc/stream/{job_id}` (SSE re-stream from Redis pub/sub), ARQ worker `generate_meta_document` (RAGService retrieval → Presidio PII masking → Anthropic streaming → bleach sanitization → PostgreSQL save → Neo4j CONTAINS edges → credit deduction). 182 tests passing, `make quality` clean.
+**STORY-018-BE — Clerk Auth Integration (Backend)** (2026-03-28)
+Clerk JWT validation via PyJWT + JWKS endpoint (`require_user` dependency), Clerk webhook handler (`POST /webhooks/clerk`) with Svix signature verification, automatic User record creation/update on `user.created` / `user.updated` events. Auth wired to all existing routes. Tests passing, `make quality` clean.
 
 ---
 
 ## Context for Next Session
 
-STORY-016 merged to main. Meta-Doc generation pipeline is complete. Key patterns: credits checked (402) before ARQ enqueue, deducted only after successful generation (AC-9). SSE auth via `?token=` query param (EventSource can't set headers). `verify_token_query_param` now returns 401 (not 422) for missing token. STORY-017 is frontend-only (Workstation UI) — skip to STORY-018-BE.
+STORY-018-BE merged to main. Clerk auth backend is complete — `require_user` validates RS256 JWTs from the Clerk JWKS endpoint, and the webhook handler creates User records on signup. STORY-019 and STORY-020 are frontend-only (onboarding wizard, profile switching) — skip to STORY-023 (credits system). Backend sequence continues: 023→024→025→026→028-BE→029→[BACKEND GATE]→036-BE→037.
 
 ---
 

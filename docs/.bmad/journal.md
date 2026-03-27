@@ -12,12 +12,12 @@
 
 | Field | Value |
 |---|---|
-| Total stories complete | 11 / 37 |
+| Total stories complete | 13 / 37 |
 | Current phase | Phase A — Backend (Sprints 1–17) |
-| Current sprint | 11 |
+| Current sprint | 13 |
 | Active repo | ravenbase-api |
 | Project started | 2026-03-25 |
-| Last entry | 2026-03-27 (STORY-015) |
+| Last entry | 2026-03-28 (STORY-018-BE) |
 
 > **Update this table** after every story entry. Increment stories complete,
 > update current sprint and phase when they change.
@@ -468,7 +468,27 @@ _No entries yet._
 > Clerk JWT validation, webhook handler, User record creation.
 > Sprint 13 covers STORY-018-BE.
 
-_No entries yet._
+### STORY-018-BE — Clerk Auth Integration (Backend)
+**Date:** 2026-03-28 | **Sprint:** 13 | **Phase:** A | **Repo:** ravenbase-api
+**Quality gate:** ✅ clean
+**Commit:** `a0cbf5a`
+
+**What was built:**
+Clerk JWT authentication via PyJWT + JWKS endpoint: `require_user` FastAPI dependency validates RS256 tokens against Clerk's public JWKS URL, caching the `PyJWKClient` in-process. `POST /webhooks/clerk` handler with Svix signature verification creates or updates User records on `user.created` / `user.updated` events. `PresidioAdapter` and `Neo4jAdapter` PII/tenant-isolation fixes landed alongside this story. Auth dependency wired to all existing routes.
+
+**Key decisions:**
+- `PyJWKClient` is module-level cached (singleton) — JWKS fetch happens once at first request rather than on every token validation, avoiding latency spikes and rate limiting on Clerk's JWKS endpoint.
+- `svix` library used for webhook signature validation — verifies `svix-id`, `svix-timestamp`, and `svix-signature` headers in one call; rejects replays outside the 5-minute tolerance window.
+- `require_user` returns `{"user_id": payload["sub"], "email": payload.get("email", "")}` — downstream services use `user["user_id"]` as `tenant_id`; no other payload fields needed at this stage.
+- `CLERK_FRONTEND_API` env var drives the JWKS URL construction — no Clerk SDK dependency, just PyJWT + httpx.
+
+**Gotchas:**
+- `ruff` / `pyright` issues in `neo4j_adapter.py`, `presidio_adapter.py`, `metadoc_service.py`, `workers/main.py`, and `metadoc_tasks.py` were surfaced and fixed as part of the `make quality` gate — these were pre-existing lint debts exposed by the stricter import checks added for STORY-018.
+- `cryptography>=43.0.0` is required by PyJWT for RS256 algorithm support — must be listed explicitly in `pyproject.toml` dependencies; PyJWT alone does not pull it in transitively on all platforms.
+
+**Tech debt noted:**
+- Webhook handler does not yet handle `user.deleted` events — user deactivation / cascade deletion is deferred to STORY-024 (GDPR).
+- `require_user` does not enforce subscription tier or active account status — credit checks remain in `MetadocService`; a unified middleware guard should be added before Phase B.
 
 ---
 
