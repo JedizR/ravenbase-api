@@ -522,5 +522,7 @@ linking each new test to the FR-AC it proves.
   (skips frontend-only stories: 011, 014, 017, 019-022, 027, 030-035, 036-FE)
 □ Did I update docs/.bmad/project-status.md with current sprint and next story?
 □ Did I append an entry to docs/.bmad/journal.md? (all 6 fields filled, stats table updated)
+□ Did I fill in the actual commit hash in the journal entry?
+  (run: git log --oneline -1 to get it — never write TBD)
 □ Did I commit ALL FOUR files in one commit: epics.md + project-status.md + story-counter.txt + journal.md?
 ```

@@ -364,7 +364,7 @@ Qdrant similarity scan (cosine threshold 0.87, always tenant-scoped via `_tenant
 ### STORY-013 — Conflict API (List, Resolve, Undo)
 **Date:** 2026-03-27 | **Sprint:** 9 | **Phase:** A | **Repo:** ravenbase-api
 **Quality gate:** ✅ clean — 126 tests passing, 0 ruff errors, 0 pyright errors
-**Commit:** `TBD`
+**Commit:** `fd35d8c`
 
 **What was built:**
 Three REST endpoints exposing the conflict resolution workflow: `GET /v1/conflicts` (paginated, optional `status` filter, newest first); `POST /v1/conflicts/{id}/resolve` supporting ACCEPT_NEW (atomic SUPERSEDES Neo4j edge + `is_valid` flags in one `run_query` call), KEEP_OLD (status-only), and CUSTOM (LLMRouter `custom_resolution` task → `GraphMutations` schema → optional SUPERSEDES edge); `POST /v1/conflicts/{id}/undo` (30-second window, reverses SUPERSEDES + `is_valid` for ACCEPT_NEW). Ownership checks on every mutation (403). `raise_403`, `raise_409` helpers added to `errors.py` with `-> NoReturn` type annotation. `custom_resolution` task added to `_TASK_ROUTING` in `llm_router.py`.
