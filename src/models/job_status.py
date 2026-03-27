@@ -9,7 +9,7 @@ class JobStatus(SQLModel, table=True):
     __tablename__ = "job_statuses"  # type: ignore[assignment]
 
     id: str = Field(primary_key=True)  # ARQ job ID
-    user_id: uuid.UUID = Field(foreign_key="users.id", index=True)
+    user_id: str = Field(foreign_key="users.id", index=True)
     source_id: uuid.UUID | None = Field(default=None, foreign_key="sources.id")
     job_type: str
     status: str = Field(default="queued")

@@ -1,5 +1,4 @@
 # src/models/user.py
-import uuid
 from datetime import UTC, datetime
 
 from sqlmodel import Field, SQLModel
@@ -8,10 +7,7 @@ from sqlmodel import Field, SQLModel
 class User(SQLModel, table=True):
     __tablename__ = "users"  # type: ignore[assignment]
 
-    id: uuid.UUID = Field(
-        default_factory=uuid.uuid4,
-        primary_key=True,
-    )
+    id: str = Field(primary_key=True)
     email: str = Field(unique=True, index=True)
     display_name: str | None = None
     avatar_url: str | None = None
@@ -35,14 +31,14 @@ class User(SQLModel, table=True):
         unique=True,
         index=True,
         description=(
-            "First 8 chars of UUID, uppercase. Set on user creation. "
+            "First 8 hex chars of a UUID, uppercase. Set on user creation. "
             "Used as: ravenbase.app/register?ref=CODE"
         ),
     )
-    referred_by_user_id: uuid.UUID | None = Field(
+    referred_by_user_id: str | None = Field(
         default=None,
         foreign_key="users.id",
-        description="UUID of referring user. NULL if organic signup.",
+        description="Clerk user_id of referring user. NULL if organic signup.",
     )
     referral_reward_claimed: bool = Field(
         default=False,

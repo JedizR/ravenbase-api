@@ -9,7 +9,7 @@ class CreditTransaction(SQLModel, table=True):
     __tablename__ = "credit_transactions"  # type: ignore[assignment]
 
     id: int = Field(default=None, primary_key=True)  # BIGSERIAL
-    user_id: uuid.UUID = Field(foreign_key="users.id", index=True)
+    user_id: str = Field(foreign_key="users.id", index=True)
     amount: int
     balance_after: int
     operation: str

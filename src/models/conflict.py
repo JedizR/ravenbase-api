@@ -22,7 +22,7 @@ class Conflict(SQLModel, table=True):
     )
 
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
-    user_id: uuid.UUID = Field(foreign_key="users.id", index=True)
+    user_id: str = Field(foreign_key="users.id", index=True)
     profile_id: uuid.UUID | None = Field(default=None, foreign_key="system_profiles.id")
     incumbent_memory_id: str
     challenger_memory_id: str

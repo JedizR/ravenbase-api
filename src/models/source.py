@@ -19,7 +19,7 @@ class Source(SQLModel, table=True):
     __table_args__ = (Index("idx_sources_user_ingested", "user_id", "ingested_at"),)
 
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
-    user_id: uuid.UUID = Field(foreign_key="users.id", index=True)
+    user_id: str = Field(foreign_key="users.id", index=True)
     profile_id: uuid.UUID | None = Field(default=None, foreign_key="system_profiles.id")
     original_filename: str
     file_type: str
@@ -38,6 +38,6 @@ class Source(SQLModel, table=True):
 class SourceAuthorityWeight(SQLModel, table=True):
     __tablename__ = "source_authority_weights"  # type: ignore[assignment]
 
-    user_id: uuid.UUID = Field(foreign_key="users.id", primary_key=True)
+    user_id: str = Field(foreign_key="users.id", primary_key=True)
     source_type: str = Field(primary_key=True)
     weight: int = Field(default=5)
