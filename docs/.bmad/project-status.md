@@ -9,23 +9,23 @@
 
 **Phase:** A — Backend (Sprints 1–17)
 **Current sprint:** 7
-**Status:** In progress — 7 of 37 stories complete
+**Status:** In progress — 8 of 37 stories complete
 
-**Next story to implement:** STORY-010
-**Story file:** `docs/stories/EPIC-02-ingestion/STORY-010.md`
+**Next story to implement:** STORY-011
+**Story file:** `docs/stories/EPIC-03-graph/STORY-011.md`
 
 ---
 
 ## Last Completed Story
 
-**STORY-009 — Entity Extraction + Neo4j Writer** (2026-03-26)
-LLMRouter (Gemini 2.5 Flash primary, Claude Haiku fallback, 429 backoff). GraphService per-chunk extraction with `ExtractionResult` Pydantic schema. MERGE Concept nodes (dedup by `{name, tenant_id}`), CREATE Memory nodes, EXTRACTED_FROM + RELATES_TO relationships. `graph_extraction` ARQ task registered in WorkerSettings, triggered automatically by `parse_document` and `ingest_text`. `QdrantAdapter.scroll_by_source` for paginated chunk retrieval. 90 tests passing, `make quality` clean.
+**STORY-010 — Graph API Endpoints (nodes + neighborhood)** (2026-03-27)
+`GET /v1/graph/nodes` and `GET /v1/graph/neighborhood/{node_id}` endpoints. `GraphNode`, `GraphEdge`, `GraphResponse` Pydantic schemas. `GraphService.get_nodes_for_explorer()` and `get_neighborhood()` with N-hop Cypher traversal. Profile filter via `n.profile_id` property. 102 tests passing, `make quality` clean.
 
 ---
 
 ## Context for Next Session
 
-STORY-009 merged to main. `graph_extraction` is now live and triggered automatically after `parse_document` and `ingest_text` complete. story-counter is now 010. Next up is STORY-010 — Graph API endpoints (REST endpoints for node + neighborhood queries, still in ravenbase-api). The full STORY-008 row in epics.md will only flip to ✅ after the frontend Omnibar UI (AC-6..AC-8) in ravenbase-web completes in Phase B.
+STORY-010 merged to main. Graph API endpoints are live — both the flat node list and N-hop neighborhood traversal. story-counter is now 011. Next up is STORY-011 — Graph Explorer UI (Cytoscape.js, node click panel) in ravenbase-web (Phase B / frontend work).
 
 ---
 

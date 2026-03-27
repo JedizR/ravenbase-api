@@ -12,12 +12,12 @@
 
 | Field | Value |
 |---|---|
-| Total stories complete | 6 / 37 |
+| Total stories complete | 8 / 37 |
 | Current phase | Phase A — Backend (Sprints 1–17) |
-| Current sprint | 5 |
+| Current sprint | 7 |
 | Active repo | ravenbase-api |
 | Project started | 2026-03-25 |
-| Last entry | 2026-03-26 (STORY-007 BE) |
+| Last entry | 2026-03-27 (STORY-010) |
 
 > **Update this table** after every story entry. Increment stories complete,
 > update current sprint and phase when they change.
@@ -306,6 +306,21 @@ ON CREATE SET in MERGE clause uses the word "CREATE" as a substring — test ass
 
 **Tech debt noted:**
 GraphService._write_to_neo4j issues N separate run_query calls per chunk (1 per entity + 1 per memory + N relationship queries). For sources with hundreds of chunks and many entities, this could be batched with UNWIND for better Neo4j throughput.
+
+---
+
+### STORY-010 — Graph API Endpoints (nodes + neighborhood)
+**Date:** 2026-03-27 | **Sprint:** 7 | **Phase:** A | **Repo:** ravenbase-api
+**Quality gate:** ✅ clean — 102 tests passing, 0 ruff errors, 0 pyright errors
+**Commit:** `3cb5040`
+
+**What was built:** Graph API endpoints for the Graph Explorer UI. `GET /v1/graph/nodes` returns all tenant-scoped nodes and edges (with optional `profile_id` and `node_types` filters, default limit 200). `GET /v1/graph/neighborhood/{node_id}` returns an N-hop subgraph (default hops=2, limit=50). Added `GraphNode`, `GraphEdge`, `GraphResponse` Pydantic schemas to `src/schemas/graph.py`. Added `get_nodes_for_explorer()` and `get_neighborhood()` to `GraphService` with private helpers for node ID/label extraction, deduplication, and `memory_count` computation. 12 integration tests (schema, service, endpoint layers).
+
+**Key decisions:** Used two separate Cypher queries for neighborhood (nodes then relationships with DISTINCT) to avoid cartesian product from UNWIND. Returned `labels(n)[0]` and `type(r)` as scalars in queries so `run_query()` dicts carry full metadata without adapter changes. Profile filter uses `n.profile_id` property (written by STORY-009) — not the non-existent HAS_MEMORY → SystemProfile relationship. Route handlers use `with GraphService() as svc:` context manager for proper adapter cleanup.
+
+**Gotchas:** STORY-010 story doc referenced a HAS_MEMORY relationship from Memory to SystemProfile that was never created — profile filter corrected to property-based. Cypher `result.data()` loses node labels and relationship types; workaround is explicit `labels(n)[0]` / `type(r)` in RETURN clause.
+
+**Tech debt noted:** Concept nodes do not carry profile_id; profile filter only applies to Memory nodes. A future story should add profile-scoped Concept traversal if needed.
 
 ---
 
