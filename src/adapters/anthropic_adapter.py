@@ -39,7 +39,7 @@ class AnthropicAdapter(BaseAdapter):
             model=model,
             max_tokens=4096,
             system=system_prompt,
-            messages=messages,
+            messages=messages,  # type: ignore[arg-type]
         ) as stream:
             async for text in stream.text_stream:
                 yield text

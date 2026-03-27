@@ -56,7 +56,7 @@ async def db_session() -> AsyncSession:
 async def test_user(db_session: AsyncSession) -> User:
     now = _naive_now()
     user = User(
-        id=uuid.uuid4(),
+        id=str(uuid.uuid4()),
         email=f"test-{uuid.uuid4()}@example.com",
         tier="free",
         referral_code=uuid.uuid4().hex[:8].upper(),
@@ -74,7 +74,7 @@ async def test_user_b(db_session: AsyncSession) -> User:
     """Second user for tenant isolation tests."""
     now = _naive_now()
     user = User(
-        id=uuid.uuid4(),
+        id=str(uuid.uuid4()),
         email=f"test-b-{uuid.uuid4()}@example.com",
         tier="free",
         referral_code=uuid.uuid4().hex[:8].upper(),

@@ -117,7 +117,7 @@ async def ingest_client_with_duplicate(mocker):
 
     existing = Source(
         id=KNOWN_SOURCE_ID,
-        user_id=uuid.UUID(TEST_TENANT_ID),
+        user_id=TEST_TENANT_ID,
         original_filename="dup.pdf",
         file_type="pdf",
         mime_type="application/pdf",

@@ -3,6 +3,7 @@
 
 All external I/O (RAGService, AnthropicAdapter, DB, Redis, Neo4j) is mocked.
 """
+
 import json
 import uuid
 from unittest.mock import AsyncMock, MagicMock
@@ -190,8 +191,9 @@ def _fake_session_ctx():
 
 def _fake_user():
     from src.models.user import User  # noqa: PLC0415
+
     return User(
-        id=uuid.uuid4(),
+        id=str(uuid.uuid4()),
         email="x@example.com",
         credits_balance=100,
         tier="free",

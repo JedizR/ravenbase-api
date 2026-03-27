@@ -17,7 +17,7 @@ router = APIRouter(prefix="/webhooks", tags=["webhooks"])
 @router.post("/clerk")
 async def clerk_webhook(
     request: Request,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db),  # noqa: B008
 ) -> dict:
     """Receive Clerk webhook events and react to user lifecycle changes.
 
@@ -43,17 +43,20 @@ async def clerk_webhook(
         payload = wh.verify(
             body,
             {
-                "svix-id": svix_id,
-                "svix-timestamp": svix_timestamp,
-                "svix-signature": svix_signature,
+                "svix-id": svix_id or "",
+                "svix-timestamp": svix_timestamp or "",
+                "svix-signature": svix_signature or "",
             },
         )
     except WebhookVerificationError:
         logger.warning("webhook.invalid_signature")
         raise HTTPException(
             status_code=400,
-            detail={"code": "INVALID_SIGNATURE", "message": "Webhook signature verification failed"},
-        )
+            detail={
+                "code": "INVALID_SIGNATURE",
+                "message": "Webhook signature verification failed",
+            },
+        ) from None
 
     event_type = payload.get("type")
     log = logger.bind(event_type=event_type)

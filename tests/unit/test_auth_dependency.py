@@ -13,7 +13,6 @@ from fastapi import HTTPException
 
 from src.api.dependencies.auth import _decode_jwt, require_user, verify_token_query_param
 
-
 # ---------------------------------------------------------------------------
 # require_user — header-based auth
 # ---------------------------------------------------------------------------

@@ -289,8 +289,7 @@ class ConflictService(BaseService):
         db: AsyncSession,
     ) -> PaginatedResponse[ConflictResponse]:
         """Return paginated conflicts for the given user, newest first."""
-        uid = uuid.UUID(user_id)
-        base = select(Conflict).where(Conflict.user_id == uid)
+        base = select(Conflict).where(Conflict.user_id == user_id)
         if status is not None:
             base = base.where(Conflict.status == status)
 
@@ -345,7 +344,7 @@ class ConflictService(BaseService):
         if conflict is None:
             raise_404(ErrorCode.CONFLICT_NOT_FOUND, "Conflict not found.")
 
-        if conflict.user_id != uuid.UUID(user_id):
+        if conflict.user_id != user_id:
             raise_403(ErrorCode.CONFLICT_FORBIDDEN, "You do not own this conflict.")
 
         if conflict.status != ConflictStatus.PENDING:
@@ -403,7 +402,7 @@ class ConflictService(BaseService):
         if conflict is None:
             raise_404(ErrorCode.CONFLICT_NOT_FOUND, "Conflict not found.")
 
-        if conflict.user_id != uuid.UUID(user_id):
+        if conflict.user_id != user_id:
             raise_403(ErrorCode.CONFLICT_FORBIDDEN, "You do not own this conflict.")
 
         if conflict.status == ConflictStatus.PENDING:
@@ -569,7 +568,7 @@ class ConflictService(BaseService):
     async def _load_authority_weight(
         self,
         session: object,
-        user_id: uuid.UUID,
+        user_id: str,
         source_id_str: str,
     ) -> int:
         """Look up authority weight for the incumbent source via its source record."""
@@ -585,7 +584,7 @@ class ConflictService(BaseService):
 
     async def _load_authority_weight_by_type(
         self,
-        user_id: uuid.UUID,
+        user_id: str,
         file_type: str,
     ) -> int:
         """Query SourceAuthorityWeight by (user_id, source_type). Default: 5."""

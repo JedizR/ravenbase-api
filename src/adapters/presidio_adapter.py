@@ -53,21 +53,15 @@ class PresidioAdapter:
 
         masked = self._get_anonymizer().anonymize(
             text=text,
-            analyzer_results=results,
+            analyzer_results=results,  # type: ignore[arg-type]
             operators={
                 "PERSON": OperatorConfig(
                     "custom",
                     {"lambda": lambda x: entity_map.get(x, "Person_000")},
                 ),
-                "EMAIL_ADDRESS": OperatorConfig(
-                    "mask", {"chars_to_mask": 8, "masking_char": "*"}
-                ),
-                "PHONE_NUMBER": OperatorConfig(
-                    "replace", {"new_value": "PHONE_REDACTED"}
-                ),
-                "CREDIT_CARD": OperatorConfig(
-                    "replace", {"new_value": "CARD_REDACTED"}
-                ),
+                "EMAIL_ADDRESS": OperatorConfig("mask", {"chars_to_mask": 8, "masking_char": "*"}),
+                "PHONE_NUMBER": OperatorConfig("replace", {"new_value": "PHONE_REDACTED"}),
+                "CREDIT_CARD": OperatorConfig("replace", {"new_value": "CARD_REDACTED"}),
             },
         )
         return masked.text, entity_map

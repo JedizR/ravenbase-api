@@ -40,7 +40,7 @@ def _make_conflict(
 ) -> Conflict:
     c = Conflict(
         id=uuid.uuid4(),
-        user_id=uuid.UUID(user_id),
+        user_id=user_id,
         incumbent_memory_id="mem-incumbent-1",
         challenger_memory_id="mem-challenger-1",
         incumbent_content="I work at Acme Corp.",

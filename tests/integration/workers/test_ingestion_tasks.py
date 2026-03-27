@@ -53,7 +53,7 @@ async def test_user(db_session: AsyncSession) -> User:
     # Pass explicit naive datetimes — local postgres is TIMESTAMP WITHOUT TIME ZONE
     now = _naive_now()
     user = User(
-        id=uuid.uuid4(),
+        id=str(uuid.uuid4()),
         email=f"test-{uuid.uuid4()}@example.com",
         tier="free",
         referral_code=uuid.uuid4().hex[:8].upper(),

@@ -9,6 +9,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from httpx import ASGITransport, AsyncClient
+from svix.webhooks import WebhookVerificationError
 
 from src.api.dependencies.db import get_db
 from src.api.main import app
@@ -18,9 +19,7 @@ _USER_CREATED_PAYLOAD = {
     "type": "user.created",
     "data": {
         "id": "user_2vKdE5KqDemoClerkId",
-        "email_addresses": [
-            {"id": "iead_abc123", "email_address": "newuser@example.com"}
-        ],
+        "email_addresses": [{"id": "iead_abc123", "email_address": "newuser@example.com"}],
         "primary_email_address_id": "iead_abc123",
         "first_name": "New",
         "last_name": "User",
@@ -38,9 +37,7 @@ _SVIX_HEADERS = {
 
 @pytest.fixture
 async def webhook_client():
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as ac:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
         yield ac
 
 
@@ -57,8 +54,6 @@ async def test_missing_svix_headers_returns_400(webhook_client):
 
 @pytest.mark.asyncio
 async def test_invalid_signature_returns_400(webhook_client):
-    from svix.webhooks import WebhookVerificationError
-
     with patch("src.api.routes.webhooks.Webhook") as mock_cls:
         mock_wh = MagicMock()
         mock_wh.verify.side_effect = WebhookVerificationError("bad sig")
@@ -91,9 +86,7 @@ async def test_user_created_inserts_user(webhook_client):
         mock_wh.verify.return_value = _USER_CREATED_PAYLOAD
         mock_cls.return_value = mock_wh
 
-        resp = await webhook_client.post(
-            "/webhooks/clerk", content=body, headers=_SVIX_HEADERS
-        )
+        resp = await webhook_client.post("/webhooks/clerk", content=body, headers=_SVIX_HEADERS)
 
     app.dependency_overrides.pop(get_db, None)
 
@@ -134,9 +127,7 @@ async def test_user_created_idempotent_if_user_exists(webhook_client):
         mock_wh.verify.return_value = _USER_CREATED_PAYLOAD
         mock_cls.return_value = mock_wh
 
-        resp = await webhook_client.post(
-            "/webhooks/clerk", content=body, headers=_SVIX_HEADERS
-        )
+        resp = await webhook_client.post("/webhooks/clerk", content=body, headers=_SVIX_HEADERS)
 
     app.dependency_overrides.pop(get_db, None)
 

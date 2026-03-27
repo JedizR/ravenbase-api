@@ -95,7 +95,7 @@ async def _set_source_completed(source_id: str, chunk_count: int) -> None:
 async def _flag_user_account(tenant_id: str) -> None:
     """Set user.is_active = False on hard-reject moderation (AC-11)."""
     async with async_session_factory() as session:
-        user = await session.get(User, uuid.UUID(tenant_id))
+        user = await session.get(User, tenant_id)
         if user is None:
             logger.warning("_flag_user_account.not_found", tenant_id=tenant_id)
             return

@@ -104,7 +104,7 @@ class IngestionService(BaseService):
         file_hash = hashlib.sha256(content).hexdigest()
         result = await db.exec(
             select(Source).where(
-                Source.user_id == uuid.UUID(tenant_id),
+                Source.user_id == tenant_id,
                 Source.sha256_hash == file_hash,
             )
         )
@@ -129,7 +129,7 @@ class IngestionService(BaseService):
         file_ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
         source = Source(
             id=source_id,
-            user_id=uuid.UUID(tenant_id),
+            user_id=tenant_id,
             original_filename=filename,
             file_type=file_ext,
             mime_type=mime,
@@ -181,7 +181,7 @@ class IngestionService(BaseService):
         file_hash = hashlib.sha256(content.encode("utf-8")).hexdigest()
         result = await db.exec(
             select(Source).where(
-                Source.user_id == uuid.UUID(tenant_id),
+                Source.user_id == tenant_id,
                 Source.sha256_hash == file_hash,
             )
         )
@@ -199,7 +199,7 @@ class IngestionService(BaseService):
         source_id = uuid.uuid4()
         source = Source(
             id=source_id,
-            user_id=uuid.UUID(tenant_id),
+            user_id=tenant_id,
             profile_id=uuid.UUID(profile_id) if profile_id else None,
             original_filename="direct_input",
             file_type="direct_input",

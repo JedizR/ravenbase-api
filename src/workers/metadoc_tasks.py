@@ -27,9 +27,30 @@ _CREDIT_COSTS: dict[str, int] = {
 }
 
 _ALLOWED_TAGS = [
-    "h1", "h2", "h3", "h4", "h5", "h6", "p", "br", "hr",
-    "strong", "em", "code", "pre", "blockquote",
-    "ul", "ol", "li", "a", "table", "thead", "tbody", "tr", "th", "td",
+    "h1",
+    "h2",
+    "h3",
+    "h4",
+    "h5",
+    "h6",
+    "p",
+    "br",
+    "hr",
+    "strong",
+    "em",
+    "code",
+    "pre",
+    "blockquote",
+    "ul",
+    "ol",
+    "li",
+    "a",
+    "table",
+    "thead",
+    "tbody",
+    "tr",
+    "th",
+    "td",
 ]
 _ALLOWED_ATTRIBUTES: dict[str, list[str]] = {"a": ["href"], "code": ["class"]}
 
@@ -111,7 +132,11 @@ async def generate_meta_document(
                     content, _ = presidio.mask_for_llm(content)
                 context_parts.append(content)
 
-            context = "\n\n---\n\n".join(context_parts) if context_parts else "(No relevant memories found)"
+            context = (
+                "\n\n---\n\n".join(context_parts)
+                if context_parts
+                else "(No relevant memories found)"
+            )
 
             # ── Phase 3: Build LLM messages (RULE 10: XML boundary tags) ──────
             messages = [
@@ -133,9 +158,7 @@ async def generate_meta_document(
                 model=model,
             ):
                 full_tokens.append(token)
-                await _publish(
-                    settings.REDIS_URL, job_id, {"type": "token", "content": token}
-                )
+                await _publish(settings.REDIS_URL, job_id, {"type": "token", "content": token})
 
             raw_content = "".join(full_tokens)
             log.info("generate_meta_document.streaming_done", token_count=len(full_tokens))
@@ -150,14 +173,12 @@ async def generate_meta_document(
                 strip=True,
             )
             title = _extract_title(prompt)
-            contributing_memory_ids = [
-                str(c.memory_id) for c in chunks if c.memory_id
-            ]
+            contributing_memory_ids = [str(c.memory_id) for c in chunks if c.memory_id]
 
             async with async_session_factory() as session:
                 meta_doc = MetaDocument(
                     id=uuid.UUID(doc_id),
-                    user_id=uuid.UUID(tenant_id),
+                    user_id=tenant_id,
                     profile_id=uuid.UUID(profile_id) if profile_id else None,
                     title=title,
                     original_prompt=prompt,
@@ -179,17 +200,19 @@ async def generate_meta_document(
                     memory_ids=contributing_memory_ids,
                     tenant_id=tenant_id,
                 )
-                log.info("generate_meta_document.graph_edges_written", count=len(contributing_memory_ids))
+                log.info(
+                    "generate_meta_document.graph_edges_written", count=len(contributing_memory_ids)
+                )
 
             # ── Phase 7: Deduct credits AFTER success (AC-9 guard) ───────────
             async with async_session_factory() as session:
-                user = await session.get(User, uuid.UUID(tenant_id))
+                user = await session.get(User, tenant_id)
                 if user is not None:
                     new_balance = user.credits_balance - credit_cost
                     user.credits_balance = new_balance
                     session.add(
                         CreditTransaction(
-                            user_id=uuid.UUID(tenant_id),
+                            user_id=tenant_id,
                             amount=-credit_cost,
                             balance_after=new_balance,
                             operation="metadoc_generation",
