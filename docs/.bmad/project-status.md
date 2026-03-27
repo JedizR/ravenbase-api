@@ -11,8 +11,8 @@
 **Current sprint:** 7
 **Status:** In progress — 8 of 37 stories complete
 
-**Next story to implement:** STORY-011
-**Story file:** `docs/stories/EPIC-03-graph/STORY-011.md`
+**Next story to implement:** STORY-012
+**Story file:** `docs/stories/EPIC-04-conflict/STORY-012.md`
 
 ---
 
@@ -25,7 +25,7 @@
 
 ## Context for Next Session
 
-STORY-010 merged to main. Graph API endpoints are live — both the flat node list and N-hop neighborhood traversal. story-counter is now 011. Next up is STORY-011 — Graph Explorer UI (Cytoscape.js, node click panel) in ravenbase-web (Phase B / frontend work).
+STORY-010 merged to main. Graph API endpoints live at `GET /v1/graph/nodes` and `GET /v1/graph/neighborhood/{node_id}`. STORY-011 (Graph Explorer UI) is a frontend story in ravenbase-web and will be implemented in Phase B. Next backend story is STORY-012 (Conflict detection worker — staying in ravenbase-api).
 
 ---
 
