@@ -1,6 +1,6 @@
 # Stories — Epics & Story Master List
 
-> **Status key:** 🔲 DRAFT | ✅ DONE | 🔄 IN_PROGRESS | 🔍 IN_REVIEW
+> **Status key:** 🔲 DRAFT | ✅ DONE | 🔄 IN_PROGRESS | 🔍 IN_REVIEW | ✅ BE / 🔲 FE PARTIAL (cross-repo story, backend done, frontend pending Phase B)
 >
 > **Total stories:** 37 | **Total epics:** 9
 >
@@ -31,8 +31,8 @@
 |---|---|---|---|---|
 | STORY-005 | File upload endpoint + Supabase Storage | P0 | Medium | ✅ |
 | STORY-006 | Docling parse + chunk + embed worker | P0 | Large | ✅ |
-| STORY-007 | SSE progress stream (Redis pub/sub) | P0 | Medium | 🔲 |
-| STORY-008 | Text quick-capture (Omnibar /ingest) | P0 | Small | 🔲 |
+| STORY-007 | SSE progress stream (Redis pub/sub) | P0 | Medium | ✅ BE / 🔲 FE |
+| STORY-008 | Text quick-capture (Omnibar /ingest) | P0 | Small | ✅ BE / 🔲 FE |
 
 ---
 
