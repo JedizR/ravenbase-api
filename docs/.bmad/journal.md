@@ -414,7 +414,7 @@ RAGService with three-phase retrieval pipeline: (1) Qdrant kNN semantic search w
 - Deduplication by SHA-256 content hash: the same chunk may arrive from both Qdrant and Neo4j; hashing ensures deterministic deduplication regardless of source order.
 
 **Gotchas:**
-- `extract_concepts` uses the LLMRouter with `entity_extraction` task key — response must be validated against Pydantic schema before use (RULE 9); invalid JSON from the LLM returns an empty concept list gracefully.
+- `extract_concepts()` filters words shorter than 4 characters and stop-words using a frozenset. Words of exactly 4 characters pass the `len(word) > 3` check — confirmed by tests. The stop-word list must be maintained manually if new common words need filtering.
 - Integration tests mock both Qdrant and Neo4j adapters to avoid requiring live infrastructure; async mock setup requires `AsyncMock` not `MagicMock` for coroutine returns.
 
 **Tech debt noted:**
