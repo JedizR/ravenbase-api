@@ -8,6 +8,7 @@ import zipfile
 from datetime import UTC, datetime
 
 import structlog
+from fastapi import HTTPException
 from qdrant_client.models import PointStruct
 
 from src.adapters.docling_adapter import DoclingAdapter
@@ -248,9 +249,18 @@ async def parse_document(
                     reference_id=uuid.UUID(source_id),
                 )
                 log.info("parse_document.credits_deducted", pages=page_count)
+            except HTTPException as credit_exc:
+                if credit_exc.status_code == 402:
+                    # Insufficient credits: document is already indexed — log and continue
+                    log.warning("parse_document.insufficient_credits", pages=page_count)
+                else:
+                    log.error("parse_document.credit_deduction_failed", error=str(credit_exc))
+                    raise
             except Exception as credit_exc:
-                # Insufficient credits: document is already indexed — log and continue
-                log.warning("parse_document.credit_deduction_failed", error=str(credit_exc))
+                log.error(
+                    "parse_document.credit_deduction_failed", error=str(credit_exc), exc_info=True
+                )
+                raise
 
         # ── 9. COMPLETED ─────────────────────────────────────────────────────
         await _set_source_completed(source_id, chunk_count=len(chunks))

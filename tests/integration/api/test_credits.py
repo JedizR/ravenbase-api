@@ -408,3 +408,67 @@ async def test_ingestion_deducts_per_page():
         deduct_kwargs = mock_svc.deduct.call_args.kwargs
         assert deduct_kwargs["amount"] == 2  # 2 unique pages
         assert deduct_kwargs["operation"] == "ingestion"
+        assert deduct_kwargs["reference_id"] == uuid.UUID(str(mock_source.id))
+
+
+@pytest.mark.asyncio
+async def test_ingestion_continues_on_insufficient_credits():
+    """parse_document completes successfully even when CreditService raises 402."""
+    chunks = [{"text": "chunk1", "chunk_index": 0, "page_number": 1}]
+
+    with (
+        patch("src.workers.ingestion_tasks.async_session_factory") as mock_factory,
+        patch("src.workers.ingestion_tasks.StorageAdapter") as mock_storage,
+        patch("src.workers.ingestion_tasks.ModerationAdapter") as mock_mod,
+        patch("src.workers.ingestion_tasks.DoclingAdapter") as mock_docling,
+        patch("src.workers.ingestion_tasks.OpenAIAdapter") as mock_openai,
+        patch("src.workers.ingestion_tasks.QdrantAdapter") as mock_qdrant,
+        patch("src.workers.ingestion_tasks.publish_progress") as mock_pub,
+        patch("src.workers.ingestion_tasks.CreditService") as mock_svc_cls,
+    ):
+        mock_source = Source(
+            id=uuid.uuid4(),
+            user_id="user_001",
+            original_filename="test.pdf",
+            storage_path="path/to/file.pdf",
+            mime_type="application/pdf",
+            status=SourceStatus.PENDING,
+            sha256_hash="abc123",
+        )
+
+        mock_session = AsyncMock()
+        mock_session.__aenter__ = AsyncMock(return_value=mock_session)
+        mock_session.__aexit__ = AsyncMock(return_value=None)
+        mock_session.get = AsyncMock(return_value=mock_source)
+        mock_session.add = MagicMock()
+        mock_session.commit = AsyncMock()
+        mock_factory.return_value = mock_session
+
+        mock_storage.return_value.download_file = AsyncMock(return_value=b"fake pdf bytes")
+        mock_mod.return_value.check_content = AsyncMock()
+        mock_docling.return_value.parse_and_chunk = AsyncMock(return_value=chunks)
+        mock_openai.return_value.embed_chunks = AsyncMock(return_value=[[0.1] * 1536])
+        mock_qdrant.return_value.upsert = AsyncMock()
+        mock_pub.return_value = AsyncMock()
+
+        # CreditService.deduct raises 402 (insufficient credits)
+        mock_svc_cls.return_value.deduct = AsyncMock(
+            side_effect=HTTPException(
+                status_code=402,
+                detail={"code": "INSUFFICIENT_CREDITS", "message": "Need 1, have 0"},
+            )
+        )
+
+        mock_redis = AsyncMock()
+        mock_redis.enqueue_job = AsyncMock()
+        mock_ctx = {"redis": mock_redis}
+
+        result = await parse_document(
+            mock_ctx,
+            source_id=str(mock_source.id),
+            tenant_id="user_001",
+        )
+
+        # Task should complete successfully despite credit failure
+        assert result["status"] == "ok"
+        assert result["source_id"] == str(mock_source.id)
