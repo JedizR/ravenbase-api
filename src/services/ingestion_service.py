@@ -5,11 +5,12 @@ import structlog
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
+from src.adapters.neo4j_adapter import Neo4jAdapter
 from src.adapters.storage_adapter import StorageAdapter
 from src.core.config import settings
 from src.core.errors import ErrorCode, raise_422, raise_429
 from src.models.source import Source, SourceStatus
-from src.schemas.ingest import UploadResponse
+from src.schemas.ingest import ImportPromptResponse, UploadResponse
 from src.services.base import BaseService
 
 logger = structlog.get_logger()
@@ -28,15 +29,57 @@ RATE_LIMITS = {
     "pro": 50,
 }
 
+_GENERIC_PROMPT = """\
+Please analyze our conversation and extract a structured knowledge summary \
+for my personal knowledge base.
+
+Include:
+- Key facts, insights, and learnings
+- Skills, tools, and technologies discussed
+- Projects, goals, and decisions mentioned
+- People, organizations, and relationships
+
+Write clear, detailed paragraphs. Be thorough — this summary will be \
+imported into a long-term memory system.\
+"""
+
+_PERSONALIZED_PROMPT_TEMPLATE = """\
+Please analyze our conversation and extract a structured knowledge summary \
+for my personal knowledge base.
+
+Focus especially on these topics I've been tracking: {concept_list}.
+
+Also capture any new topics, skills, projects, or decisions you encounter.
+
+Include:
+- Key facts, insights, and learnings
+- Skills, tools, and technologies discussed
+- Projects, goals, and decisions mentioned
+- People, organizations, and relationships
+
+Write clear, detailed paragraphs. Be thorough — this summary will be \
+imported into a long-term memory system.\
+"""
+
 
 class IngestionService(BaseService):
-    def __init__(self, storage: StorageAdapter | None = None) -> None:
+    def __init__(
+        self,
+        storage: StorageAdapter | None = None,
+        neo4j: Neo4jAdapter | None = None,
+    ) -> None:
         self._storage = storage
+        self._neo4j = neo4j
 
     def _get_storage(self) -> StorageAdapter:
         if self._storage is None:
             self._storage = StorageAdapter()
         return self._storage
+
+    def _get_neo4j(self) -> Neo4jAdapter:
+        if self._neo4j is None:
+            self._neo4j = Neo4jAdapter()
+        return self._neo4j
 
     def validate_file_type(self, content: bytes) -> str:
         """Detect MIME type from file bytes. Raises 422 if not in allowed set."""
@@ -231,6 +274,36 @@ class IngestionService(BaseService):
             duplicate=False,
         )
 
+    async def generate_import_prompt(
+        self,
+        *,
+        tenant_id: str,
+        profile_id: str | None,
+    ) -> ImportPromptResponse:
+        """Fetch Concept nodes from Neo4j and build a personalized extraction prompt.
+
+        Returns a generic prompt (with empty detected_concepts) for new users
+        who have no Concept nodes yet — never raises 404.
+        """
+        log = logger.bind(tenant_id=tenant_id, profile_id=profile_id)
+        log.info("import_prompt.started")
+
+        concepts = await self._get_neo4j().get_concepts_for_tenant(
+            tenant_id=tenant_id,
+            profile_id=profile_id,
+        )
+
+        if concepts:
+            concept_list = ", ".join(concepts)
+            prompt_text = _PERSONALIZED_PROMPT_TEMPLATE.format(concept_list=concept_list)
+        else:
+            prompt_text = _GENERIC_PROMPT
+
+        log.info("import_prompt.completed", concept_count=len(concepts))
+        return ImportPromptResponse(prompt_text=prompt_text, detected_concepts=concepts)
+
     def cleanup(self) -> None:
         if self._storage:
             self._storage.cleanup()
+        if self._neo4j:
+            self._neo4j.cleanup()
