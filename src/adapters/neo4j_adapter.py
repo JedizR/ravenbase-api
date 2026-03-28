@@ -220,6 +220,46 @@ class Neo4jAdapter(BaseAdapter):
                 limit=limit,
             )
 
+    async def get_concepts_for_tenant(
+        self,
+        tenant_id: str,
+        profile_id: str | None = None,
+        limit: int = 20,
+    ) -> list[str]:
+        """Return the most-recently-seen Concept names for a tenant.
+
+        When profile_id is given, only Concepts reachable via Memory nodes
+        that belong to that profile are returned.
+
+        RULE 11: tenant_id and profile_id are always Cypher parameters.
+        Returns a list of concept name strings (empty list if none found).
+        """
+        if profile_id:
+            query = """
+            MATCH (m:Memory {tenant_id: $tenant_id, profile_id: $profile_id})
+                  -[:EXTRACTED_FROM]->(c:Concept {tenant_id: $tenant_id})
+            WHERE m.is_valid IS NULL OR m.is_valid = true
+            RETURN DISTINCT c.name AS name, c.last_seen AS last_seen
+            ORDER BY last_seen DESC
+            LIMIT $limit
+            """
+            rows = await self.run_query(
+                query,
+                tenant_id=tenant_id,
+                profile_id=profile_id,
+                limit=limit,
+            )
+        else:
+            query = """
+            MATCH (c:Concept {tenant_id: $tenant_id})
+            RETURN c.name AS name, c.last_seen AS last_seen
+            ORDER BY last_seen DESC
+            LIMIT $limit
+            """
+            rows = await self.run_query(query, tenant_id=tenant_id, limit=limit)
+
+        return [row["name"] for row in rows if row.get("name")]
+
     async def delete_all_by_tenant(self, tenant_id: str) -> None:
         """DETACH DELETE all nodes where tenant_id = $tenant_id, then the User root node.
 
