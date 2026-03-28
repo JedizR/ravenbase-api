@@ -556,6 +556,36 @@ Clerk JWT authentication via PyJWT + JWKS endpoint: `require_user` FastAPI depen
 
 ---
 
+### STORY-025 — PII Masking in Production + Presidio Config
+**Date:** 2026-03-28 | **Sprint:** 15 | **Phase:** A | **Repo:** ravenbase-api
+**Quality gate:** ✅ clean — 225 tests passing, 0 ruff errors, 0 pyright errors
+**Commit:** `420fd59`
+
+**What was built:**
+`PresidioAdapter.mask_text(text, job_id, redis)` — async method with deterministic cross-chunk entity aliasing via Redis. Loads existing `pii:map:{job_id}` from Redis on each call so the same PII token in different chunks always receives the same `Entity_NNN` alias. Uses `presidio_analyzer.AnalyzerEngine` for detection (PERSON, EMAIL_ADDRESS, PHONE_NUMBER, CREDIT_CARD, US_SSN, LOCATION) and `presidio_anonymizer.AnonymizerEngine` with a `custom` operator (lambda closure over entity_map) for substitution. `setex` saves the updated map back to Redis with a 3600s TTL only after successful `anonymize` call. `generate_meta_document` worker (Phase 2) calls `mask_text` per chunk when `ENABLE_PII_MASKING=True`; a `finally` block deletes `pii:map:{job_id}` after the job completes or fails. Top-level `PresidioAdapter` import removed from `metadoc_tasks.py` (RULE 6 — lazy import inside the `if settings.ENABLE_PII_MASKING` branch). Pyright `arg-type` suppression added for `presidio_analyzer`/`presidio_anonymizer` `RecognizerResult` type mismatch (two packages export the same class under different module paths). `test_credits.py::test_metadoc_task_uses_credit_service_deduct` updated to remove stale module-level `PresidioAdapter` patch and set `mock_settings.ENABLE_PII_MASKING = False` to skip the PII branch.
+
+| Stat | Count |
+|---|---|
+| Files created | 2 (presidio_adapter.py rewrite, test_presidio_adapter.py rewrite) |
+| Files modified | 4 (metadoc_tasks.py, test_metadoc_tasks.py, test_credits.py) |
+| Tests added | 7 |
+| Total tests | 225 |
+
+**Key decisions:**
+- Entity map stored in Redis (not process memory) so cross-chunk consistency holds even if a future refactor parallelises chunk masking across worker processes.
+- `OperatorConfig("custom", {"lambda": ...})` with a closure `m=entity_map` — avoids the late-binding problem where a plain `lambda x: entity_map[x]` would capture by reference and only see the final state of the map.
+- `setex` called AFTER `anonymize`, not before — if anonymization raises, no stale partial map is persisted.
+- `# type: ignore[arg-type]` on the `analyzer_results` kwarg — pyright correctly detects that `presidio_analyzer.RecognizerResult` and `presidio_anonymizer.entities.engine.recognizer_result.RecognizerResult` are nominally distinct despite being the same class at runtime.
+
+**Gotchas:**
+- `ruff format` reformatted the `# type: ignore[arg-type]` comment to a different line in the multi-line `anonymize(...)` call, causing the suppression to apply to the wrong argument. Fixed by re-running format and verifying the comment stayed on the `analyzer_results=results` line.
+- `test_metadoc_task_uses_credit_service_deduct` in `test_credits.py` patched `src.workers.metadoc_tasks.PresidioAdapter` — a name that was removed by STORY-025's lazy-import refactor. Fixed by removing that patch line and explicitly setting `mock_settings.ENABLE_PII_MASKING = False` so the PII branch is skipped entirely in that test.
+
+**Tech debt noted:**
+- `mask_text` opens a Redis `get` + `setex` round-trip per chunk sequentially. For sources with many chunks this could be batched or the map cached in the adapter instance for the duration of one job.
+
+---
+
 ## Sprint 16 — Chat Backend + Import Prompt
 
 > Chat SSE streaming, multi-turn sessions, AI import helper endpoint.

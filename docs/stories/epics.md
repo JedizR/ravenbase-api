@@ -109,7 +109,7 @@
 |---|---|---|---|---|
 | STORY-023 | Credits system (deduction, top-up, ledger) | P1 | Medium | ✅ |
 | STORY-024 | GDPR account deletion cascade | P1 | Medium | ✅ |
-| STORY-025 | PII masking in production + Presidio config | P1 | Medium | 🔲 |
+| STORY-025 | PII masking in production + Presidio config | P1 | Medium | ✅ |
 | STORY-031 | Dark mode toggle (localStorage + .dark class) | P1 | Small | 🔲 |
 | STORY-032 | Transactional email (welcome, low-credits, ingestion complete via Resend) | P1 | Medium | 🔲 |
 | STORY-033 | Legal pages (Privacy Policy, Terms of Service, Cookie Consent) | P0 | Small | 🔲 |

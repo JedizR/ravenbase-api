@@ -61,9 +61,7 @@ class PresidioAdapter(BaseAdapter):
         raw = await redis.get(entity_map_key)
         entity_map: dict[str, str] = json.loads(raw) if raw else {}
 
-        results = self._get_analyzer().analyze(
-            text=text, entities=self.ENTITY_TYPES, language="en"
-        )
+        results = self._get_analyzer().analyze(text=text, entities=self.ENTITY_TYPES, language="en")
 
         for result in results:
             original = text[result.start : result.end]
@@ -85,7 +83,9 @@ class PresidioAdapter(BaseAdapter):
         }
 
         masked_result = self._get_anonymizer().anonymize(
-            text=text, analyzer_results=results, operators=operators
+            text=text,
+            analyzer_results=results,  # type: ignore[arg-type]
+            operators=operators,
         )
 
         await redis.setex(entity_map_key, 3600, json.dumps(entity_map))

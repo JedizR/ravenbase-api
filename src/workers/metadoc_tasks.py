@@ -256,6 +256,4 @@ async def generate_meta_document(
                 await ctx["redis"].delete(f"pii:map:{job_id}")
                 log.info("generate_meta_document.pii_map_deleted", job_id=job_id)
             except Exception as cleanup_err:
-                log.error(
-                    "generate_meta_document.pii_cleanup_failed", error=str(cleanup_err)
-                )
+                log.error("generate_meta_document.pii_cleanup_failed", error=str(cleanup_err))

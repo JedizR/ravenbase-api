@@ -46,9 +46,7 @@ async def test_mask_text_replaces_person_with_entity_alias(mock_anon_cls, mock_a
 
     text = "John Smith joined the company."
     mock_analyzer.analyze.return_value = [_make_mock_result(0, 10, "PERSON")]
-    mock_anonymizer.anonymize.return_value = _make_mock_anonymized(
-        "Entity_000 joined the company."
-    )
+    mock_anonymizer.anonymize.return_value = _make_mock_anonymized("Entity_000 joined the company.")
 
     adapter = PresidioAdapter()
     redis = _make_redis()

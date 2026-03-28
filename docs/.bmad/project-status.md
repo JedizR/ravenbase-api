@@ -9,23 +9,23 @@
 
 **Phase:** A — Backend (Sprints 1–17)
 **Current sprint:** 15
-**Status:** In progress — 15 of 37 stories complete
+**Status:** In progress — 16 of 37 stories complete
 
-**Next story to implement:** STORY-025
-**Story file:** `docs/stories/EPIC-08-polish/STORY-025.md`
+**Next story to implement:** STORY-026
+**Story file:** `docs/stories/EPIC-09-memory-intelligence/STORY-026.md`
 
 ---
 
 ## Last Completed Story
 
-**STORY-024 — GDPR Account Deletion Cascade** (2026-03-28)
-`DELETE /v1/account` endpoint returning 202 and enqueuing `cascade_delete_account` ARQ task. DeletionService orchestrates Storage → Qdrant → Neo4j → PostgreSQL → Clerk deletion with log-and-continue on partial failure. Deterministic `_job_id=f"gdpr:{user_id}"` prevents duplicate jobs. 13 tests added. Tests passing, `make quality` clean.
+**STORY-025 — PII Masking in Production + Presidio Config** (2026-03-28)
+`PresidioAdapter.mask_text()` with async Redis-backed deterministic entity map (Entity_NNN aliases consistent across chunks). Lazy import of presidio libraries (RULE 6). `generate_meta_document` worker calls `mask_text` per chunk when `ENABLE_PII_MASKING=true`, deletes Redis key in `finally` block. 7 tests added. Tests passing, `make quality` clean.
 
 ---
 
 ## Context for Next Session
 
-STORY-024 merged to main. GDPR cascade deletion is complete — `DELETE /v1/account` returns 202 and enqueues the cascade job; each step independently try/excepted to ensure partial deletion never aborts the remainder. Backend sequence continues: 025→026→028-BE→029→[BACKEND GATE]→036-BE→037. STORY-025 is PII Masking (Presidio).
+STORY-025 merged to main. PII masking is fully wired into the metadoc pipeline — Presidio analyzer+anonymizer lazy-loaded, Redis entity map ensures cross-chunk consistency, cleanup guaranteed via `finally`. Backend sequence continues: 026→028-BE→029→[BACKEND GATE]→036-BE→037. STORY-026 is Conversational Memory Chat (backend).
 
 ---
 

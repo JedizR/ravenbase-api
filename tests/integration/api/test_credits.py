@@ -303,14 +303,15 @@ async def test_metadoc_task_uses_credit_service_deduct():
     """generate_meta_document worker calls CreditService.deduct after success."""
     with (
         patch("src.workers.metadoc_tasks.RAGService") as mock_rag,
-        patch("src.workers.metadoc_tasks.PresidioAdapter"),
         patch("src.workers.metadoc_tasks.AnthropicAdapter") as mock_anthropic,
         patch("src.workers.metadoc_tasks.Neo4jAdapter"),
         patch("src.workers.metadoc_tasks.async_session_factory") as mock_factory,
         patch("src.workers.metadoc_tasks.CreditService") as mock_svc_cls,
-        patch("src.workers.metadoc_tasks.settings"),
+        patch("src.workers.metadoc_tasks.settings") as mock_settings,
         patch("src.workers.metadoc_tasks._publish", new=AsyncMock()),
     ):
+        mock_settings.ENABLE_PII_MASKING = False
+        mock_settings.REDIS_URL = "redis://localhost:6379"
         mock_rag.return_value.retrieve = AsyncMock(return_value=[])
 
         async def fake_stream(*args, **kwargs):
