@@ -72,3 +72,48 @@ class StorageAdapter(BaseAdapter):
         except Exception as exc:
             log.error("storage.download.failed", error=str(exc))
             raise RuntimeError(f"Supabase Storage download failed: {exc}") from exc
+
+    async def delete_folder_by_tenant(self, tenant_id: str) -> None:
+        """Delete all Supabase Storage files under /{tenant_id}/.
+
+        Lists top-level items (source_id subfolders), then lists and removes
+        files within each subfolder. Matches storage_path format:
+        /{tenant_id}/{source_id}/{filename}
+
+        Raises the first exception encountered after logging it (outer
+        try/except, no per-subfolder recovery).
+        """
+        if not tenant_id:
+            raise ValueError("tenant_id must not be empty")
+        log = logger.bind(tenant_id=tenant_id, action="gdpr_deletion", step="storage")
+        log.info("storage.delete_by_tenant.started")
+        try:
+            client = self._get_client()
+            bucket = client.storage.from_(settings.STORAGE_BUCKET)
+
+            # List top-level items (source_id directories)
+            top_level = bucket.list(path=tenant_id)
+            if not top_level:
+                log.info("storage.delete_by_tenant.empty")
+                return
+
+            for item in top_level:
+                item_name = item.get("name", "")
+                if not item_name:
+                    continue
+                subfolder_path = f"{tenant_id}/{item_name}"
+                # If the item has no metadata id it's a "folder" prefix
+                if item.get("id") is None:
+                    # List files inside the subfolder
+                    sub_files = bucket.list(path=subfolder_path)
+                    paths = [f"{subfolder_path}/{f['name']}" for f in sub_files if f.get("id")]
+                    if paths:
+                        bucket.remove(paths)
+                else:
+                    # Item is a file at the top level
+                    bucket.remove([subfolder_path])
+
+            log.info("storage.delete_by_tenant.completed")
+        except Exception as exc:
+            log.error("storage.delete_by_tenant.failed", error=str(exc))
+            raise
