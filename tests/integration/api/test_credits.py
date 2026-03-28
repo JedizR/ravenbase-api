@@ -227,5 +227,12 @@ async def test_clerk_user_created_writes_signup_bonus():
                 )
                 # 200 or 500 ok — route exists, CreditService.add_credits call is the assertion target
                 assert response.status_code in (200, 500)
+
+                # Verify signup_bonus was credited
+                mock_svc.add_credits.assert_awaited_once()
+                call_args = mock_svc.add_credits.await_args
+                assert call_args.args[1] == "user_clerk_abc"  # user_id
+                assert call_args.args[2] == 500               # amount
+                assert call_args.args[3] == "signup_bonus"    # operation
     finally:
         app.dependency_overrides.pop(get_db, None)
