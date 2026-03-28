@@ -1,5 +1,6 @@
 from functools import lru_cache
 
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -35,7 +36,10 @@ class Settings(BaseSettings):
     STORAGE_BUCKET: str = "ravenbase-sources"
 
     STRIPE_SECRET_KEY: str = ""
-    STRIPE_WEBHOOK_SECRET: str = ""
+    STRIPE_WEBHOOK_SECRET: str = Field(
+        default="",
+        description="Stripe webhook signing secret (whsec_...). Required in production — set STRIPE_WEBHOOK_SECRET env var.",
+    )
     RESEND_API_KEY: str = ""
     RESEND_WEBHOOK_SECRET: str = ""
 
