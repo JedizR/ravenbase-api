@@ -11,7 +11,6 @@ import structlog
 
 from src.adapters.anthropic_adapter import AnthropicAdapter
 from src.adapters.neo4j_adapter import Neo4jAdapter
-from src.adapters.presidio_adapter import PresidioAdapter
 from src.api.dependencies.db import async_session_factory
 from src.core.config import settings
 from src.models.meta_document import MetaDocument
@@ -82,7 +81,7 @@ async def _publish(redis_url: str, job_id: str, payload: dict) -> None:  # type:
 
 
 async def generate_meta_document(
-    ctx: dict,  # type: ignore[type-arg]  # noqa: ARG001
+    ctx: dict,  # type: ignore[type-arg]
     *,
     job_id: str,
     prompt: str,
@@ -123,13 +122,18 @@ async def generate_meta_document(
             log.info("generate_meta_document.retrieved", chunk_count=len(chunks))
 
             # ── Phase 2: PII Masking ───────────────────────────────────────────
-            presidio = PresidioAdapter() if settings.ENABLE_PII_MASKING else None
-            context_parts: list[str] = []
-            for chunk in chunks:
-                content = chunk.content
-                if presidio is not None:
-                    content, _ = presidio.mask_for_llm(content)
-                context_parts.append(content)
+            if settings.ENABLE_PII_MASKING:
+                from src.adapters.presidio_adapter import PresidioAdapter  # noqa: PLC0415
+
+                presidio = PresidioAdapter()
+                context_parts: list[str] = []
+                for chunk in chunks:
+                    masked = await presidio.mask_text(
+                        chunk.content, job_id=job_id, redis=ctx["redis"]
+                    )
+                    context_parts.append(masked)
+            else:
+                context_parts = [chunk.content for chunk in chunks]
 
             context = (
                 "\n\n---\n\n".join(context_parts)
@@ -245,3 +249,13 @@ async def generate_meta_document(
         except Exception as inner:
             log.error("generate_meta_document.publish_error_failed", error=str(inner))
         return {"status": "error", "job_id": job_id, "error": str(exc)}
+
+    finally:
+        if settings.ENABLE_PII_MASKING:
+            try:
+                await ctx["redis"].delete(f"pii:map:{job_id}")
+                log.info("generate_meta_document.pii_map_deleted", job_id=job_id)
+            except Exception as cleanup_err:
+                log.error(
+                    "generate_meta_document.pii_cleanup_failed", error=str(cleanup_err)
+                )
