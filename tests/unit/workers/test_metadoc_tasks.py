@@ -119,25 +119,34 @@ async def test_generate_meta_document_publishes_error_on_timeout(mocker):
 
 @pytest.mark.asyncio
 async def test_generate_meta_document_masks_pii_when_enabled(mocker):
-    """PII masking is called on each chunk when ENABLE_PII_MASKING=True."""
+    """PII masking is called on each chunk; 'John Smith' is absent from LLM payload."""
     chunk = _make_chunk("John Smith wrote this.")
     mocker.patch(
         "src.workers.metadoc_tasks.RAGService.retrieve",
         new=AsyncMock(return_value=[chunk]),
     )
-    mock_mask = MagicMock(return_value=("Entity_000 wrote this.", {"John Smith": "Entity_000"}))
+    mock_mask = AsyncMock(return_value="Entity_000 wrote this.")
     mocker.patch(
-        "src.workers.metadoc_tasks.PresidioAdapter.mask_for_llm",
+        "src.adapters.presidio_adapter.PresidioAdapter.mask_text",
         mock_mask,
     )
+
+    # Capture messages sent to Anthropic to assert PII is absent
+    captured_messages: list = []
+
+    async def _fake_stream(self, messages, system_prompt, model):  # noqa: ARG001
+        captured_messages.extend(messages)
+        yield "done"
+
     mocker.patch(
         "src.workers.metadoc_tasks.AnthropicAdapter.stream_completion",
-        return_value=_async_gen(["done"]),
+        _fake_stream,
     )
-    mock_redis = AsyncMock()
-    mock_redis.publish = AsyncMock()
-    mock_redis.aclose = AsyncMock()
-    mocker.patch("src.workers.metadoc_tasks.aioredis.from_url", return_value=mock_redis)
+
+    mock_pub_redis = AsyncMock()
+    mock_pub_redis.publish = AsyncMock()
+    mock_pub_redis.aclose = AsyncMock()
+    mocker.patch("src.workers.metadoc_tasks.aioredis.from_url", return_value=mock_pub_redis)
     mocker.patch(
         "src.workers.metadoc_tasks.async_session_factory",
         return_value=_fake_session_ctx(),
@@ -148,7 +157,10 @@ async def test_generate_meta_document_masks_pii_when_enabled(mocker):
     )
     mocker.patch.object(_settings, "ENABLE_PII_MASKING", True)
 
-    ctx: dict = {}
+    mock_ctx_redis = AsyncMock()
+    mock_ctx_redis.delete = AsyncMock()
+    ctx: dict = {"redis": mock_ctx_redis}
+
     await generate_meta_document(
         ctx,
         job_id="job-pii",
@@ -158,7 +170,16 @@ async def test_generate_meta_document_masks_pii_when_enabled(mocker):
         model="claude-haiku-4-5-20251001",
     )
 
-    mock_mask.assert_called_once_with("John Smith wrote this.")
+    # mask_text was awaited for each chunk
+    mock_mask.assert_awaited_once()
+
+    # "John Smith" must NOT appear anywhere in the messages sent to the LLM
+    assert len(captured_messages) > 0
+    full_payload = str(captured_messages)
+    assert "John Smith" not in full_payload
+
+    # Entity map Redis key must have been deleted in the finally block
+    mock_ctx_redis.delete.assert_awaited_once_with("pii:map:job-pii")
 
 
 # --------------- helpers ---------------
@@ -175,6 +196,12 @@ def _fake_session_ctx():
     mock_session.get = AsyncMock(return_value=_fake_user())
     mock_session.add = MagicMock()
     mock_session.commit = AsyncMock()
+
+    # CreditService.deduct uses db.exec(select(...).with_for_update()).one()
+    # The exec result must be a MagicMock (not a coroutine) with .one() returning a user
+    exec_result = MagicMock()
+    exec_result.one = MagicMock(return_value=_fake_user())
+    mock_session.exec = AsyncMock(return_value=exec_result)
 
     class _Ctx:
         def __call__(self):
