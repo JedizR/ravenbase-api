@@ -11,6 +11,7 @@ from src.api.main import app
 from src.models.user import User
 from src.schemas.credits import BalanceResponse, CreditTransactionOut
 from src.services.credit_service import CreditService
+from src.workers.metadoc_tasks import generate_meta_document
 
 
 def test_credit_transaction_out_schema():
@@ -292,3 +293,49 @@ async def test_stripe_webhook_checkout_completed_adds_credits():
             assert call_args.args[1] == "user_stripe_test"  # user_id
             assert call_args.args[2] == 500  # credits amount
             assert call_args.args[3] == "stripe_topup"  # operation
+
+
+@pytest.mark.asyncio
+async def test_metadoc_task_uses_credit_service_deduct():
+    """generate_meta_document worker calls CreditService.deduct after success."""
+    with (
+        patch("src.workers.metadoc_tasks.RAGService") as mock_rag,
+        patch("src.workers.metadoc_tasks.PresidioAdapter"),
+        patch("src.workers.metadoc_tasks.AnthropicAdapter") as mock_anthropic,
+        patch("src.workers.metadoc_tasks.Neo4jAdapter"),
+        patch("src.workers.metadoc_tasks.async_session_factory") as mock_factory,
+        patch("src.workers.metadoc_tasks.CreditService") as mock_svc_cls,
+        patch("src.workers.metadoc_tasks.settings"),
+        patch("src.workers.metadoc_tasks._publish", new=AsyncMock()),
+    ):
+        mock_rag.return_value.retrieve = AsyncMock(return_value=[])
+
+        async def fake_stream(*args, **kwargs):
+            yield "hello"
+
+        mock_anthropic.return_value.stream_completion = fake_stream
+
+        mock_session = AsyncMock()
+        mock_session.__aenter__ = AsyncMock(return_value=mock_session)
+        mock_session.__aexit__ = AsyncMock(return_value=None)
+        mock_session.add = MagicMock()
+        mock_session.commit = AsyncMock()
+        mock_factory.return_value = mock_session
+
+        mock_svc = mock_svc_cls.return_value
+        mock_svc.deduct = AsyncMock()
+
+        result = await generate_meta_document(
+            {},
+            job_id="job_test_001",
+            prompt="test prompt",
+            profile_id=None,
+            tenant_id="user_001",
+            model="claude-haiku-4-5-20251001",
+        )
+
+        assert result["status"] == "ok"
+        mock_svc.deduct.assert_awaited_once()
+        call_kwargs = mock_svc.deduct.call_args
+        assert call_kwargs.kwargs["amount"] == 18
+        assert call_kwargs.kwargs["operation"] == "metadoc_generation"

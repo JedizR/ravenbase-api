@@ -14,9 +14,8 @@ from src.adapters.neo4j_adapter import Neo4jAdapter
 from src.adapters.presidio_adapter import PresidioAdapter
 from src.api.dependencies.db import async_session_factory
 from src.core.config import settings
-from src.models.credit import CreditTransaction
 from src.models.meta_document import MetaDocument
-from src.models.user import User
+from src.services.credit_service import CreditService
 from src.services.rag_service import RAGService
 
 logger = structlog.get_logger()
@@ -204,23 +203,15 @@ async def generate_meta_document(
                     "generate_meta_document.graph_edges_written", count=len(contributing_memory_ids)
                 )
 
-            # ── Phase 7: Deduct credits AFTER success (AC-9 guard) ───────────
+            # ── Phase 7: Deduct credits AFTER success (SELECT FOR UPDATE) ────
             async with async_session_factory() as session:
-                user = await session.get(User, tenant_id)
-                if user is not None:
-                    new_balance = user.credits_balance - credit_cost
-                    user.credits_balance = new_balance
-                    session.add(
-                        CreditTransaction(
-                            user_id=tenant_id,
-                            amount=-credit_cost,
-                            balance_after=new_balance,
-                            operation="metadoc_generation",
-                            reference_id=uuid.UUID(doc_id),
-                        )
-                    )
-                    session.add(user)
-                    await session.commit()
+                await CreditService().deduct(
+                    session,
+                    tenant_id,
+                    amount=credit_cost,
+                    operation="metadoc_generation",
+                    reference_id=uuid.UUID(doc_id),
+                )
             log.info("generate_meta_document.credits_deducted", cost=credit_cost)
 
             # ── Phase 8: Done event ────────────────────────────────────────────
