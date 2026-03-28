@@ -1,8 +1,12 @@
 # src/api/routes/graph.py
 from fastapi import APIRouter, Depends, Query
+from sqlmodel.ext.asyncio.session import AsyncSession
 
 from src.api.dependencies.auth import require_user
-from src.schemas.graph import GraphResponse
+from src.api.dependencies.db import get_db
+from src.schemas.graph import GraphQueryRequest, GraphQueryResponse, GraphResponse
+from src.services.credit_service import CreditService
+from src.services.graph_query_service import GraphQueryService
 from src.services.graph_service import GraphService
 
 router = APIRouter(prefix="/v1/graph", tags=["graph"])
@@ -53,3 +57,36 @@ async def get_graph_neighborhood(
             hops=hops,
             limit=limit,
         )
+
+
+_GRAPH_QUERY_CREDITS = 2
+
+
+@router.post("/query", response_model=GraphQueryResponse)
+async def natural_language_graph_query(
+    body: GraphQueryRequest,
+    user: dict = Depends(require_user),  # noqa: B008
+    db: AsyncSession = Depends(get_db),  # noqa: B008
+) -> GraphQueryResponse:
+    """Convert a natural language question into Cypher and execute against the graph.
+
+    Returns cypher, results (nodes + edges), explanation, and query_time_ms.
+    Raises 402 if insufficient credits (checked before LLM call — AC-8).
+    Raises 422 UNSAFE_QUERY if generated Cypher contains write operations (AC-3).
+    tenant_id is extracted from JWT only — never from request body (RULE 2).
+    """
+    # AC-8: deduct credits atomically before LLM call; raises 402 if insufficient
+    await CreditService().deduct(
+        db=db,
+        user_id=user["user_id"],
+        amount=_GRAPH_QUERY_CREDITS,
+        operation="graph_query",
+    )
+
+    svc = GraphQueryService()
+    return await svc.execute_nl_query(
+        query=body.query,
+        tenant_id=user["user_id"],
+        profile_id=body.profile_id,
+        limit=body.limit,
+    )
