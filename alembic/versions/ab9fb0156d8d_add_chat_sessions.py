@@ -7,8 +7,9 @@ Create Date: 2026-03-29 01:21:28.146336
 """
 from typing import Sequence, Union
 
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
+from sqlalchemy.dialects.postgresql import JSONB
 
 
 # revision identifiers, used by Alembic.
@@ -19,15 +20,13 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    import sqlalchemy as sa  # noqa: PLC0415
-
     op.create_table(
         "chat_sessions",
         sa.Column("id", sa.UUID(), nullable=False),
         sa.Column("user_id", sa.String(), nullable=False),
         sa.Column("profile_id", sa.UUID(), nullable=True),
         sa.Column("title", sa.String(), nullable=True),
-        sa.Column("messages", sa.JSON(), nullable=False, server_default="[]"),
+        sa.Column("messages", JSONB(), nullable=False, server_default="[]"),
         sa.Column(
             "created_at",
             sa.DateTime(timezone=True),
