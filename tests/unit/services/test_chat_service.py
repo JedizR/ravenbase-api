@@ -2,10 +2,9 @@
 
 import uuid
 
-from src.services.chat_service import ChatService
-
 from src.models.user import User
 from src.schemas.rag import RetrievedChunk
+from src.services.chat_service import ChatService
 
 _HAIKU = "claude-haiku-4-5-20251001"
 _SONNET = "claude-sonnet-4-6"

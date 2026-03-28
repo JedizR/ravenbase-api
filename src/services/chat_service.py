@@ -271,7 +271,7 @@ class ChatService(BaseService):
     ) -> PaginatedResponse[ChatSessionSummary]:
         """Paginated list of sessions for user (AC-4), newest first."""
         count_result = await db.exec(
-            select(func.count(ChatSession.id)).where(ChatSession.user_id == user_id)
+            select(func.count(ChatSession.id)).where(ChatSession.user_id == user_id)  # type: ignore[arg-type]
         )
         total = count_result.one()
 
