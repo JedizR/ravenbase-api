@@ -1,6 +1,7 @@
 # src/api/routes/webhooks.py
 import uuid
 
+import stripe
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlmodel.ext.asyncio.session import AsyncSession
@@ -66,6 +67,49 @@ async def clerk_webhook(
         await _handle_user_created(payload["data"], db, log)
 
     return {"status": "ok"}
+
+
+@router.post("/stripe")
+async def stripe_webhook(
+    request: Request,
+    db: AsyncSession = Depends(get_db),  # noqa: B008
+) -> dict:  # type: ignore[type-arg]
+    """Receive Stripe webhook events for credit top-ups.
+
+    Validates Stripe signature via stripe.Webhook.construct_event().
+    Handles: checkout.session.completed → add credits to user balance.
+    All other event types are silently acknowledged.
+    """
+    payload = await request.body()
+    sig_header = request.headers.get("stripe-signature")
+
+    if not sig_header:
+        raise HTTPException(
+            status_code=400,
+            detail={"code": "INVALID_WEBHOOK", "message": "Missing stripe-signature header"},
+        )
+
+    try:
+        event = stripe.Webhook.construct_event(payload, sig_header, settings.STRIPE_WEBHOOK_SECRET)
+    except stripe.SignatureVerificationError:
+        logger.warning("stripe_webhook.invalid_signature")
+        raise HTTPException(
+            status_code=400,
+            detail={"code": "INVALID_SIGNATURE", "message": "Stripe signature verification failed"},
+        ) from None
+
+    event_type = event.get("type")
+    log = logger.bind(event_type=event_type)
+
+    if event_type == "checkout.session.completed":
+        session = event["data"]["object"]
+        user_id: str = session["metadata"]["user_id"]
+        credits: int = int(session["metadata"]["credits"])
+        credit_svc = CreditService()
+        await credit_svc.add_credits(db, user_id, credits, "stripe_topup")
+        log.info("stripe_webhook.credits_added", user_id=user_id, credits=credits)
+
+    return {"received": True}
 
 
 async def _handle_user_created(

@@ -232,7 +232,63 @@ async def test_clerk_user_created_writes_signup_bonus():
                 mock_svc.add_credits.assert_awaited_once()
                 call_args = mock_svc.add_credits.await_args
                 assert call_args.args[1] == "user_clerk_abc"  # user_id
-                assert call_args.args[2] == 500               # amount
-                assert call_args.args[3] == "signup_bonus"    # operation
+                assert call_args.args[2] == 500  # amount
+                assert call_args.args[3] == "signup_bonus"  # operation
     finally:
         app.dependency_overrides.pop(get_db, None)
+
+
+@pytest.mark.asyncio
+async def test_stripe_webhook_invalid_signature():
+    """POST /webhooks/stripe returns 400 on bad Stripe signature."""
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.post(
+            "/webhooks/stripe",
+            content=b'{"type": "checkout.session.completed"}',
+            headers={
+                "stripe-signature": "bad_sig",
+                "content-type": "application/json",
+            },
+        )
+        assert response.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_stripe_webhook_checkout_completed_adds_credits():
+    """checkout.session.completed adds credits to user balance."""
+    stripe_payload = {
+        "type": "checkout.session.completed",
+        "data": {
+            "object": {
+                "metadata": {
+                    "user_id": "user_stripe_test",
+                    "credits": "500",
+                }
+            }
+        },
+    }
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        with (
+            patch("src.api.routes.webhooks.stripe") as mock_stripe,
+            patch("src.api.routes.webhooks.CreditService") as mock_svc_cls,
+        ):
+            mock_stripe.Webhook.construct_event.return_value = stripe_payload
+
+            mock_svc = mock_svc_cls.return_value
+            mock_svc.add_credits = AsyncMock()
+
+            response = await client.post(
+                "/webhooks/stripe",
+                content=b'{"type": "checkout.session.completed"}',
+                headers={
+                    "stripe-signature": "v1,mock_sig",
+                    "content-type": "application/json",
+                },
+            )
+            assert response.status_code == 200
+            mock_svc.add_credits.assert_awaited_once()
+            call_args = mock_svc.add_credits.await_args
+            assert call_args.args[1] == "user_stripe_test"  # user_id
+            assert call_args.args[2] == 500  # credits amount
+            assert call_args.args[3] == "stripe_topup"  # operation
