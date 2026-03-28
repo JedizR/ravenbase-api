@@ -20,6 +20,7 @@ class ErrorCode:
     MISSING_AUTH = "MISSING_AUTH"
     TOKEN_EXPIRED = "TOKEN_EXPIRED"
     INVALID_TOKEN = "INVALID_TOKEN"
+    UNSAFE_QUERY = "UNSAFE_QUERY"
 
 
 def raise_404(code: str, detail: str) -> NoReturn:
