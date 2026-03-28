@@ -12,12 +12,12 @@
 
 | Field | Value |
 |---|---|
-| Total stories complete | 16 / 37 |
+| Total stories complete | 17 / 37 |
 | Current phase | Phase A — Backend (Sprints 1–17) |
 | Current sprint | 16 |
 | Active repo | ravenbase-api |
 | Project started | 2026-03-25 |
-| Last entry | 2026-03-29 (STORY-026) |
+| Last entry | 2026-03-29 (STORY-028-BE) |
 
 > **Update this table** after every story entry. Increment stories complete,
 > update current sprint and phase when they change.
@@ -617,6 +617,35 @@ Direct-SSE conversational chat over the user's memory base. `POST /v1/chat/messa
 **Tech debt noted:**
 - `AnthropicAdapter` called directly rather than via `LLMRouter` — LLMRouter has no streaming interface yet. TODO(STORY-028+) comment in place.
 - `stream_turn()` creates fresh `RAGService()` per request — if adapters hold connection pools, a constructor-injection pattern would be cleaner for lifecycle management.
+
+---
+
+### STORY-028-BE — AI Chat Context Import Helper (Backend)
+**Date:** 2026-03-29 | **Sprint:** 16 | **Phase:** A | **Repo:** ravenbase-api
+**Quality gate:** ✅ clean
+**Commit:** `0d34aa7`
+
+**What was built:**
+`GET /v1/ingest/import-prompt` endpoint that reads user's Concept nodes from Neo4j (scoped by tenant_id + optional profile_id) and returns a personalized extraction prompt with detected concept labels. New users with no Concept nodes receive a generic fallback prompt — no 404 is raised. New schema `ImportPromptResponse(prompt_text, detected_concepts)`, new `IngestionService.get_import_prompt()` method, and new `Neo4jAdapter.get_concept_labels()` adapter method added.
+
+| Stat | Count |
+|---|---|
+| Routes added | 1 (`GET /v1/ingest/import-prompt`) |
+| Service methods added | 1 (`IngestionService.get_import_prompt`) |
+| Adapter methods added | 1 (`Neo4jAdapter.get_concept_labels`) |
+| Schemas added | 1 (`ImportPromptResponse`) |
+| Tests added | 4 (integration) |
+
+**Key decisions:**
+- Fallback to generic prompt (not 404) when user has no Concept nodes — new users should still receive a usable response on first import.
+- `profile_id` is an optional query parameter; when omitted the query returns all Concept nodes for the tenant without profile scoping.
+- tenant_id passed as Neo4j query parameter per RULE 11 — never string-interpolated into Cypher.
+
+**Gotchas:**
+- `ruff format` reformatted the test file import block, requiring a separate fix commit to pass the pre-commit I001 check.
+
+**Tech debt noted:**
+- None.
 
 ---
 

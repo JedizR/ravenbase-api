@@ -9,23 +9,23 @@
 
 **Phase:** A — Backend (Sprints 1–17)
 **Current sprint:** 16
-**Status:** In progress — 16 of 37 stories complete
+**Status:** In progress — 17 of 37 stories complete
 
-**Next story to implement:** STORY-028-BE
-**Story file:** `docs/stories/EPIC-09-memory-intelligence/STORY-028.md`
+**Next story to implement:** STORY-029
+**Story file:** `docs/stories/EPIC-09-memory-intelligence/STORY-029.md`
 
 ---
 
 ## Last Completed Story
 
-**STORY-026 — Conversational Memory Chat (Backend)** (2026-03-29)
-Direct-SSE chat over user's memory base: `POST /v1/chat/message` streams Anthropic tokens via `EventSourceResponse` with session auto-creation, 6-message history window, Qdrant+Neo4j hybrid retrieval (RAGService reused), and credit deduction only after full response. `GET/DELETE /v1/chat/sessions` manage session lifecycle. Alembic migration creates `chat_sessions` table with JSONB messages column.
+**STORY-028-BE — AI Chat Context Import Helper (Backend)** (2026-03-29)
+`GET /v1/ingest/import-prompt` reads user's Concept nodes from Neo4j scoped by tenant_id + optional profile_id and returns a personalized extraction prompt. New users with no Concept nodes receive a generic fallback prompt (no 404). 4 integration tests added.
 
 ---
 
 ## Context for Next Session
 
-STORY-026 merged to main. Conversational memory chat is fully wired: ChatService with `stream_turn()` async generator, AnthropicAdapter for RULE 1 compliance, bleach.clean() on responses per RULE 9. Backend sequence continues: 028-BE→029→[BACKEND GATE]→036-BE→037. STORY-028-BE is the AI chat context import helper endpoint.
+STORY-028-BE merged to main. Import prompt endpoint is live: IngestionService.get_import_prompt() queries Neo4j via Neo4jAdapter, returns ImportPromptResponse(prompt_text, detected_concepts). Backend sequence continues: 029→[BACKEND GATE]→036-BE→037. STORY-029 is the natural language graph query backend.
 
 ---
 
