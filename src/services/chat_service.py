@@ -191,41 +191,42 @@ class ChatService(BaseService):
         from src.services.rag_service import RAGService  # noqa: PLC0415
 
         rag = RAGService()
-        chunks = await rag.retrieve(
-            prompt=user_message,
-            tenant_id=tenant_id,
-            profile_id=str(profile_id) if profile_id else None,
-            limit=8,  # fewer than Meta-Doc — chat is more focused
-        )
+        try:
+            chunks = await rag.retrieve(
+                prompt=user_message,
+                tenant_id=tenant_id,
+                profile_id=str(profile_id) if profile_id else None,
+                limit=8,  # fewer than Meta-Doc — chat is more focused
+            )
+        finally:
+            rag.cleanup()
         log.info("chat_service.retrieved", chunk_count=len(chunks))
 
         history = self.build_history(session.messages[-6:])  # AC-7: last 6 messages
         system_prompt = self.build_system_prompt(chunks)
 
         # RULE 6: heavy import inside function body
-        from anthropic import AsyncAnthropic  # noqa: PLC0415
+        from src.adapters.anthropic_adapter import AnthropicAdapter  # noqa: PLC0415
 
-        anthropic_client = AsyncAnthropic()
+        adapter = AnthropicAdapter()
         full_response = ""
 
         try:
             async with asyncio.timeout(60):
-                async with anthropic_client.messages.stream(
-                    model=resolved_model,
-                    max_tokens=2048,
-                    system=system_prompt,
-                    # RULE 10: user-controlled content wrapped in XML tags
+                async for text in adapter.stream_completion(
                     messages=history
                     + [
                         {
                             "role": "user",
+                            # RULE 10: user-controlled content wrapped in XML tags
                             "content": f"<user_question>{user_message}</user_question>",
                         }
                     ],
-                ) as stream:
-                    async for text in stream.text_stream:
-                        full_response += text
-                        yield {"data": json.dumps({"type": "token", "content": text})}
+                    system_prompt=system_prompt,
+                    model=resolved_model,
+                ):
+                    full_response += text
+                    yield {"data": json.dumps({"type": "token", "content": text})}
         except TimeoutError:
             log.warning("chat_service.stream_timeout")
             yield {"data": json.dumps({"type": "error", "message": "Response timed out"})}
