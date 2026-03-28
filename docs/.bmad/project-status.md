@@ -8,24 +8,24 @@
 ## Current State
 
 **Phase:** A — Backend (Sprints 1–17)
-**Current sprint:** 14
-**Status:** In progress — 14 of 37 stories complete
+**Current sprint:** 15
+**Status:** In progress — 15 of 37 stories complete
 
-**Next story to implement:** STORY-024
-**Story file:** `docs/stories/EPIC-08-polish/STORY-024.md`
+**Next story to implement:** STORY-025
+**Story file:** `docs/stories/EPIC-08-polish/STORY-025.md`
 
 ---
 
 ## Last Completed Story
 
-**STORY-023 — Credits System** (2026-03-28)
-CreditService with SELECT FOR UPDATE for atomic deductions and additions, `GET /v1/credits/balance` returning balance + last 20 transactions, Stripe webhook handler for `checkout.session.completed` credit top-ups, 500-credit signup bonus on `user.created`, ingestion per-page deductions, and meta-doc generation deductions. 15 tests added. Tests passing, `make quality` clean.
+**STORY-024 — GDPR Account Deletion Cascade** (2026-03-28)
+`DELETE /v1/account` endpoint returning 202 and enqueuing `cascade_delete_account` ARQ task. DeletionService orchestrates Storage → Qdrant → Neo4j → PostgreSQL → Clerk deletion with log-and-continue on partial failure. Deterministic `_job_id=f"gdpr:{user_id}"` prevents duplicate jobs. 13 tests added. Tests passing, `make quality` clean.
 
 ---
 
 ## Context for Next Session
 
-STORY-023 merged to main. Credits system is complete — CreditService handles all atomic credit mutations, Stripe webhook top-ups work, and signup bonus is applied via `user.created`. Backend sequence continues: 024→025→026→028-BE→029→[BACKEND GATE]→036-BE→037. STORY-024 is GDPR account deletion cascade.
+STORY-024 merged to main. GDPR cascade deletion is complete — `DELETE /v1/account` returns 202 and enqueues the cascade job; each step independently try/excepted to ensure partial deletion never aborts the remainder. Backend sequence continues: 025→026→028-BE→029→[BACKEND GATE]→036-BE→037. STORY-025 is PII Masking (Presidio).
 
 ---
 

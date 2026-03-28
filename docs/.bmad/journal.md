@@ -12,12 +12,12 @@
 
 | Field | Value |
 |---|---|
-| Total stories complete | 14 / 37 |
+| Total stories complete | 15 / 37 |
 | Current phase | Phase A — Backend (Sprints 1–17) |
-| Current sprint | 14 |
+| Current sprint | 15 |
 | Active repo | ravenbase-api |
 | Project started | 2026-03-25 |
-| Last entry | 2026-03-28 (STORY-023) |
+| Last entry | 2026-03-28 (STORY-024) |
 
 > **Update this table** after every story entry. Increment stories complete,
 > update current sprint and phase when they change.
@@ -532,7 +532,27 @@ Clerk JWT authentication via PyJWT + JWKS endpoint: `require_user` FastAPI depen
 > Full cascade deletion, Presidio entity consistency, 60s SLA.
 > Sprint 15 covers STORY-024 and STORY-025.
 
-_No entries yet._
+### STORY-024 — GDPR Account Deletion Cascade
+**Date:** 2026-03-28 | **Sprint:** 15 | **Phase:** A | **Repo:** ravenbase-api
+**Quality gate:** ✅ clean
+**Commit:** `11c69f5`
+
+**What was built:**
+`DELETE /v1/account` endpoint returning 202 and enqueuing `cascade_delete_account` ARQ task. `DeletionService` orchestrates deletion across Storage → Qdrant → Neo4j → PostgreSQL → Clerk in that fixed order. Each step is individually try/excepted so partial failure never aborts the cascade (GDPR best-effort).
+
+**Key decisions:**
+- Deterministic `_job_id=f"gdpr:{user_id}"` on ARQ enqueue prevents duplicate deletion jobs from double-clicks; `enqueue_job` returns `None` on dedup so we fall back to the deterministic ID for the response.
+- `require_user` called directly (not via `Depends`) in the route so `patch("src.api.routes.account.require_user")` works in tests — FastAPI captures `Depends` references at decoration time, making them unpatchable.
+- PostgreSQL FK-safe order: job_statuses → credit_transactions → meta_documents → conflicts → source_authority_weights → sources → system_profiles → users. `chat_sessions`, `data_retention_logs`, and `referral_transactions` intentionally excluded (tables don't exist yet).
+- Neo4j deletion uses two queries: one for all nodes with `tenant_id` (Memory, Concept, etc.) and a separate one for the `User` root node (which uses `user_id` not `tenant_id` per schema).
+- `db.execute()` (not `db.exec()`) required for `TextClause` — pyright rejects `exec()` for raw SQL.
+
+**Gotchas:**
+- `QdrantAdapter.delete_by_filter` already existed and accepted `tenant_id=` kwarg — no changes needed to Qdrant adapter.
+- `CLERK_SECRET_KEY` was already present in `config.py` as `str = ""` — plan step to add it was a no-op.
+
+**Tech debt noted:**
+- `DeletionService.delete_postgres_by_tenant` uses raw SQL strings (module-level constants) rather than ORM deletes — acceptable for GDPR one-shot but diverges from the ORM-first pattern elsewhere.
 
 ---
 
