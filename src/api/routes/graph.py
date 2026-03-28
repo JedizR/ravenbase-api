@@ -83,10 +83,10 @@ async def natural_language_graph_query(
         operation="graph_query",
     )
 
-    svc = GraphQueryService()
-    return await svc.execute_nl_query(
-        query=body.query,
-        tenant_id=user["user_id"],
-        profile_id=body.profile_id,
-        limit=body.limit,
-    )
+    with GraphQueryService() as svc:
+        return await svc.execute_nl_query(
+            query=body.query,
+            tenant_id=user["user_id"],
+            profile_id=body.profile_id,
+            limit=body.limit,
+        )

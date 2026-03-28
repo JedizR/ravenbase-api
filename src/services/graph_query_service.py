@@ -99,8 +99,8 @@ def inject_tenant_filter(cypher: str) -> str:
             flags=re.IGNORECASE,
         )
     return re.sub(
-        r"(MATCH\s*\([^)]*\))",
-        rf"\1 WHERE {var}.tenant_id = $tenant_id",
+        r"\bRETURN\b",
+        f"WHERE {var}.tenant_id = $tenant_id\nRETURN",
         cypher,
         count=1,
         flags=re.IGNORECASE,

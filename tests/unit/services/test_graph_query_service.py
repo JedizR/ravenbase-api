@@ -34,6 +34,8 @@ def test_inject_tenant_filter_multi_match() -> None:
     cypher = "MATCH (m:Memory)-[:EXTRACTED_FROM]->(c:Concept) RETURN m, c LIMIT 10"
     result = inject_tenant_filter(cypher)
     assert "$tenant_id" in result
+    # Relationship pattern must remain intact (not split by WHERE insertion)
+    assert "-[:EXTRACTED_FROM]->(c:Concept)" in result
 
 def test_inject_tenant_filter_no_string_literal_interpolation() -> None:
     from src.services.graph_query_service import inject_tenant_filter  # noqa: PLC0415
