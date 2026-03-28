@@ -133,7 +133,7 @@ see highlighted results.
 
 | Story | Title | Priority | Complexity | Status |
 |---|---|---|---|---|
-| STORY-026 | Conversational memory chat — backend | P0 | Large | 🔲 |
+| STORY-026 | Conversational memory chat — backend | P0 | Large | ✅ |
 | STORY-027 | Conversational memory chat — frontend | P0 | Large | 🔲 |
 | STORY-028 | AI chat context import helper | P1 | Medium | 🔲 |
 | STORY-029 | Natural language graph query — backend | P1 | Medium | 🔲 |

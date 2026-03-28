@@ -12,12 +12,12 @@
 
 | Field | Value |
 |---|---|
-| Total stories complete | 15 / 37 |
+| Total stories complete | 16 / 37 |
 | Current phase | Phase A — Backend (Sprints 1–17) |
-| Current sprint | 15 |
+| Current sprint | 16 |
 | Active repo | ravenbase-api |
 | Project started | 2026-03-25 |
-| Last entry | 2026-03-28 (STORY-024) |
+| Last entry | 2026-03-29 (STORY-026) |
 
 > **Update this table** after every story entry. Increment stories complete,
 > update current sprint and phase when they change.
@@ -591,7 +591,32 @@ Clerk JWT authentication via PyJWT + JWKS endpoint: `require_user` FastAPI depen
 > Chat SSE streaming, multi-turn sessions, AI import helper endpoint.
 > Sprint 16 covers STORY-026 and STORY-028-BE.
 
-_No entries yet._
+### STORY-026 — Conversational Memory Chat (Backend)
+**Date:** 2026-03-29 | **Sprint:** 16 | **Phase:** A | **Repo:** ravenbase-api
+**Quality gate:** ✅ clean — 247 tests passing, 0 ruff errors, 0 pyright errors
+**Commit:** `63d1b2d`
+
+**What was built:**
+Direct-SSE conversational chat over the user's memory base. `POST /v1/chat/message` streams Anthropic tokens via `EventSourceResponse` with session auto-creation, 6-message history window, Qdrant+Neo4j hybrid retrieval (RAGService reused from STORY-015), credit deduction only after a successful full response, and bleach sanitization on the assistant response. `GET /v1/chat/sessions` (paginated), `GET /v1/chat/sessions/{id}`, and `DELETE /v1/chat/sessions/{id}` manage session lifecycle. Alembic migration creates `chat_sessions` table with JSONB messages column and composite DESC index.
+
+**Key decisions:**
+- `stream_turn()` is an async generator on `ChatService` (not inline in the route) — route stays thin, all business logic in the service layer.
+- `AnthropicAdapter.stream_completion()` used instead of `AsyncAnthropic()` directly — satisfies RULE 1 three-layer boundary and uses `settings.ANTHROPIC_API_KEY` correctly. TODO comment added for future `LLMRouter.stream()` migration.
+- `RAGService` and `AnthropicAdapter` both lazily imported inside `stream_turn()` body per RULE 6; `RAGService` wrapped in `try/finally` for `cleanup()`.
+- Credit check uses `user_obj.credits_balance` (fetched for tier check anyway) before streaming; `CreditService.deduct()` runs only after `full_response` fully accumulated — no charge on timeout or LLM error.
+- `user_id` on `ChatSession` is `str` (not `uuid.UUID`) — Clerk string IDs per STORY-018-BE change.
+- `str(c.source_id)` replaces non-existent `source_filename` field in citations and system prompt.
+- JSONB used for `messages` column (matching `meta_document.py` convention) rather than generic JSON.
+
+**Gotchas:**
+- `patch("src.services.rag_service.RAGService")` is the correct patch target (definition site) because `RAGService` is lazily imported inside `stream_turn()` and never in the `chat_service` module namespace.
+- `CreditService.deduct()` calls `db.exec()` with `with_for_update()` internally — the SSE streaming test needed `CreditService.deduct` patched to avoid exhausting the mock DB's `exec` side_effect list (configured only for `get_sessions`'s two-call pattern).
+- `func.count(ChatSession.id)` in `get_sessions()` required `# type: ignore[arg-type]` — pyright doesn't recognize SQLModel field descriptors as `_ColumnExpressionArgument`.
+- Import order in `test_chat_service.py` needed ruff I001 fix (stdlib → first-party order).
+
+**Tech debt noted:**
+- `AnthropicAdapter` called directly rather than via `LLMRouter` — LLMRouter has no streaming interface yet. TODO(STORY-028+) comment in place.
+- `stream_turn()` creates fresh `RAGService()` per request — if adapters hold connection pools, a constructor-injection pattern would be cleaner for lifecycle management.
 
 ---
 

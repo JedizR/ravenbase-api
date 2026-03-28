@@ -8,24 +8,24 @@
 ## Current State
 
 **Phase:** A — Backend (Sprints 1–17)
-**Current sprint:** 15
+**Current sprint:** 16
 **Status:** In progress — 16 of 37 stories complete
 
-**Next story to implement:** STORY-026
-**Story file:** `docs/stories/EPIC-09-memory-intelligence/STORY-026.md`
+**Next story to implement:** STORY-028-BE
+**Story file:** `docs/stories/EPIC-09-memory-intelligence/STORY-028.md`
 
 ---
 
 ## Last Completed Story
 
-**STORY-025 — PII Masking in Production + Presidio Config** (2026-03-28)
-`PresidioAdapter.mask_text()` with async Redis-backed deterministic entity map (Entity_NNN aliases consistent across chunks). Lazy import of presidio libraries (RULE 6). `generate_meta_document` worker calls `mask_text` per chunk when `ENABLE_PII_MASKING=true`, deletes Redis key in `finally` block. 7 tests added. Tests passing, `make quality` clean.
+**STORY-026 — Conversational Memory Chat (Backend)** (2026-03-29)
+Direct-SSE chat over user's memory base: `POST /v1/chat/message` streams Anthropic tokens via `EventSourceResponse` with session auto-creation, 6-message history window, Qdrant+Neo4j hybrid retrieval (RAGService reused), and credit deduction only after full response. `GET/DELETE /v1/chat/sessions` manage session lifecycle. Alembic migration creates `chat_sessions` table with JSONB messages column.
 
 ---
 
 ## Context for Next Session
 
-STORY-025 merged to main. PII masking is fully wired into the metadoc pipeline — Presidio analyzer+anonymizer lazy-loaded, Redis entity map ensures cross-chunk consistency, cleanup guaranteed via `finally`. Backend sequence continues: 026→028-BE→029→[BACKEND GATE]→036-BE→037. STORY-026 is Conversational Memory Chat (backend).
+STORY-026 merged to main. Conversational memory chat is fully wired: ChatService with `stream_turn()` async generator, AnthropicAdapter for RULE 1 compliance, bleach.clean() on responses per RULE 9. Backend sequence continues: 028-BE→029→[BACKEND GATE]→036-BE→037. STORY-028-BE is the AI chat context import helper endpoint.
 
 ---
 
