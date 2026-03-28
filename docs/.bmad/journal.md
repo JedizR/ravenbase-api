@@ -12,12 +12,12 @@
 
 | Field | Value |
 |---|---|
-| Total stories complete | 17 / 37 |
+| Total stories complete | 18 / 37 |
 | Current phase | Phase A — Backend (Sprints 1–17) |
-| Current sprint | 16 |
+| Current sprint | 17 |
 | Active repo | ravenbase-api |
 | Project started | 2026-03-25 |
-| Last entry | 2026-03-29 (STORY-028-BE) |
+| Last entry | 2026-03-29 (STORY-029) |
 
 > **Update this table** after every story entry. Increment stories complete,
 > update current sprint and phase when they change.
@@ -649,12 +649,40 @@ Direct-SSE conversational chat over the user's memory base. `POST /v1/chat/messa
 
 ---
 
-## Sprint 17 — Graph Query Backend
+## Sprint 17 — Natural Language Graph Query
 
-> NL → Cypher via LLMRouter, safety validation, read-only enforcement.
+> Text-to-Cypher backend endpoint.
 > Sprint 17 covers STORY-029.
 
-_No entries yet._
+### STORY-029 — Natural Language Graph Query (Backend)
+**Date:** 2026-03-29 | **Sprint:** 17 | **Phase:** A | **Repo:** ravenbase-api
+**Quality gate:** ✅ clean — 283 tests passing, 0 ruff errors, 0 pyright errors
+**Commit:** `55fe705`
+
+**What was built:**
+`POST /v1/graph/query` endpoint that converts natural language to Cypher via `LLMRouter("cypher_generation")` (Gemini 2.5 Flash primary, Claude Haiku fallback). Generated Cypher is checked against a write-keyword regex before execution. Tenant filter injected as a Cypher `$tenant_id` parameter reference (never string-interpolated). Results parsed with the existing `GraphService._rows_to_graph_response()` helper and returned as `{cypher, results: {nodes, edges}, explanation, query_time_ms}`. Credit cost: 2 per query via `CreditService.deduct()` before LLM call.
+
+| Stat | Count |
+|---|---|
+| Routes added | 1 (`POST /v1/graph/query`) |
+| Services added | 1 (`GraphQueryService`) |
+| Schemas added | 2 (`GraphQueryRequest`, `GraphQueryResponse`) |
+| Error codes added | 1 (`UNSAFE_QUERY`) |
+| Tests added | 30 (unit + integration) |
+
+**Key decisions:**
+- `response_format` intentionally omitted from `LLMRouter.complete()` — Cypher is plain text, not JSON. The story spec incorrectly included `response_format={"type": "json_object"}`.
+- `inject_tenant_filter` injects `$tenant_id` (Cypher parameter placeholder), not the literal value. The actual value travels via `run_query(..., tenant_id=tenant_id)` per RULE 11.
+- User query wrapped in `<user_query>` XML tags in the prompt per RULE 10.
+- Reuses `GraphService._rows_to_graph_response()` by mandating a canonical RETURN clause format (`n_type, n_props, r_type, r_props, m_type, m_props`) in the LLM prompt — avoids duplicating node/edge parsing.
+- Credits deducted before LLM call (fail fast on 0-credit users); no refund on LLM or Neo4j failure.
+
+**Gotchas:**
+- `BaseService.__enter__`/`__exit__` are defined but no service in this codebase uses `with Service() as svc:` syntax in routes — use plain instantiation instead.
+- The story spec's `inject_tenant_filter` had a RULE 11 violation (string-interpolated literal `tenant_id`); corrected to inject `$tenant_id` parameter reference.
+
+**Tech debt noted:**
+- Credits are not refunded if the LLM or Neo4j call fails after deduction. A retry/refund mechanism is out of scope.
 
 ---
 

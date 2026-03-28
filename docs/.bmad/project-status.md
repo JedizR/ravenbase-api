@@ -8,24 +8,24 @@
 ## Current State
 
 **Phase:** A — Backend (Sprints 1–17)
-**Current sprint:** 16
-**Status:** In progress — 17 of 37 stories complete
+**Current sprint:** 17
+**Status:** In progress — 18 of 37 stories complete
 
-**Next story to implement:** STORY-029
-**Story file:** `docs/stories/EPIC-09-memory-intelligence/STORY-029.md`
+**Next story to implement:** STORY-036-BE
+**Story file:** `docs/stories/EPIC-10-platform/STORY-036.md`
 
 ---
 
 ## Last Completed Story
 
-**STORY-028-BE — AI Chat Context Import Helper (Backend)** (2026-03-29)
-`GET /v1/ingest/import-prompt` reads user's Concept nodes from Neo4j scoped by tenant_id + optional profile_id and returns a personalized extraction prompt. New users with no Concept nodes receive a generic fallback prompt (no 404). 4 integration tests added.
+**STORY-029 — Natural Language Graph Query (Backend)** (2026-03-29)
+`POST /v1/graph/query` converts natural language to Cypher via LLMRouter("cypher_generation") (Gemini 2.5 Flash primary, Claude Haiku fallback), validates query is read-only, injects tenant_id as a Cypher parameter, executes against Neo4j, and returns nodes/edges/explanation/query_time_ms. Credit cost: 2 per query.
 
 ---
 
 ## Context for Next Session
 
-STORY-028-BE merged to main. Import prompt endpoint is live: IngestionService.get_import_prompt() queries Neo4j via Neo4jAdapter, returns ImportPromptResponse(prompt_text, detected_concepts). Backend sequence continues: 029→[BACKEND GATE]→036-BE→037. STORY-029 is the natural language graph query backend.
+STORY-029 merged to main. NL graph query endpoint is live: GraphQueryService uses LLMRouter for Cypher generation, write-keyword safety check, tenant_id parameter injection (RULE 11), and CreditService.deduct(2) before LLM call. Backend sequence continues: [BACKEND GATE]→036-BE→037. STORY-036-BE is the admin dashboard backend (5 endpoints).
 
 ---
 
