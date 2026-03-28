@@ -84,11 +84,11 @@ class PresidioAdapter(BaseAdapter):
             for etype in entity_types_found
         }
 
-        await redis.setex(entity_map_key, 3600, json.dumps(entity_map))
-
         masked_result = self._get_anonymizer().anonymize(
             text=text, analyzer_results=results, operators=operators
         )
+
+        await redis.setex(entity_map_key, 3600, json.dumps(entity_map))
         logger.info("pii.masked", job_id=job_id, entities_found=len(results))
         return masked_result.text
 
