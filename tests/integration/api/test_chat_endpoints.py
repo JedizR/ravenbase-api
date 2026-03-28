@@ -162,6 +162,7 @@ async def test_send_message_streams_sse_events(chat_client: AsyncClient) -> None
     with (
         patch("src.services.rag_service.RAGService") as mock_rag_cls,
         patch("src.adapters.anthropic_adapter.AnthropicAdapter", return_value=mock_adapter),
+        patch("src.services.credit_service.CreditService.deduct", new_callable=AsyncMock),
     ):
         mock_rag_instance = AsyncMock()
         mock_rag_instance.retrieve = AsyncMock(return_value=fake_chunks)
