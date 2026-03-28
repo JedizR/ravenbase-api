@@ -1,4 +1,5 @@
 # tests/integration/api/test_credits.py
+import uuid
 from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -8,9 +9,11 @@ from httpx import ASGITransport, AsyncClient
 
 from src.api.dependencies.db import get_db
 from src.api.main import app
+from src.models.source import Source, SourceStatus
 from src.models.user import User
 from src.schemas.credits import BalanceResponse, CreditTransactionOut
 from src.services.credit_service import CreditService
+from src.workers.ingestion_tasks import parse_document
 from src.workers.metadoc_tasks import generate_meta_document
 
 
@@ -339,3 +342,69 @@ async def test_metadoc_task_uses_credit_service_deduct():
         call_kwargs = mock_svc.deduct.call_args
         assert call_kwargs.kwargs["amount"] == 18
         assert call_kwargs.kwargs["operation"] == "metadoc_generation"
+
+
+@pytest.mark.asyncio
+async def test_ingestion_deducts_per_page():
+    """parse_document deducts 1 credit per unique page after successful embedding."""
+    chunks = [
+        {"text": "chunk1", "chunk_index": 0, "page_number": 1},
+        {"text": "chunk2", "chunk_index": 1, "page_number": 1},
+        {"text": "chunk3", "chunk_index": 2, "page_number": 2},
+    ]  # 2 unique pages → should deduct 2 credits
+
+    with (
+        patch("src.workers.ingestion_tasks.async_session_factory") as mock_factory,
+        patch("src.workers.ingestion_tasks.StorageAdapter") as mock_storage,
+        patch("src.workers.ingestion_tasks.ModerationAdapter") as mock_mod,
+        patch("src.workers.ingestion_tasks.DoclingAdapter") as mock_docling,
+        patch("src.workers.ingestion_tasks.OpenAIAdapter") as mock_openai,
+        patch("src.workers.ingestion_tasks.QdrantAdapter") as mock_qdrant,
+        patch("src.workers.ingestion_tasks.publish_progress") as mock_pub,
+        patch("src.workers.ingestion_tasks.CreditService") as mock_svc_cls,
+    ):
+        mock_source = Source(
+            id=uuid.uuid4(),
+            user_id="user_001",
+            original_filename="test.pdf",
+            storage_path="path/to/file.pdf",
+            mime_type="application/pdf",
+            status=SourceStatus.PENDING,
+            sha256_hash="abc123",
+        )
+
+        mock_session = AsyncMock()
+        mock_session.__aenter__ = AsyncMock(return_value=mock_session)
+        mock_session.__aexit__ = AsyncMock(return_value=None)
+        mock_session.get = AsyncMock(return_value=mock_source)
+        mock_session.add = MagicMock()
+        mock_session.commit = AsyncMock()
+        mock_factory.return_value = mock_session
+
+        mock_storage.return_value.download_file = AsyncMock(return_value=b"fake pdf bytes")
+        mock_mod.return_value.check_content = AsyncMock()
+        mock_docling.return_value.parse_and_chunk = AsyncMock(return_value=chunks)
+        mock_openai.return_value.embed_chunks = AsyncMock(
+            return_value=[[0.1] * 1536, [0.1] * 1536, [0.1] * 1536]
+        )
+        mock_qdrant.return_value.upsert = AsyncMock()
+        mock_pub.return_value = AsyncMock()
+
+        mock_svc = mock_svc_cls.return_value
+        mock_svc.deduct = AsyncMock()
+
+        mock_redis = AsyncMock()
+        mock_redis.enqueue_job = AsyncMock()
+        mock_ctx = {"redis": mock_redis}
+
+        result = await parse_document(
+            mock_ctx,
+            source_id=str(mock_source.id),
+            tenant_id="user_001",
+        )
+
+        assert result["status"] == "ok"
+        mock_svc.deduct.assert_awaited_once()
+        deduct_kwargs = mock_svc.deduct.call_args.kwargs
+        assert deduct_kwargs["amount"] == 2  # 2 unique pages
+        assert deduct_kwargs["operation"] == "ingestion"

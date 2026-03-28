@@ -18,6 +18,7 @@ from src.adapters.storage_adapter import StorageAdapter
 from src.api.dependencies.db import async_session_factory
 from src.models.source import Source, SourceStatus
 from src.models.user import User
+from src.services.credit_service import CreditService
 from src.workers.utils import publish_progress
 
 logger = structlog.get_logger()
@@ -233,6 +234,23 @@ async def parse_document(
         ]
         await QdrantAdapter().upsert(points)
         log.info("parse_document.indexed", point_count=len(points))
+
+        # ── Credit deduction: 1 per page (AFTER successful indexing) ────────
+        page_numbers = {c.get("page_number", 0) for c in chunks}
+        page_count = max(1, len(page_numbers))
+        async with async_session_factory() as credit_session:
+            try:
+                await CreditService().deduct(
+                    credit_session,
+                    tenant_id,
+                    amount=page_count,
+                    operation="ingestion",
+                    reference_id=uuid.UUID(source_id),
+                )
+                log.info("parse_document.credits_deducted", pages=page_count)
+            except Exception as credit_exc:
+                # Insufficient credits: document is already indexed — log and continue
+                log.warning("parse_document.credit_deduction_failed", error=str(credit_exc))
 
         # ── 9. COMPLETED ─────────────────────────────────────────────────────
         await _set_source_completed(source_id, chunk_count=len(chunks))
