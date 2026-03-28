@@ -37,13 +37,9 @@ async def test_with_concepts_returns_personalized_prompt(
 ) -> None:
     """When tenant has concepts, prompt_text mentions them and detected_concepts is populated."""
     mock_adapter = MagicMock()
-    mock_adapter.get_concepts_for_tenant = AsyncMock(
-        return_value=["Python", "FastAPI", "Neo4j"]
-    )
+    mock_adapter.get_concepts_for_tenant = AsyncMock(return_value=["Python", "FastAPI", "Neo4j"])
 
-    with patch(
-        "src.services.ingestion_service.Neo4jAdapter", return_value=mock_adapter
-    ):
+    with patch("src.services.ingestion_service.Neo4jAdapter", return_value=mock_adapter):
         response = await import_prompt_client.get("/v1/ingest/import-prompt")
 
     assert response.status_code == 200
@@ -64,9 +60,7 @@ async def test_no_concepts_returns_generic_prompt(
     mock_adapter = MagicMock()
     mock_adapter.get_concepts_for_tenant = AsyncMock(return_value=[])
 
-    with patch(
-        "src.services.ingestion_service.Neo4jAdapter", return_value=mock_adapter
-    ):
+    with patch("src.services.ingestion_service.Neo4jAdapter", return_value=mock_adapter):
         response = await import_prompt_client.get("/v1/ingest/import-prompt")
 
     assert response.status_code == 200
@@ -84,9 +78,7 @@ async def test_profile_id_param_passed_to_neo4j(
     mock_adapter = MagicMock()
     mock_adapter.get_concepts_for_tenant = AsyncMock(return_value=["TypeScript"])
 
-    with patch(
-        "src.services.ingestion_service.Neo4jAdapter", return_value=mock_adapter
-    ):
+    with patch("src.services.ingestion_service.Neo4jAdapter", return_value=mock_adapter):
         response = await import_prompt_client.get(
             f"/v1/ingest/import-prompt?profile_id={TEST_PROFILE_ID}"
         )
