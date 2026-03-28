@@ -9,7 +9,7 @@ from sse_starlette.sse import EventSourceResponse
 from src.api.dependencies.auth import require_user, verify_token_query_param
 from src.api.dependencies.db import get_db
 from src.core.config import settings
-from src.schemas.ingest import TextIngestRequest, UploadResponse
+from src.schemas.ingest import ImportPromptResponse, TextIngestRequest, UploadResponse
 from src.services.ingestion_service import IngestionService
 
 router = APIRouter(prefix="/v1/ingest", tags=["ingestion"])
@@ -98,3 +98,20 @@ async def stream_progress(
             log.info("sse.unsubscribed", channel=channel)
 
     return EventSourceResponse(event_generator())
+
+
+@router.get("/import-prompt", response_model=ImportPromptResponse)
+async def get_import_prompt(
+    profile_id: str | None = None,
+    user: dict = Depends(require_user),  # type: ignore[type-arg]  # noqa: B008
+) -> ImportPromptResponse:
+    """Return a personalized AI-chat extraction prompt based on the user's Concept nodes.
+
+    Pass ?profile_id=<uuid> to scope concepts to a specific profile.
+    New users with no concepts receive a generic prompt — never returns 404.
+    """
+    svc = IngestionService()
+    return await svc.generate_import_prompt(
+        tenant_id=user["user_id"],
+        profile_id=profile_id,
+    )
