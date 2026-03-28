@@ -58,6 +58,7 @@ def _make_mock_db(user: User | None = None, session: ChatSession | None = None) 
     # get_sessions() calls db.exec() twice: once for COUNT, once for list.
     mock_count_result = MagicMock()
     mock_count_result.one = MagicMock(return_value=0)
+    mock_count_result.one_or_none = MagicMock(return_value=None)
     mock_list_result = MagicMock()
     mock_list_result.all = MagicMock(return_value=[])
     mock_db.exec = AsyncMock(side_effect=[mock_count_result, mock_list_result])
