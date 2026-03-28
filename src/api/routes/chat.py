@@ -31,7 +31,6 @@ from src.schemas.chat import (
 )
 from src.schemas.common import PaginatedResponse
 from src.services.chat_service import ChatService
-from src.services.credit_service import CreditService
 
 router = APIRouter(prefix="/v1/chat", tags=["chat"])
 logger = structlog.get_logger()
@@ -66,9 +65,8 @@ async def send_message(
     svc = ChatService()
     resolved_model, credits_needed = ChatService.resolve_model(request.model, user_obj)
 
-    # AC-9: Credit check BEFORE streaming starts (get_balance for pre-check)
-    credit_svc = CreditService()
-    balance = await credit_svc.get_balance(db, user["user_id"])
+    # AC-9: Credit check BEFORE streaming starts (use already-fetched user_obj)
+    balance = user_obj.credits_balance
     if balance < credits_needed:
         raise HTTPException(
             status_code=402,

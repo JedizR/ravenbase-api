@@ -151,10 +151,12 @@ class ChatService(BaseService):
 
         Replaces list (not mutates) so SQLAlchemy detects the JSON column change.
         """
+        import bleach  # noqa: PLC0415
+
         now = datetime.now(UTC).isoformat()
         session.messages = session.messages + [
             {"role": "user", "content": user_message, "created_at": now},
-            {"role": "assistant", "content": assistant_response, "created_at": now},
+            {"role": "assistant", "content": bleach.clean(assistant_response), "created_at": now},
         ]
         session.updated_at = datetime.now(UTC)
         db.add(session)
@@ -205,7 +207,7 @@ class ChatService(BaseService):
         history = self.build_history(session.messages[-6:])  # AC-7: last 6 messages
         system_prompt = self.build_system_prompt(chunks)
 
-        # RULE 6: heavy import inside function body
+        # TODO(STORY-028+): replace AnthropicAdapter with LLMRouter.stream() once streaming is supported
         from src.adapters.anthropic_adapter import AnthropicAdapter  # noqa: PLC0415
 
         adapter = AnthropicAdapter()
