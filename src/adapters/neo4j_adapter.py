@@ -141,8 +141,7 @@ class Neo4jAdapter(BaseAdapter):
         """
         # 1. MERGE MetaDocument node
         await self.run_query(
-            "MERGE (d:MetaDocument {doc_id: $doc_id}) "
-            "SET d.tenant_id = $tenant_id",
+            "MERGE (d:MetaDocument {doc_id: $doc_id}) SET d.tenant_id = $tenant_id",
             doc_id=doc_id,
             tenant_id=tenant_id,
         )
@@ -220,6 +219,25 @@ class Neo4jAdapter(BaseAdapter):
                 tenant_id=tenant_id,
                 limit=limit,
             )
+
+    async def delete_all_by_tenant(self, tenant_id: str) -> None:
+        """DETACH DELETE all nodes where tenant_id = $tenant_id, then the User root node.
+
+        RULE 11: tenant_id is always a query parameter, never string-formatted.
+        Two queries:
+          1. All non-User nodes (Memory, Concept, Source, etc.) tagged with tenant_id
+          2. The User root node tagged with user_id
+        """
+        # 1. Delete all nodes that carry tenant_id (Memory, Concept, Source, etc.)
+        await self.run_query(
+            "MATCH (n) WHERE n.tenant_id = $tenant_id DETACH DELETE n",
+            tenant_id=tenant_id,
+        )
+        # 2. Delete the User root node (uses user_id, not tenant_id, per schema)
+        await self.run_query(
+            "MATCH (u:User {user_id: $user_id}) DETACH DELETE u",
+            user_id=tenant_id,
+        )
 
     async def verify_connectivity(self) -> bool:
         try:
