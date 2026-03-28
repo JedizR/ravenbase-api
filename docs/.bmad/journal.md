@@ -12,12 +12,12 @@
 
 | Field | Value |
 |---|---|
-| Total stories complete | 13 / 37 |
+| Total stories complete | 14 / 37 |
 | Current phase | Phase A — Backend (Sprints 1–17) |
-| Current sprint | 13 |
+| Current sprint | 14 |
 | Active repo | ravenbase-api |
 | Project started | 2026-03-25 |
-| Last entry | 2026-03-28 (STORY-018-BE) |
+| Last entry | 2026-03-28 (STORY-023) |
 
 > **Update this table** after every story entry. Increment stories complete,
 > update current sprint and phase when they change.
@@ -497,7 +497,33 @@ Clerk JWT authentication via PyJWT + JWKS endpoint: `require_user` FastAPI depen
 > Credit ledger, deduction per operation, 402 enforcement.
 > Sprint 14 covers STORY-023.
 
-_No entries yet._
+### STORY-023 — Credits System
+**Date:** 2026-03-28 | **Sprint:** 14 | **Phase:** A | **Repo:** ravenbase-api
+**Quality gate:** ✅ clean — 211 tests passing, 0 ruff errors, 0 pyright errors
+**Commit:** `3514980`
+
+**What was built:**
+`CreditService` with `deduct()` and `add_credits()` using SELECT FOR UPDATE for atomic credit mutations, `get_balance()`, and `get_recent_transactions()`. `GET /v1/credits/balance` returns balance + last 20 transactions. `POST /webhooks/stripe` handles `checkout.session.completed` to add credits via Stripe metadata. `user.created` webhook writes 500-credit signup bonus via `CreditService.add_credits()`. Ingestion tasks deduct 1 credit per page; meta-doc generation deducts 18 (Haiku) or 45 (Sonnet). Alembic migration added for `credits_balance` default constraint.
+
+| Stat | Count |
+|---|---|
+| Files created | 4 |
+| Files modified | 7 |
+| Tests added | 15 |
+| ACs complete | 6/6 |
+
+**Key decisions:**
+- Credit deduction in ingestion uses `continue` on `HTTPException(402)` — insufficient credits logs a warning but does not abort the ingestion job (non-blocking deduction per spec).
+- Signup bonus applied after the initial `db.commit()` that creates the User — ensures the User row exists before `add_credits()` issues its SELECT FOR UPDATE.
+- `CreditService` patched in `test_user_created_inserts_user` webhook test to avoid needing `db.exec` mocked with correct SELECT FOR UPDATE response shape.
+
+**Gotchas:**
+- `test_user_default_fields` expected `credits_balance == 200` — the model default is `0`; the 500-credit signup bonus is applied via CreditService, not as a model-level default. Test updated to expect `0`.
+- `test_generate_meta_document_publishes_done_event` mock session needed `exec` mocked to return `MagicMock().one()` (not `AsyncMock`) because `db.exec(...)` returns a scalar result, not a coroutine.
+- `test_user_created_inserts_user` webhook integration test needed `CreditService` patched since the mock DB's `exec` wasn't set up for SELECT FOR UPDATE; the test now asserts `add_credits` was called with the correct args.
+
+**Tech debt noted:**
+- Ingestion per-page credit deduction calls `CreditService.deduct()` inside the worker for each page individually — could be batched into a single deduction at the end of ingestion for efficiency.
 
 ---
 
