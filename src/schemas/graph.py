@@ -47,3 +47,19 @@ class GraphEdge(BaseModel):
 class GraphResponse(BaseModel):
     nodes: list[GraphNode]
     edges: list[GraphEdge]
+
+
+# --- Natural Language Graph Query schemas (STORY-029) ---
+
+
+class GraphQueryRequest(BaseModel):
+    query: str = Field(..., min_length=1, max_length=500)
+    profile_id: str | None = Field(default=None)
+    limit: int = Field(default=20, ge=1, le=50)
+
+
+class GraphQueryResponse(BaseModel):
+    cypher: str
+    results: GraphResponse
+    explanation: str
+    query_time_ms: int

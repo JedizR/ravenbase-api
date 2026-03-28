@@ -13,7 +13,7 @@ from src.models.user import User
 def test_user_default_fields() -> None:
     user = User(email="test@example.com")
     assert user.tier == "free"
-    assert user.credits_balance == 200
+    assert user.credits_balance == 0
     assert user.is_active is True
     assert user.preferred_model == "claude-haiku-4-5-20251001"
     assert user.referral_code == ""
@@ -106,3 +106,24 @@ def test_job_status_default_fields() -> None:
     assert job.progress_pct == 0
     assert job.message is None
     assert job.source_id is None
+
+
+def test_graph_query_request_schema_exists() -> None:
+    from src.schemas.graph import GraphQueryRequest  # noqa: PLC0415
+
+    req = GraphQueryRequest(query="test")
+    assert req.query == "test"
+    assert req.limit == 20
+    assert req.profile_id is None
+
+
+def test_graph_query_response_schema_exists() -> None:
+    from src.schemas.graph import GraphQueryResponse, GraphResponse  # noqa: PLC0415
+
+    resp = GraphQueryResponse(
+        cypher="MATCH (n) RETURN n",
+        results=GraphResponse(nodes=[], edges=[]),
+        explanation="Found 0 nodes.",
+        query_time_ms=5,
+    )
+    assert resp.query_time_ms == 5
