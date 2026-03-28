@@ -12,7 +12,7 @@ class User(SQLModel, table=True):
     display_name: str | None = None
     avatar_url: str | None = None
     tier: str = Field(default="free")
-    credits_balance: int = Field(default=200)
+    credits_balance: int = Field(default=0)
     is_active: bool = Field(default=True)
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))

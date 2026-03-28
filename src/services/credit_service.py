@@ -32,11 +32,7 @@ class CreditService(BaseService):
         """
         log = logger.bind(user_id=user_id, amount=amount, operation=operation)
 
-        user = (
-            await db.exec(
-                select(User).where(User.id == user_id).with_for_update()
-            )
-        ).one()
+        user = (await db.exec(select(User).where(User.id == user_id).with_for_update())).one()
 
         if user.credits_balance < amount:
             raise HTTPException(
@@ -75,11 +71,7 @@ class CreditService(BaseService):
         """
         log = logger.bind(user_id=user_id, amount=amount, operation=operation)
 
-        user = (
-            await db.exec(
-                select(User).where(User.id == user_id).with_for_update()
-            )
-        ).one()
+        user = (await db.exec(select(User).where(User.id == user_id).with_for_update())).one()
 
         user.credits_balance += amount
         txn = CreditTransaction(

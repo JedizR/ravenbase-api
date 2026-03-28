@@ -9,6 +9,7 @@ from svix.webhooks import Webhook, WebhookVerificationError
 from src.api.dependencies.db import get_db
 from src.core.config import settings
 from src.models.user import User
+from src.services.credit_service import CreditService
 
 logger = structlog.get_logger()
 router = APIRouter(prefix="/webhooks", tags=["webhooks"])
@@ -113,3 +114,7 @@ async def _handle_user_created(
         log.error("webhook.user_created_db_error", user_id=clerk_user_id, error=str(exc))
         raise
     log.info("webhook.user_created", user_id=clerk_user_id, email=email)
+    # Write signup_bonus credit transaction (AC-7)
+    credit_svc = CreditService()
+    await credit_svc.add_credits(db, clerk_user_id, 500, "signup_bonus")
+    log.info("webhook.signup_bonus_added", user_id=clerk_user_id)
