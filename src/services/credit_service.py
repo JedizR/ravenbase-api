@@ -104,3 +104,20 @@ class CreditService(BaseService):
                 detail={"code": ErrorCode.TENANT_NOT_FOUND, "message": "User not found"},
             )
         return user.credits_balance
+
+    async def get_recent_transactions(
+        self,
+        db: AsyncSession,
+        user_id: str,
+        limit: int = 20,
+    ) -> list[CreditTransaction]:
+        """Return the most recent credit transactions for user_id, newest first."""
+        from sqlmodel import desc  # noqa: PLC0415
+
+        result = await db.exec(
+            select(CreditTransaction)
+            .where(CreditTransaction.user_id == user_id)
+            .order_by(desc(CreditTransaction.created_at))
+            .limit(limit)
+        )
+        return list(result.all())
