@@ -622,17 +622,17 @@ Direct-SSE conversational chat over the user's memory base. `POST /v1/chat/messa
 
 ### STORY-028-BE — AI Chat Context Import Helper (Backend)
 **Date:** 2026-03-29 | **Sprint:** 16 | **Phase:** A | **Repo:** ravenbase-api
-**Quality gate:** ✅ clean
+**Quality gate:** ✅ clean — 251 tests passing, 0 ruff errors, 0 pyright errors
 **Commit:** `0d34aa7`
 
 **What was built:**
-`GET /v1/ingest/import-prompt` endpoint that reads user's Concept nodes from Neo4j (scoped by tenant_id + optional profile_id) and returns a personalized extraction prompt with detected concept labels. New users with no Concept nodes receive a generic fallback prompt — no 404 is raised. New schema `ImportPromptResponse(prompt_text, detected_concepts)`, new `IngestionService.get_import_prompt()` method, and new `Neo4jAdapter.get_concept_labels()` adapter method added.
+`GET /v1/ingest/import-prompt` endpoint that reads user's Concept nodes from Neo4j (scoped by tenant_id + optional profile_id) and returns a personalized extraction prompt with detected concept labels. New users with no Concept nodes receive a generic fallback prompt — no 404 is raised. New schema `ImportPromptResponse(prompt_text, detected_concepts)`, new `IngestionService.generate_import_prompt()` method, and new `Neo4jAdapter.get_concepts_for_tenant()` adapter method added.
 
 | Stat | Count |
 |---|---|
 | Routes added | 1 (`GET /v1/ingest/import-prompt`) |
-| Service methods added | 1 (`IngestionService.get_import_prompt`) |
-| Adapter methods added | 1 (`Neo4jAdapter.get_concept_labels`) |
+| Service methods added | 1 (`IngestionService.generate_import_prompt`) |
+| Adapter methods added | 1 (`Neo4jAdapter.get_concepts_for_tenant`) |
 | Schemas added | 1 (`ImportPromptResponse`) |
 | Tests added | 4 (integration) |
 
