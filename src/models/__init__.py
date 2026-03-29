@@ -4,6 +4,7 @@
 
 from src.models.conflict import Conflict, ConflictStatus
 from src.models.credit import CreditTransaction
+from src.models.data_retention_log import DataRetentionLog
 from src.models.job_status import JobStatus
 from src.models.meta_document import MetaDocument
 from src.models.profile import SystemProfile
@@ -21,4 +22,5 @@ __all__ = [
     "MetaDocument",
     "CreditTransaction",
     "JobStatus",
+    "DataRetentionLog",
 ]
