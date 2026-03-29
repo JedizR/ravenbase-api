@@ -116,3 +116,108 @@ async def test_require_admin_blocks_when_admin_ids_empty(mocker) -> None:
     with pytest.raises(Exception) as exc_info:
         await require_admin({"user_id": "any_user", "email": "x@x.com", "tier": "free"})
     assert exc_info.value.status_code == 403
+
+
+# ── /v1/admin/users (list) ──────────────────────────────────────────────────
+
+import uuid
+from unittest.mock import AsyncMock, MagicMock
+
+from httpx import ASGITransport, AsyncClient
+
+from src.api.dependencies.admin import require_admin
+from src.api.dependencies.auth import require_user
+from src.api.dependencies.db import get_db
+from src.api.main import app
+from src.models.user import User
+
+TEST_ADMIN_ID = "admin_" + uuid.uuid4().hex[:12]
+
+
+def _make_user(
+    user_id: str | None = None,
+    tier: str = "free",
+    credits: int = 100,
+) -> User:
+    uid = user_id or "user_" + uuid.uuid4().hex[:12]
+    return User(
+        id=uid,
+        email=f"{uid}@example.com",
+        display_name="Test User",
+        credits_balance=credits,
+        tier=tier,
+        referral_code=uid[:8].upper(),
+        is_active=True,
+    )
+
+
+def _make_list_mock_db(users: list[User], total: int) -> AsyncMock:
+    mock_db = AsyncMock()
+    count_result = MagicMock()
+    count_result.one.return_value = total
+    rows_result = MagicMock()
+    rows_result.all.return_value = users
+    mock_db.exec = AsyncMock(side_effect=[count_result, rows_result])
+    return mock_db
+
+
+@pytest.fixture
+async def admin_list_client():
+    user1 = _make_user(tier="free")
+    user2 = _make_user(tier="pro")
+
+    async def _override_db():
+        yield _make_list_mock_db([user1, user2], total=2)
+
+    app.dependency_overrides[require_admin] = lambda: {
+        "user_id": TEST_ADMIN_ID,
+        "email": "admin@example.com",
+        "tier": "free",
+    }
+    app.dependency_overrides[get_db] = _override_db
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+        yield ac
+
+    app.dependency_overrides.pop(require_admin, None)
+    app.dependency_overrides.pop(get_db, None)
+
+
+@pytest.mark.asyncio
+async def test_list_users_returns_paginated_response(admin_list_client: AsyncClient) -> None:
+    response = await admin_list_client.get("/v1/admin/users")
+    assert response.status_code == 200
+    data = response.json()
+    assert "users" in data
+    assert "total" in data
+    assert "page" in data
+    assert data["total"] == 2
+    assert len(data["users"]) == 2
+    assert data["page"] == 1
+
+
+@pytest.mark.asyncio
+async def test_list_users_without_auth_returns_401() -> None:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+        response = await ac.get("/v1/admin/users")
+    assert response.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_list_users_non_admin_returns_403(mocker) -> None:
+    mocker.patch(
+        "src.api.dependencies.admin.settings",
+        type("S", (), {"ADMIN_USER_IDS": "actual_admin_only"})(),
+    )
+    app.dependency_overrides[require_user] = lambda: {
+        "user_id": "not_admin_user",
+        "email": "x@x.com",
+        "tier": "free",
+    }
+    try:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+            response = await ac.get("/v1/admin/users")
+        assert response.status_code == 403
+        assert response.json()["detail"]["code"] == "FORBIDDEN"
+    finally:
+        app.dependency_overrides.pop(require_user, None)
