@@ -5,6 +5,7 @@ Scheduled: Sunday 02:00 UTC (see WorkerSettings.cron_jobs in main.py).
 Runs Phase 1 (warning at day 150) + Phase 2 (purge at day 180) in one invocation.
 Uses ColdDataService for all business logic.
 """
+
 from datetime import UTC, datetime
 
 import structlog

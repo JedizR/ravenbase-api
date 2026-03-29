@@ -24,7 +24,7 @@ async def delete_account(
     # `src.api.routes.account.require_user` at the module level.
     # FastAPI captures Depends references at decoration time, making them
     # unpatchable; a direct call resolves the name at runtime.
-    user = await require_user(authorization)
+    user = await require_user(request, authorization)
     user_id: str = user["user_id"]
     log = logger.bind(tenant_id=user_id, action="gdpr_deletion")
     log.info("gdpr_deletion.request_received")

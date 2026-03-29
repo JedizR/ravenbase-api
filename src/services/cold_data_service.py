@@ -1,5 +1,6 @@
 # src/services/cold_data_service.py
 """ColdDataService: STORY-037 cold-data lifecycle business logic."""
+
 from datetime import UTC, datetime, timedelta
 
 import structlog
@@ -58,10 +59,10 @@ class ColdDataService(BaseService):
             sm_select(User)
             .where(
                 User.tier == "free",
-                User.is_archived.is_(False),
-                User.notify_account_deletion.is_(True),
-                User.last_active_at <= cutoff_150,
-                User.last_active_at > cutoff_180,
+                User.is_archived.is_(False),  # type: ignore[attr-defined]
+                User.notify_account_deletion.is_(True),  # type: ignore[attr-defined]
+                User.last_active_at <= cutoff_150,  # type: ignore[operator]
+                User.last_active_at > cutoff_180,  # type: ignore[operator]
             )
             .limit(BATCH_SIZE)
         )
@@ -96,12 +97,14 @@ class ColdDataService(BaseService):
                 ulog.error("cold_data.warning_email_failed", error=str(exc))
                 continue  # AC-7: non-fatal — skip this user, try next
 
-            days_inactive = (now - user.last_active_at).days
-            db.add(DataRetentionLog(
-                user_id=user.id,
-                event_type="warning_sent",
-                days_inactive=days_inactive,
-            ))
+            days_inactive = (now - user.last_active_at).days  # type: ignore[operator]
+            db.add(
+                DataRetentionLog(
+                    user_id=user.id,
+                    event_type="warning_sent",
+                    days_inactive=days_inactive,
+                )
+            )
             await db.commit()
             ulog.info("cold_data.warnings.sent", days_inactive=days_inactive)
             sent += 1
@@ -121,8 +124,8 @@ class ColdDataService(BaseService):
             sm_select(User)
             .where(
                 User.tier == "free",
-                User.is_archived.is_(False),
-                User.last_active_at <= cutoff_180,
+                User.is_archived.is_(False),  # type: ignore[attr-defined]
+                User.last_active_at <= cutoff_180,  # type: ignore[operator]
             )
             .limit(BATCH_SIZE)
         )
@@ -159,19 +162,23 @@ class ColdDataService(BaseService):
 
             user.is_archived = True
             user.credits_balance = 0
-            days_inactive = (now - user.last_active_at).days
+            days_inactive = (now - user.last_active_at).days  # type: ignore[operator]
             db.add(user)
-            db.add(DataRetentionLog(
-                user_id=user.id,
-                event_type="data_purged",
-                days_inactive=days_inactive,
-                sources_deleted=src_count,
-                qdrant_vectors_deleted=0,   # AC-13: deletion service doesn't return counts
-                neo4j_nodes_deleted=0,
-                storage_bytes_freed=0,
-            ))
+            db.add(
+                DataRetentionLog(
+                    user_id=user.id,
+                    event_type="data_purged",
+                    days_inactive=days_inactive,
+                    sources_deleted=src_count,
+                    qdrant_vectors_deleted=0,  # AC-13: deletion service doesn't return counts
+                    neo4j_nodes_deleted=0,
+                    storage_bytes_freed=0,
+                )
+            )
             await db.commit()
-            ulog.info("cold_data.purge.archived", sources_deleted=src_count, days_inactive=days_inactive)
+            ulog.info(
+                "cold_data.purge.archived", sources_deleted=src_count, days_inactive=days_inactive
+            )
             purged += 1
 
         log.info("cold_data.purge.complete", purged=purged)

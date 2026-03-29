@@ -1,6 +1,8 @@
 # tests/unit/models/test_data_retention_log.py
-from datetime import UTC, datetime
+from datetime import datetime
+
 from src.models.data_retention_log import DataRetentionLog
+
 
 def test_warning_sent_instantiation():
     log = DataRetentionLog(
@@ -13,6 +15,7 @@ def test_warning_sent_instantiation():
     assert log.sources_deleted == 0
     assert log.id is None
     assert isinstance(log.created_at, datetime)
+
 
 def test_data_purged_with_counts():
     log = DataRetentionLog(

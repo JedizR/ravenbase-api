@@ -3,7 +3,11 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from src.services.deletion_service import DeletionService
+from src.services.deletion_service import (
+    _POSTGRES_CONTENT_STATEMENTS,
+    _POSTGRES_DELETE_STATEMENTS,
+    DeletionService,
+)
 
 
 @pytest.fixture
@@ -17,6 +21,7 @@ def mock_db():
 
 @pytest.mark.asyncio
 async def test_delete_storage_by_tenant_calls_adapter():
+    """StorageAdapter.delete_folder_by_tenant is called with correct tenant_id."""
     svc = DeletionService()
     with patch("src.services.deletion_service.StorageAdapter") as mock_adapter_cls:
         mock_adapter = AsyncMock()
@@ -27,6 +32,7 @@ async def test_delete_storage_by_tenant_calls_adapter():
 
 @pytest.mark.asyncio
 async def test_delete_qdrant_by_tenant_calls_adapter():
+    """QdrantAdapter.delete_by_filter is called with correct tenant_id."""
     svc = DeletionService()
     with patch("src.services.deletion_service.QdrantAdapter") as mock_adapter_cls:
         mock_adapter = AsyncMock()
@@ -37,6 +43,7 @@ async def test_delete_qdrant_by_tenant_calls_adapter():
 
 @pytest.mark.asyncio
 async def test_delete_neo4j_by_tenant_calls_adapter():
+    """Neo4jAdapter.delete_all_by_tenant is called with correct tenant_id."""
     svc = DeletionService()
     with patch("src.services.deletion_service.Neo4jAdapter") as mock_adapter_cls:
         mock_adapter = AsyncMock()
@@ -47,6 +54,7 @@ async def test_delete_neo4j_by_tenant_calls_adapter():
 
 @pytest.mark.asyncio
 async def test_delete_postgres_by_tenant_deletes_in_order(mock_db):
+    """All tables are deleted in FK-safe order, including the users row."""
     svc = DeletionService()
     executed_queries: list[str] = []
 
@@ -71,6 +79,7 @@ async def test_delete_postgres_by_tenant_deletes_in_order(mock_db):
 
 @pytest.mark.asyncio
 async def test_delete_clerk_user_calls_clerk_api():
+    """Clerk Management API DELETE is called with correct user_id."""
     svc = DeletionService()
     with patch("src.services.deletion_service.settings") as mock_settings:
         mock_settings.CLERK_SECRET_KEY = "sk_test_abc"
@@ -93,8 +102,7 @@ async def test_delete_clerk_user_calls_clerk_api():
 
 @pytest.mark.asyncio
 async def test_delete_content_by_tenant_excludes_users_row():
-    from src.services.deletion_service import DeletionService
-
+    """delete_content_by_tenant deletes content rows but never the users row."""
     executed: list[str] = []
 
     class FakeDB:
@@ -121,14 +129,12 @@ async def test_delete_content_by_tenant_excludes_users_row():
 
 
 def test_postgres_content_statements_never_include_users_row():
-    from src.services.deletion_service import _POSTGRES_CONTENT_STATEMENTS
-
+    """Regression: _POSTGRES_CONTENT_STATEMENTS must not contain a users DELETE."""
     for stmt in _POSTGRES_CONTENT_STATEMENTS:
         assert "FROM users" not in stmt, f"Forbidden in content statements: {stmt}"
 
 
 def test_postgres_delete_statements_includes_users_row_last():
-    from src.services.deletion_service import _POSTGRES_DELETE_STATEMENTS
-
+    """GDPR _POSTGRES_DELETE_STATEMENTS must delete users row last."""
     assert any("FROM users" in s for s in _POSTGRES_DELETE_STATEMENTS)
     assert "users" in _POSTGRES_DELETE_STATEMENTS[-1]

@@ -3,6 +3,7 @@
 
 resend is imported lazily (RULE 6). Email failure is NEVER fatal.
 """
+
 import structlog
 
 from src.core.config import settings
@@ -39,17 +40,19 @@ class EmailService(BaseService):
         import resend  # noqa: PLC0415
 
         log = logger.bind(tenant_id=user_id, action="email.deletion_warning")
-        name = display_name or to_email.split("@")[0]
+        name = display_name or to_email.split("@", maxsplit=1)[0]
         body = _WARNING_BODY.format(name=name)
 
         try:
             resend.api_key = settings.RESEND_API_KEY
-            resend.Emails.send({
-                "from": "Ravenbase <noreply@ravenbase.app>",
-                "to": [to_email],
-                "subject": "Your Ravenbase data will be archived in 30 days",
-                "text": body,
-            })
+            resend.Emails.send(
+                {
+                    "from": "Ravenbase <noreply@ravenbase.app>",
+                    "to": [to_email],
+                    "subject": "Your Ravenbase data will be archived in 30 days",
+                    "text": body,
+                }
+            )
             log.info("email.deletion_warning.sent")
             return True
         except Exception as exc:

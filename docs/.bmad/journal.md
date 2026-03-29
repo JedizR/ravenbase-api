@@ -12,12 +12,12 @@
 
 | Field | Value |
 |---|---|
-| Total stories complete | 19 / 37 |
-| Current phase | Phase A — Backend (Sprints 1–18) |
-| Current sprint | 18 |
+| Total stories complete | 20 / 37 |
+| Current phase | Phase A — Backend COMPLETE |
+| Current sprint | 19 (Backend Gate) |
 | Active repo | ravenbase-api |
 | Project started | 2026-03-25 |
-| Last entry | 2026-03-29 (STORY-036-BE) |
+| Last entry | 2026-03-29 (STORY-037) |
 
 > **Update this table** after every story entry. Increment stories complete,
 > update current sprint and phase when they change.
@@ -846,7 +846,38 @@ _No entries yet._
 > Inactivity CRON, activity middleware, 150/180-day purge.
 > Sprint 35 covers STORY-037.
 
-_No entries yet._
+### STORY-037 — Cold Data Lifecycle — Inactivity Archival
+**Date:** 2026-03-29 | **Sprint:** 35 | **Phase:** A | **Repo:** ravenbase-api
+**Quality gate:** ✅ clean — 333 tests passing, 0 ruff errors, 0 pyright errors
+**Commit:** `ee6299d`
+
+**What was built:**
+`ActivityTrackingMiddleware` intercepts every authenticated request and debounces `last_active_at` writes via a Redis key (once per user per 24h). `ColdDataService` implements two-phase inactivity logic: Phase 1 (`send_inactivity_warnings`) emails Free-tier users inactive 150–179 days using `EmailService` (Resend, lazy import) with `DataRetentionLog` deduplication; Phase 2 (`purge_inactive_users`) deletes Storage, Qdrant, Neo4j, and Postgres content rows (NOT the users row) for users inactive ≥180 days, then sets `is_archived=True` and `credits_balance=0`. The `cleanup_cold_data` ARQ CRON task fires every Sunday at 02:00 UTC via `WorkerSettings.cron_jobs`.
+
+| Stat | Count |
+|---|---|
+| New models | 1 (`DataRetentionLog`) |
+| New services | 2 (`ColdDataService`, `EmailService`) |
+| New middleware | 1 (`ActivityTrackingMiddleware`) |
+| New worker tasks | 1 (`cleanup_cold_data`) |
+| Alembic migrations | 1 (`data_retention_logs` table) |
+| Tests added | 31 (unit + integration) |
+
+**Key decisions:**
+- `delete_content_by_tenant` added to `DeletionService` (separate from GDPR `delete_postgres_by_tenant`) — never touches the `users` row, so archived user can still log in and re-upload.
+- Redis debounce key `activity:{user_id}` with 24h TTL prevents a hot DB write on every API call; if Redis is unavailable the middleware falls back to a direct DB write (non-fatal).
+- `DataRetentionLog` written per-user per-event for full audit trail; warning dedup queries check within the 180-day window to avoid re-sending after the window resets.
+- Phase 2 rollback-on-step-failure (AC-14): any exception during multi-store deletion triggers `db.rollback()` and `continue` — user stays `is_archived=False` until the next CRON succeeds.
+- `ADMIN_USER_IDS` env var used to skip admin accounts in both phases.
+
+**Gotchas:**
+- Pyright flags `User.is_archived.is_(False)` as an error because it sees `is_archived: bool` not as a SQLAlchemy column expression. Added `# type: ignore[attr-defined]` and `# type: ignore[operator]` on the affected WHERE clauses.
+- `account.py` was calling `require_user(authorization)` but the signature had changed to `require_user(request, authorization)` — fixed the call to pass both arguments.
+- Several pre-existing test files from earlier STORY-037 tasks had ruff E702 (semicolons) and I001 (import ordering) errors — fixed as part of quality gate.
+
+**Tech debt noted:**
+- `ActivityTrackingMiddleware` currently reads `request.state.user_id` which is set by other middleware/dependencies; relies on execution order being correct. Should add explicit guard logging if `user_id` is missing.
+- Qdrant and Neo4j deletion counts are hardcoded to 0 in `DataRetentionLog` (AC-13) — the adapters don't return row counts. Consider returning counts from adapters in a future story if audit precision is needed.
 
 ---
 

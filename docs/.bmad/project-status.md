@@ -7,25 +7,25 @@
 
 ## Current State
 
-**Phase:** A — Backend (Sprints 1–18)
-**Current sprint:** 18
-**Status:** In progress — 19 of 37 stories complete
+**Phase:** A — Backend (Sprints 1–19) — COMPLETE
+**Current sprint:** 19
+**Status:** COMPLETE — 20 of 37 stories complete (all backend stories done)
 
-**Next story to implement:** STORY-037
-**Story file:** `docs/stories/EPIC-08-polish/STORY-037.md`
+**Next story to implement:** N/A — Backend Gate Checklist must pass before Phase B (frontend)
+**Story file:** N/A
 
 ---
 
 ## Last Completed Story
 
-**STORY-036-BE — Admin API Endpoints** (2026-03-29)
-`require_admin` dependency + 5 endpoints under `/v1/admin/`: paginated user list with email search, user detail with last-20 transactions + source count, credit adjustment with `CreditTransaction(operation="admin_adjustment")` audit trail (allows negative balances), user ban/unban toggle, and platform stats reading Redis `llm:daily_spend:{today}` key via arq_pool.
+**STORY-037 — Cold Data Lifecycle** (2026-03-29)
+`ActivityTrackingMiddleware` updates `last_active_at` (Redis-debounced, once/day); `ColdDataService` runs two-phase CRON: Phase 1 warns Free users inactive 150–179 days (email via `EmailService`, dedup via `DataRetentionLog`); Phase 2 purges data for users inactive ≥180 days (Storage→Qdrant→Neo4j→Postgres content rows, sets `is_archived=True`, zeros `credits_balance`). ARQ CRON fires Sundays 02:00 UTC.
 
 ---
 
 ## Context for Next Session
 
-STORY-036-BE merged to main. Admin API is live: `src/api/routes/admin.py`, `src/services/admin_service.py`, `src/api/dependencies/admin.py`. Backend sequence: 036-BE→037. STORY-037 is next.
+STORY-037 merged to main. All backend stories complete. Before starting Phase B (frontend work), complete the Backend Gate Checklist below.
 
 ---
 
@@ -33,7 +33,7 @@ STORY-036-BE merged to main. Admin API is live: `src/api/routes/admin.py`, `src/
 
 Complete these before starting Phase B (frontend):
 
-- [ ] All 17 backend stories merged to main
+- [x] All backend stories merged to main (STORY-037 was the final backend story)
 - [ ] `make test` passes from clean checkout (0 failures)
 - [ ] `make quality` passes (0 ruff errors, 0 pyright errors)
 - [ ] `npm run generate-client` in ravenbase-web produces a non-empty `src/lib/api-client/`

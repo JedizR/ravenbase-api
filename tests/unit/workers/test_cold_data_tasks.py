@@ -1,11 +1,14 @@
 # tests/unit/workers/test_cold_data_tasks.py
 from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
+
 from src.workers.cold_data_tasks import cleanup_cold_data
 
 
 @pytest.mark.asyncio
 async def test_calls_both_phases():
+    """Both warning and purge phases are called; result dict is correct."""
     svc = MagicMock()
     svc.send_inactivity_warnings = AsyncMock(return_value=3)
     svc.purge_inactive_users = AsyncMock(return_value=1)
@@ -24,6 +27,7 @@ async def test_calls_both_phases():
 
 @pytest.mark.asyncio
 async def test_continues_if_warnings_phase_fails():
+    """Warning phase failure increments errors; purge phase still runs."""
     svc = MagicMock()
     svc.send_inactivity_warnings = AsyncMock(side_effect=Exception("DB timeout"))
     svc.purge_inactive_users = AsyncMock(return_value=2)

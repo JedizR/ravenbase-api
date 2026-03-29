@@ -1,11 +1,14 @@
 # tests/unit/services/test_email_service.py
 from unittest.mock import MagicMock, patch
+
 import pytest
+
 from src.services.email_service import EmailService
 
 
 @pytest.mark.asyncio
 async def test_send_warning_calls_resend(mocker):
+    """Resend API is called with correct to/from/subject/text fields."""
     mocker.patch("src.services.email_service.settings", RESEND_API_KEY="re_test_key")
     mock_resend = MagicMock()
     mock_resend.Emails.send = MagicMock(return_value={"id": "email_123"})
@@ -26,6 +29,7 @@ async def test_send_warning_calls_resend(mocker):
 
 @pytest.mark.asyncio
 async def test_send_warning_returns_false_on_failure(mocker):
+    """Resend failure returns False without raising."""
     mocker.patch("src.services.email_service.settings", RESEND_API_KEY="re_test_key")
     mock_resend = MagicMock()
     mock_resend.Emails.send = MagicMock(side_effect=Exception("rate limit"))
@@ -42,6 +46,7 @@ async def test_send_warning_returns_false_on_failure(mocker):
 
 @pytest.mark.asyncio
 async def test_send_warning_uses_email_prefix_when_no_display_name(mocker):
+    """When display_name is None, the email prefix is used as the name."""
     mocker.patch("src.services.email_service.settings", RESEND_API_KEY="re_test_key")
     mock_resend = MagicMock()
     mock_resend.Emails.send = MagicMock(return_value={"id": "email_456"})

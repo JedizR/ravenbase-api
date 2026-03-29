@@ -1,8 +1,12 @@
 # tests/unit/api/test_activity_middleware.py
-import asyncio
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from httpx import ASGITransport, AsyncClient
+from starlette.applications import Starlette
+from starlette.requests import Request
+from starlette.responses import JSONResponse
+from starlette.routing import Route
 
 from src.api.middleware.activity import ActivityTrackingMiddleware, _update_last_active
 
@@ -48,12 +52,6 @@ async def test_update_last_active_does_not_set_redis_on_db_failure():
 @pytest.mark.asyncio
 async def test_middleware_skips_when_no_user_id():
     """Unauthenticated requests (no request.state.user_id) are silently skipped."""
-    from starlette.applications import Starlette
-    from starlette.requests import Request
-    from starlette.responses import JSONResponse
-    from starlette.routing import Route
-    from httpx import ASGITransport, AsyncClient
-
     mock_redis = AsyncMock()
     mock_redis.exists = AsyncMock(return_value=False)
 
@@ -74,12 +72,6 @@ async def test_middleware_skips_when_no_user_id():
 @pytest.mark.asyncio
 async def test_middleware_skips_skip_paths():
     """Health-check and webhook paths are never tracked."""
-    from starlette.applications import Starlette
-    from starlette.requests import Request
-    from starlette.responses import JSONResponse
-    from starlette.routing import Route
-    from httpx import ASGITransport, AsyncClient
-
     mock_redis = AsyncMock()
 
     async def health(request: Request):

@@ -5,6 +5,7 @@ After each authenticated non-skip request, checks a Redis key (TTL=24h).
 On cache miss, fires asyncio.create_task() to update last_active_at in PG.
 NEVER awaited — fire-and-forget. Errors are logged and swallowed.
 """
+
 import asyncio
 from datetime import UTC, datetime
 
