@@ -77,3 +77,42 @@ def test_admin_stats_response_schema() -> None:
     )
     assert stats.daily_llm_spend_usd == 12.50
     assert stats.llm_spend_cap_usd == 50.0
+
+
+@pytest.mark.asyncio
+async def test_require_admin_blocks_non_admin(mocker) -> None:
+    mocker.patch(
+        "src.api.dependencies.admin.settings",
+        type("S", (), {"ADMIN_USER_IDS": "admin_aaa,admin_bbb"})(),
+    )
+    from src.api.dependencies.admin import require_admin  # noqa: PLC0415
+
+    with pytest.raises(Exception) as exc_info:
+        await require_admin({"user_id": "not_an_admin", "email": "x@x.com", "tier": "free"})
+    assert exc_info.value.status_code == 403
+    assert exc_info.value.detail["code"] == "FORBIDDEN"
+
+
+@pytest.mark.asyncio
+async def test_require_admin_allows_admin_user(mocker) -> None:
+    mocker.patch(
+        "src.api.dependencies.admin.settings",
+        type("S", (), {"ADMIN_USER_IDS": "admin_aaa,admin_bbb"})(),
+    )
+    from src.api.dependencies.admin import require_admin  # noqa: PLC0415
+
+    result = await require_admin({"user_id": "admin_aaa", "email": "admin@test.com", "tier": "free"})
+    assert result["user_id"] == "admin_aaa"
+
+
+@pytest.mark.asyncio
+async def test_require_admin_blocks_when_admin_ids_empty(mocker) -> None:
+    mocker.patch(
+        "src.api.dependencies.admin.settings",
+        type("S", (), {"ADMIN_USER_IDS": ""})(),
+    )
+    from src.api.dependencies.admin import require_admin  # noqa: PLC0415
+
+    with pytest.raises(Exception) as exc_info:
+        await require_admin({"user_id": "any_user", "email": "x@x.com", "tier": "free"})
+    assert exc_info.value.status_code == 403
