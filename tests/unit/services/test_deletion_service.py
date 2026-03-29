@@ -89,3 +89,46 @@ async def test_delete_clerk_user_calls_clerk_api():
         "https://api.clerk.com/v1/users/user_clerk_abc",
         headers={"Authorization": "Bearer sk_test_abc"},
     )
+
+
+@pytest.mark.asyncio
+async def test_delete_content_by_tenant_excludes_users_row():
+    from src.services.deletion_service import DeletionService
+
+    executed: list[str] = []
+
+    class FakeDB:
+        async def execute(self, stmt, params=None):
+            executed.append(str(stmt))
+
+        async def commit(self):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *args):
+            pass
+
+    svc = DeletionService()
+    fake_db = FakeDB()
+    await svc.delete_content_by_tenant("user-x", fake_db)
+
+    joined = " ".join(executed)
+    assert "sources" in joined
+    assert "system_profiles" in joined
+    assert "DELETE FROM users" not in joined
+
+
+def test_postgres_content_statements_never_include_users_row():
+    from src.services.deletion_service import _POSTGRES_CONTENT_STATEMENTS
+
+    for stmt in _POSTGRES_CONTENT_STATEMENTS:
+        assert "FROM users" not in stmt, f"Forbidden in content statements: {stmt}"
+
+
+def test_postgres_delete_statements_includes_users_row_last():
+    from src.services.deletion_service import _POSTGRES_DELETE_STATEMENTS
+
+    assert any("FROM users" in s for s in _POSTGRES_DELETE_STATEMENTS)
+    assert "users" in _POSTGRES_DELETE_STATEMENTS[-1]

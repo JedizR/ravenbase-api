@@ -11,18 +11,23 @@ from src.services.base import BaseService
 
 logger = structlog.get_logger()
 
-# PostgreSQL deletion order — FK-safe (children before parents).
-# Must delete all child tables before deleting users row.
-# Only tables that exist as of STORY-024 are included.
-# chat_sessions, data_retention_logs, referral_transactions are NOT yet created.
-_POSTGRES_DELETE_STATEMENTS = [
+# Content rows only — NO users row (used for archival in STORY-037).
+# FK-safe order: children before parents.
+_POSTGRES_CONTENT_STATEMENTS = [
+    "DELETE FROM data_retention_logs WHERE user_id = :uid",
     "DELETE FROM job_statuses WHERE user_id = :uid",
     "DELETE FROM credit_transactions WHERE user_id = :uid",
+    "DELETE FROM chat_sessions WHERE user_id = :uid",
     "DELETE FROM meta_documents WHERE user_id = :uid",
     "DELETE FROM conflicts WHERE user_id = :uid",
     "DELETE FROM source_authority_weights WHERE user_id = :uid",
     "DELETE FROM sources WHERE user_id = :uid",
     "DELETE FROM system_profiles WHERE user_id = :uid",
+]
+
+# Full GDPR deletion — content + users row (used by STORY-024).
+_POSTGRES_DELETE_STATEMENTS = [
+    *_POSTGRES_CONTENT_STATEMENTS,
     "DELETE FROM users WHERE id = :uid",  # Must be last
 ]
 
@@ -59,6 +64,16 @@ class DeletionService(BaseService):
             # stmt is a module-level constant — not user-controlled.
             # Use execute() (SQLAlchemy core) rather than exec() (SQLModel ORM)
             # because exec() is typed only for ORM statements, not raw TextClause.
+            await db.execute(text(stmt), {"uid": user_id})
+        await db.commit()
+
+    async def delete_content_by_tenant(self, user_id: str, db: AsyncSession) -> None:
+        """DELETE content rows for user_id but KEEP the users row.
+
+        Used for cold-data archival (STORY-037). User can still log in after.
+        All SQL strings are schema constants — user_id is always a bind param.
+        """
+        for stmt in _POSTGRES_CONTENT_STATEMENTS:
             await db.execute(text(stmt), {"uid": user_id})
         await db.commit()
 
