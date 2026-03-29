@@ -657,7 +657,7 @@ Direct-SSE conversational chat over the user's memory base. `POST /v1/chat/messa
 ### STORY-029 — Natural Language Graph Query (Backend)
 **Date:** 2026-03-29 | **Sprint:** 17 | **Phase:** A | **Repo:** ravenbase-api
 **Quality gate:** ✅ clean — 283 tests passing, 0 ruff errors, 0 pyright errors
-**Commit:** `55fe705`
+**Commit:** `b8c018f`
 
 **What was built:**
 `POST /v1/graph/query` endpoint that converts natural language to Cypher via `LLMRouter("cypher_generation")` (Gemini 2.5 Flash primary, Claude Haiku fallback). Generated Cypher is checked against a write-keyword regex before execution. Tenant filter injected as a Cypher `$tenant_id` parameter reference (never string-interpolated). Results parsed with the existing `GraphService._rows_to_graph_response()` helper and returned as `{cypher, results: {nodes, edges}, explanation, query_time_ms}`. Credit cost: 2 per query via `CreditService.deduct()` before LLM call.

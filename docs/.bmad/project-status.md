@@ -12,7 +12,7 @@
 **Status:** In progress — 18 of 37 stories complete
 
 **Next story to implement:** STORY-036-BE
-**Story file:** `docs/stories/EPIC-10-platform/STORY-036.md`
+**Story file:** `docs/stories/EPIC-08-polish/STORY-036.md`
 
 ---
 
