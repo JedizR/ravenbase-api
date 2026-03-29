@@ -310,3 +310,91 @@ async def test_get_user_detail_returns_404_for_missing_user() -> None:
     finally:
         app.dependency_overrides.pop(require_admin, None)
         app.dependency_overrides.pop(get_db, None)
+
+
+# ── /v1/admin/credits/adjust ──────────────────────────────────────────────
+
+def _make_adjust_mock_db(user: User, txn_id: int = 42) -> AsyncMock:
+    mock_db = AsyncMock()
+
+    user_result = MagicMock()
+    user_result.one_or_none.return_value = user
+    mock_db.exec = AsyncMock(return_value=user_result)
+
+    async def _refresh_side_effect(obj: object) -> None:
+        obj.id = txn_id  # type: ignore[attr-defined]
+
+    mock_db.refresh = AsyncMock(side_effect=_refresh_side_effect)
+    return mock_db
+
+
+@pytest.fixture
+async def admin_adjust_client():
+    user = _make_user(user_id="adjust_user_123", credits=100)
+
+    async def _override_db():
+        yield _make_adjust_mock_db(user, txn_id=99)
+
+    app.dependency_overrides[require_admin] = lambda: {
+        "user_id": TEST_ADMIN_ID,
+        "email": "admin@example.com",
+        "tier": "free",
+    }
+    app.dependency_overrides[get_db] = _override_db
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+        yield ac
+
+    app.dependency_overrides.pop(require_admin, None)
+    app.dependency_overrides.pop(get_db, None)
+
+
+@pytest.mark.asyncio
+async def test_adjust_credits_adds_credits(admin_adjust_client: AsyncClient) -> None:
+    response = await admin_adjust_client.post(
+        "/v1/admin/credits/adjust",
+        json={"user_id": "adjust_user_123", "amount": 50, "reason": "manual bonus"},
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["new_balance"] == 150  # 100 + 50
+    assert data["transaction_id"] == 99
+
+
+@pytest.mark.asyncio
+async def test_adjust_credits_deducts_credits(admin_adjust_client: AsyncClient) -> None:
+    response = await admin_adjust_client.post(
+        "/v1/admin/credits/adjust",
+        json={"user_id": "adjust_user_123", "amount": -30, "reason": "correction"},
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["new_balance"] == 70  # 100 - 30
+
+
+@pytest.mark.asyncio
+async def test_adjust_credits_returns_404_for_missing_user() -> None:
+    async def _override_db():
+        mock_db = AsyncMock()
+        not_found = MagicMock()
+        not_found.one_or_none.return_value = None
+        mock_db.exec = AsyncMock(return_value=not_found)
+        yield mock_db
+
+    app.dependency_overrides[require_admin] = lambda: {
+        "user_id": TEST_ADMIN_ID,
+        "email": "admin@example.com",
+        "tier": "free",
+    }
+    app.dependency_overrides[get_db] = _override_db
+
+    try:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+            response = await ac.post(
+                "/v1/admin/credits/adjust",
+                json={"user_id": "ghost_user", "amount": 10, "reason": "test"},
+            )
+        assert response.status_code == 404
+    finally:
+        app.dependency_overrides.pop(require_admin, None)
+        app.dependency_overrides.pop(get_db, None)
