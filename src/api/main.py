@@ -1,10 +1,12 @@
 from contextlib import asynccontextmanager
 
+import redis.asyncio as aioredis
 from arq import create_pool
 from arq.connections import RedisSettings
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from src.api.middleware.activity import ActivityTrackingMiddleware
 from src.api.routes import (
     account,
     admin,
@@ -25,8 +27,10 @@ from src.core.logging import configure_logging
 async def lifespan(app: FastAPI):
     configure_logging()
     app.state.arq_pool = await create_pool(RedisSettings.from_dsn(settings.REDIS_URL))
+    app.state.redis = aioredis.from_url(settings.REDIS_URL, decode_responses=False)
     yield
     await app.state.arq_pool.close()
+    await app.state.redis.aclose()
 
 
 def create_app() -> FastAPI:
@@ -48,6 +52,7 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+    app.add_middleware(ActivityTrackingMiddleware)
 
     app.include_router(health.router)
     app.include_router(admin.router)
