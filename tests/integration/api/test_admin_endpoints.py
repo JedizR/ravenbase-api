@@ -398,3 +398,73 @@ async def test_adjust_credits_returns_404_for_missing_user() -> None:
     finally:
         app.dependency_overrides.pop(require_admin, None)
         app.dependency_overrides.pop(get_db, None)
+
+
+# ── /v1/admin/users/{user_id}/toggle-active ───────────────────────────────
+
+def _make_toggle_mock_db(user: User) -> AsyncMock:
+    mock_db = AsyncMock()
+    user_result = MagicMock()
+    user_result.one_or_none.return_value = user
+    mock_db.exec = AsyncMock(return_value=user_result)
+    return mock_db
+
+
+@pytest.fixture
+async def admin_toggle_client():
+    user = _make_user(user_id="toggle_user_123")
+    user.is_active = True
+
+    async def _override_db():
+        yield _make_toggle_mock_db(user)
+
+    app.dependency_overrides[require_admin] = lambda: {
+        "user_id": TEST_ADMIN_ID,
+        "email": "admin@example.com",
+        "tier": "free",
+    }
+    app.dependency_overrides[get_db] = _override_db
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+        yield ac
+
+    app.dependency_overrides.pop(require_admin, None)
+    app.dependency_overrides.pop(get_db, None)
+
+
+@pytest.mark.asyncio
+async def test_toggle_active_deactivates_user(admin_toggle_client: AsyncClient) -> None:
+    response = await admin_toggle_client.post(
+        "/v1/admin/users/toggle_user_123/toggle-active",
+        json={"active": False},
+    )
+    assert response.status_code == 200
+    assert response.json()["is_active"] is False
+
+
+@pytest.mark.asyncio
+async def test_toggle_active_returns_404_for_missing_user() -> None:
+    async def _override_db():
+        mock_db = AsyncMock()
+        not_found = MagicMock()
+        not_found.one_or_none.return_value = None
+        mock_db.exec = AsyncMock(return_value=not_found)
+        yield mock_db
+
+    app.dependency_overrides[require_admin] = lambda: {
+        "user_id": TEST_ADMIN_ID,
+        "email": "admin@example.com",
+        "tier": "free",
+    }
+    app.dependency_overrides[get_db] = _override_db
+
+    try:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+            response = await ac.post(
+                "/v1/admin/users/ghost_user/toggle-active",
+                json={"active": False},
+            )
+        assert response.status_code == 404
+    finally:
+        app.dependency_overrides.pop(require_admin, None)
+        app.dependency_overrides.pop(get_db, None)
