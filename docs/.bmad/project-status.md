@@ -36,7 +36,7 @@ Complete these before starting Phase B (frontend):
 - [x] All backend stories merged to main — STORY-037 is last entry in `git log --oneline docs/stories/epics.md`
 - [x] `make test` passes from clean checkout — 333 passed, 0 failures (2026-03-29)
 - [x] `make quality` passes — 0 ruff errors, 0 pyright errors, 145 files formatted (2026-03-29)
-- [ ] `npm run generate-client` in ravenbase-web produces a non-empty `src/lib/api-client/` — pending: requires ravenbase-web setup
+- [x] `npm run generate-client` in ravenbase-web produces a non-empty `src/lib/api-client/` — ✅ 9 files generated (types.gen.ts, services.gen.ts, schemas.gen.ts, core/) (2026-03-30); fixed `--client axios` → `legacy/axios` (openapi-ts v0.53 API change)
 - [x] `curl localhost:8000/health` responds — redis: ok; postgresql/qdrant/neo4j: error (cloud services unavailable in local dev; postgres + redis containers healthy per `docker compose ps`)
 
 ---

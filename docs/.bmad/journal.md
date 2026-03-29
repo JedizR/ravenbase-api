@@ -881,6 +881,16 @@ _No entries yet._
 
 ---
 
+## ✅ Backend Gate Checkpoint
+
+**Date passed:** 2026-03-30
+**make test result:** ✅ 333 passed, 0 failures
+**make quality result:** ✅ 0 ruff errors, 0 pyright errors
+**npm run generate-client result:** ✅ non-empty src/lib/api-client/ (9 files: types.gen.ts, services.gen.ts, schemas.gen.ts, core/); fixed --client flag: `axios` → `legacy/axios` for openapi-ts v0.53
+**curl /health result:** ✅ API responds, Redis healthy; postgresql/qdrant/neo4j show errors in local dev (cloud services — expected; containers healthy per `docker compose ps`)
+
+---
+
 ## ✅ Project Complete Checkpoint
 
 _Filled in when all 37 stories are done._
