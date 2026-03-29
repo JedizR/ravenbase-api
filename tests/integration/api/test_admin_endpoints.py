@@ -3,20 +3,28 @@
 
 All external dependencies mocked. Follows test_chat_endpoints.py pattern.
 """
+
+import uuid
 from datetime import UTC, datetime
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from httpx import ASGITransport, AsyncClient
+
+from src.api.dependencies.admin import get_arq_pool, require_admin
+from src.api.dependencies.auth import require_user
+from src.api.dependencies.db import get_db
+from src.api.main import app
+from src.models.credit import CreditTransaction
+from src.models.user import User
 from src.schemas.admin import (
     AdminStatsResponse,
-    AdminTransactionOut,
-    AdminUserDetailResponse,
     AdminUserListResponse,
     AdminUserOut,
     CreditAdjustRequest,
-    CreditAdjustResponse,
-    ToggleActiveRequest,
-    ToggleActiveResponse,
 )
+
+TEST_ADMIN_ID = "admin_" + uuid.uuid4().hex[:12]
 
 
 def test_admin_user_out_schema() -> None:
@@ -101,7 +109,9 @@ async def test_require_admin_allows_admin_user(mocker) -> None:
     )
     from src.api.dependencies.admin import require_admin  # noqa: PLC0415
 
-    result = await require_admin({"user_id": "admin_aaa", "email": "admin@test.com", "tier": "free"})
+    result = await require_admin(
+        {"user_id": "admin_aaa", "email": "admin@test.com", "tier": "free"}
+    )
     assert result["user_id"] == "admin_aaa"
 
 
@@ -119,19 +129,6 @@ async def test_require_admin_blocks_when_admin_ids_empty(mocker) -> None:
 
 
 # ── /v1/admin/users (list) ──────────────────────────────────────────────────
-
-import uuid
-from unittest.mock import AsyncMock, MagicMock
-
-from httpx import ASGITransport, AsyncClient
-
-from src.api.dependencies.admin import require_admin
-from src.api.dependencies.auth import require_user
-from src.api.dependencies.db import get_db
-from src.api.main import app
-from src.models.user import User
-
-TEST_ADMIN_ID = "admin_" + uuid.uuid4().hex[:12]
 
 
 def _make_user(
@@ -225,8 +222,6 @@ async def test_list_users_non_admin_returns_403(mocker) -> None:
 
 # ── /v1/admin/users/{user_id} (detail) ────────────────────────────────────
 
-from src.models.credit import CreditTransaction
-
 
 def _make_txn(user_id: str, amount: int = 500, balance_after: int = 500) -> CreditTransaction:
     return CreditTransaction(
@@ -313,6 +308,7 @@ async def test_get_user_detail_returns_404_for_missing_user() -> None:
 
 
 # ── /v1/admin/credits/adjust ──────────────────────────────────────────────
+
 
 def _make_adjust_mock_db(user: User, txn_id: int = 42) -> AsyncMock:
     mock_db = AsyncMock()
@@ -402,6 +398,7 @@ async def test_adjust_credits_returns_404_for_missing_user() -> None:
 
 # ── /v1/admin/users/{user_id}/toggle-active ───────────────────────────────
 
+
 def _make_toggle_mock_db(user: User) -> AsyncMock:
     mock_db = AsyncMock()
     user_result = MagicMock()
@@ -471,8 +468,6 @@ async def test_toggle_active_returns_404_for_missing_user() -> None:
 
 
 # ── /v1/admin/stats ────────────────────────────────────────────────────────
-
-from src.api.dependencies.admin import get_arq_pool
 
 
 def _make_stats_mock_db(counts: list[int]) -> AsyncMock:

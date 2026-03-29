@@ -38,13 +38,13 @@ class AdminService(BaseService):
         count_stmt = select(func.count()).select_from(User)
         rows_stmt = (
             select(User)
-            .order_by(User.created_at.desc())
+            .order_by(User.created_at.desc())  # type: ignore[arg-type]
             .offset((page - 1) * page_size)
             .limit(page_size)
         )
 
         if q:
-            filter_clause = User.email.ilike(f"%{q}%")
+            filter_clause = User.email.ilike(f"%{q}%")  # type: ignore[union-attr]
             count_stmt = count_stmt.where(filter_clause)
             rows_stmt = rows_stmt.where(filter_clause)
 
@@ -83,9 +83,7 @@ class AdminService(BaseService):
         )
 
         source_count = (
-            await db.exec(
-                select(func.count(Source.id)).where(Source.user_id == user_id)
-            )
+            await db.exec(select(func.count(Source.id)).where(Source.user_id == user_id))  # type: ignore[arg-type]
         ).one()
 
         log.info("admin.get_user_detail", source_count=source_count, txn_count=len(transactions))
@@ -175,7 +173,7 @@ class AdminService(BaseService):
         total_users = (await db.exec(select(func.count()).select_from(User))).one()
         active_today = (
             await db.exec(
-                select(func.count()).select_from(User).where(User.last_active_at >= today_start)
+                select(func.count()).select_from(User).where(User.last_active_at >= today_start)  # type: ignore[operator]
             )
         ).one()
         new_today = (
@@ -184,9 +182,7 @@ class AdminService(BaseService):
             )
         ).one()
         pro_users = (
-            await db.exec(
-                select(func.count()).select_from(User).where(User.tier == "pro")
-            )
+            await db.exec(select(func.count()).select_from(User).where(User.tier == "pro"))
         ).one()
         sources_today = (
             await db.exec(

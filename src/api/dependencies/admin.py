@@ -8,7 +8,7 @@ from src.core.config import settings
 logger = structlog.get_logger()
 
 
-async def require_admin(user: dict = Depends(require_user)) -> dict:
+async def require_admin(user: dict = Depends(require_user)) -> dict:  # noqa: B008
     """Extend require_user with admin ID check.
 
     Admin user IDs come from ADMIN_USER_IDS env var (comma-separated Clerk user IDs).

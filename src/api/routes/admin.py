@@ -11,6 +11,7 @@ from src.schemas.admin import (
     AdminTransactionOut,
     AdminUserDetailResponse,
     AdminUserListResponse,
+    AdminUserOut,
     CreditAdjustRequest,
     CreditAdjustResponse,
     ToggleActiveRequest,
@@ -26,19 +27,23 @@ async def list_users(
     q: str | None = Query(default=None, description="Email search (case-insensitive)"),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
-    admin: dict = Depends(require_admin),
-    db: AsyncSession = Depends(get_db),
+    _admin: dict = Depends(require_admin),  # noqa: B008
+    db: AsyncSession = Depends(get_db),  # noqa: B008
 ) -> AdminUserListResponse:
     """List all users with optional email search. Admin only."""
     users, total = await AdminService().list_users(db, q, page, page_size)
-    return AdminUserListResponse(users=users, total=total, page=page)
+    return AdminUserListResponse(
+        users=[AdminUserOut.model_validate(u) for u in users],
+        total=total,
+        page=page,
+    )
 
 
 @router.get("/users/{user_id}", response_model=AdminUserDetailResponse)
 async def get_user_detail(
     user_id: str,
-    admin: dict = Depends(require_admin),
-    db: AsyncSession = Depends(get_db),
+    _admin: dict = Depends(require_admin),  # noqa: B008
+    db: AsyncSession = Depends(get_db),  # noqa: B008
 ) -> AdminUserDetailResponse:
     """Get full user profile with recent transactions and source count. Admin only."""
     user, transactions, source_count = await AdminService().get_user_detail(db, user_id)
@@ -60,8 +65,8 @@ async def get_user_detail(
 @router.post("/credits/adjust", response_model=CreditAdjustResponse)
 async def adjust_credits(
     body: CreditAdjustRequest,
-    admin: dict = Depends(require_admin),
-    db: AsyncSession = Depends(get_db),
+    _admin: dict = Depends(require_admin),  # noqa: B008
+    db: AsyncSession = Depends(get_db),  # noqa: B008
 ) -> CreditAdjustResponse:
     """Adjust a user's credit balance. Positive adds, negative removes. Admin only."""
     new_balance, txn_id = await AdminService().adjust_credits(
@@ -74,8 +79,8 @@ async def adjust_credits(
 async def toggle_active(
     user_id: str,
     body: ToggleActiveRequest,
-    admin: dict = Depends(require_admin),
-    db: AsyncSession = Depends(get_db),
+    _admin: dict = Depends(require_admin),  # noqa: B008
+    db: AsyncSession = Depends(get_db),  # noqa: B008
 ) -> ToggleActiveResponse:
     """Set user active/inactive status. Admin only."""
     is_active = await AdminService().toggle_active(db, user_id, body.active)
@@ -84,9 +89,9 @@ async def toggle_active(
 
 @router.get("/stats", response_model=AdminStatsResponse)
 async def get_admin_stats(
-    admin: dict = Depends(require_admin),
-    db: AsyncSession = Depends(get_db),
-    arq_pool=Depends(get_arq_pool),
+    _admin: dict = Depends(require_admin),  # noqa: B008
+    db: AsyncSession = Depends(get_db),  # noqa: B008
+    arq_pool=Depends(get_arq_pool),  # noqa: B008
 ) -> AdminStatsResponse:
     """Platform-wide metrics including Redis LLM spend. Admin only."""
     redis_key = f"llm:daily_spend:{date.today().isoformat()}"
