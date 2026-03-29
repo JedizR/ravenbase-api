@@ -13,8 +13,8 @@
 | Field | Value |
 |---|---|
 | Total stories complete | 19 / 37 |
-| Current phase | Phase A — Backend (Sprints 1–34) |
-| Current sprint | 34 |
+| Current phase | Phase A — Backend (Sprints 1–18) |
+| Current sprint | 18 |
 | Active repo | ravenbase-api |
 | Project started | 2026-03-25 |
 | Last entry | 2026-03-29 (STORY-036-BE) |
@@ -697,12 +697,41 @@ _This section is filled in when all 17 backend sprints are complete._
 
 ---
 
-## Sprint 18 — Web Scaffold
+## Sprint 18 — Admin Dashboard Backend
 
-> Next.js 15 App Router, design tokens, shadcn/ui, font system.
-> Sprint 18 covers STORY-001-WEB.
+> Admin API: user management, credit adjustment, platform stats.
+> Sprint 18 covers STORY-036-BE.
 
-_No entries yet._
+### STORY-036-BE — Admin API Endpoints (Backend)
+**Date:** 2026-03-29 | **Sprint:** 18 | **Phase:** A | **Repo:** ravenbase-api
+**Quality gate:** ✅ clean — 302 tests passing, 0 ruff errors, 0 pyright errors
+**Commit:** `c711916`
+
+**What was built:**
+`require_admin` FastAPI dependency (checks `ADMIN_USER_IDS` env var, returns 403 for non-admins) + 5 admin-only REST endpoints: `GET /v1/admin/users` (paginated list + email search), `GET /v1/admin/users/{user_id}` (user detail with last-20 credit transactions + source count), `POST /v1/admin/credits/adjust` (signed amount, produces `CreditTransaction(operation="admin_adjustment")` audit trail, allows negative balance), `POST /v1/admin/users/{user_id}/toggle-active` (ban/unban), `GET /v1/admin/stats` (platform metrics including Redis `llm:daily_spend:{today}` key read via arq_pool).
+
+| Stat | Count |
+|---|---|
+| Routes added | 5 (`/v1/admin/users`, `/v1/admin/users/{id}`, `/v1/admin/credits/adjust`, `/v1/admin/users/{id}/toggle-active`, `/v1/admin/stats`) |
+| Services added | 1 (`AdminService`) |
+| Dependencies added | 1 (`require_admin`, `get_arq_pool` in `src/api/dependencies/admin.py`) |
+| Schemas added | 8 (in `src/schemas/admin.py`) |
+| Tests added | 19 (integration, all mocked) |
+
+**Key decisions:**
+- `require_admin` wraps `require_user` via `Depends(require_user)` — never bypasses JWT validation.
+- Stats route pre-fetches Redis spend as `float` before calling `AdminService.get_stats()` — keeps service layer Redis-free.
+- Admin credit adjustments bypass the balance guard in `CreditService.deduct()` — intentional, admin CAN produce negative balances.
+- `Source.ingested_at` and `MetaDocument.generated_at` used for "today" counts (not `created_at`).
+
+**Gotchas:**
+- `raise_404` did not exist in errors.py — added before AdminService was implemented (same pattern as raise_402, raise_403, raise_409).
+- `test_list_users_without_auth_returns_401` used an undefined `client` fixture — replaced with inline AsyncClient pattern matching the rest of the integration tests.
+- `func.count(Source.id)` in `get_user_detail` required `# type: ignore[arg-type]` — same pyright issue seen in chat_service.py and graph_query_service.py.
+
+**Tech debt noted:**
+- Admin credit adjustments bypass CreditService.deduct() entirely — inline SELECT FOR UPDATE in AdminService.adjust_credits(). If CreditService gains new side effects (e.g. notifications), admin adjustments won't inherit them automatically.
+- GET /v1/admin/stats runs 6 separate COUNT queries sequentially. Could be parallelised with asyncio.gather() for sub-100ms latency.
 
 ---
 
@@ -787,18 +816,6 @@ _No entries yet._
 
 ---
 
-## Sprint 28 — Dark Mode
-
-> See Sprint 27.
-
----
-
-## Sprint 29 — Legal Pages
-
-> See Sprint 27.
-
----
-
 ## Sprint 30 — Referral System
 
 > Dual-sided credits, ReferralTransaction table, Settings UI.
@@ -817,48 +834,12 @@ _No entries yet._
 
 ---
 
-## Sprint 32 — Email System (continued)
-
-> See Sprint 27.
-
----
-
-## Sprint 33 — Referral System (continued)
-
-> See Sprint 30.
-
----
-
 ## Sprint 34 — Admin Dashboard
 
-> Cross-repo story: 5 admin API endpoints + admin UI with credit adjustment.
-> Sprint 34 covers STORY-036 (backend + frontend).
+> Frontend: admin UI with user management, credit adjustment, and stats dashboard.
+> Sprint 34 covers STORY-036-FE.
 
-### STORY-036-BE — Admin API Endpoints (Backend)
-**Date:** 2026-03-29 | **Sprint:** 34 | **Phase:** A | **Repo:** ravenbase-api
-**Quality gate:** ✅ clean — 302 tests passing, 0 ruff errors, 0 pyright errors
-**Commit:** `c711916`
-
-**What was built:**
-`require_admin` FastAPI dependency (checks `ADMIN_USER_IDS` env var, returns 403 for non-admins) + 5 admin-only REST endpoints: `GET /v1/admin/users` (paginated list + email search), `GET /v1/admin/users/{user_id}` (user detail with last-20 credit transactions + source count), `POST /v1/admin/credits/adjust` (signed amount, produces `CreditTransaction(operation="admin_adjustment")` audit trail, allows negative balance), `POST /v1/admin/users/{user_id}/toggle-active` (ban/unban), `GET /v1/admin/stats` (platform metrics including Redis `llm:daily_spend:{today}` key read via arq_pool).
-
-| Stat | Count |
-|---|---|
-| Routes added | 5 (`/v1/admin/users`, `/v1/admin/users/{id}`, `/v1/admin/credits/adjust`, `/v1/admin/users/{id}/toggle-active`, `/v1/admin/stats`) |
-| Services added | 1 (`AdminService`) |
-| Dependencies added | 1 (`require_admin`, `get_arq_pool` in `src/api/dependencies/admin.py`) |
-| Schemas added | 8 (in `src/schemas/admin.py`) |
-| Tests added | 19 (integration, all mocked) |
-
-**Key decisions:**
-- `require_admin` wraps `require_user` via `Depends(require_user)` — never bypasses JWT validation.
-- Stats route pre-fetches Redis spend as `float` before calling `AdminService.get_stats()` — keeps service layer Redis-free.
-- Admin credit adjustments bypass the balance guard in `CreditService.deduct()` — intentional, admin CAN produce negative balances.
-- `Source.ingested_at` and `MetaDocument.generated_at` used for "today" counts (not `created_at`).
-
----
-
----
+_No entries yet._
 
 ## Sprint 35 — Cold Data Lifecycle
 
