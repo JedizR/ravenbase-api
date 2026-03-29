@@ -468,3 +468,86 @@ async def test_toggle_active_returns_404_for_missing_user() -> None:
     finally:
         app.dependency_overrides.pop(require_admin, None)
         app.dependency_overrides.pop(get_db, None)
+
+
+# ── /v1/admin/stats ────────────────────────────────────────────────────────
+
+from src.api.dependencies.admin import get_arq_pool
+
+
+def _make_stats_mock_db(counts: list[int]) -> AsyncMock:
+    """counts order: total_users, active_today, new_today, pro_users, sources_today, metadocs_today"""
+    mock_db = AsyncMock()
+    results = []
+    for count in counts:
+        r = MagicMock()
+        r.one.return_value = count
+        results.append(r)
+    mock_db.exec = AsyncMock(side_effect=results)
+    return mock_db
+
+
+@pytest.fixture
+async def admin_stats_client():
+    mock_pool = AsyncMock()
+    mock_pool.get = AsyncMock(return_value=b"12.50")
+
+    async def _override_db():
+        yield _make_stats_mock_db([500, 42, 10, 15, 7, 3])
+
+    app.dependency_overrides[require_admin] = lambda: {
+        "user_id": TEST_ADMIN_ID,
+        "email": "admin@example.com",
+        "tier": "free",
+    }
+    app.dependency_overrides[get_db] = _override_db
+    app.dependency_overrides[get_arq_pool] = lambda: mock_pool
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+        yield ac
+
+    app.dependency_overrides.pop(require_admin, None)
+    app.dependency_overrides.pop(get_db, None)
+    app.dependency_overrides.pop(get_arq_pool, None)
+
+
+@pytest.mark.asyncio
+async def test_get_stats_returns_platform_metrics(admin_stats_client: AsyncClient) -> None:
+    response = await admin_stats_client.get("/v1/admin/stats")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["total_users"] == 500
+    assert data["active_today"] == 42
+    assert data["new_today"] == 10
+    assert data["pro_users"] == 15
+    assert data["sources_today"] == 7
+    assert data["metadocs_today"] == 3
+    assert data["daily_llm_spend_usd"] == 12.50
+    assert data["llm_spend_cap_usd"] == 50.0  # settings.MAX_DAILY_LLM_SPEND_USD default
+
+
+@pytest.mark.asyncio
+async def test_get_stats_handles_missing_redis_key() -> None:
+    mock_pool = AsyncMock()
+    mock_pool.get = AsyncMock(return_value=None)  # key not set in Redis
+
+    async def _override_db():
+        yield _make_stats_mock_db([0, 0, 0, 0, 0, 0])
+
+    app.dependency_overrides[require_admin] = lambda: {
+        "user_id": TEST_ADMIN_ID,
+        "email": "admin@example.com",
+        "tier": "free",
+    }
+    app.dependency_overrides[get_db] = _override_db
+    app.dependency_overrides[get_arq_pool] = lambda: mock_pool
+
+    try:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+            response = await ac.get("/v1/admin/stats")
+        assert response.status_code == 200
+        assert response.json()["daily_llm_spend_usd"] == 0.0
+    finally:
+        app.dependency_overrides.pop(require_admin, None)
+        app.dependency_overrides.pop(get_db, None)
+        app.dependency_overrides.pop(get_arq_pool, None)
