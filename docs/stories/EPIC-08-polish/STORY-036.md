@@ -44,12 +44,12 @@ against production PostgreSQL.
 ## Acceptance Criteria
 
 ### Backend
-- [ ] AC-1: `require_admin` FastAPI dependency: checks `user["user_id"] in settings.admin_user_ids.split(",")`. Returns `403` for authenticated non-admins. `ADMIN_USER_IDS` env var is required (empty = no admin access).
-- [ ] AC-2: `GET /v1/admin/users?search=&page=&limit=` returns paginated user list with search by email prefix
-- [ ] AC-3: `GET /v1/admin/users/{user_id}` returns user detail + last 20 credit transactions + source count
-- [ ] AC-4: `POST /v1/admin/credits/adjust` adds/removes credits, creates `CreditTransaction` with `type="admin_adjustment"` and `description` (audit trail for support)
-- [ ] AC-5: `POST /v1/admin/users/{user_id}/toggle-active` sets `User.is_active = True/False`
-- [ ] AC-6: `GET /v1/admin/stats` returns platform metrics including `daily_llm_spend_usd` from Redis circuit breaker key
+- [x] AC-1: `require_admin` FastAPI dependency: checks `user["user_id"] in settings.admin_user_ids.split(",")`. Returns `403` for authenticated non-admins. `ADMIN_USER_IDS` env var is required (empty = no admin access).
+- [x] AC-2: `GET /v1/admin/users?search=&page=&limit=` returns paginated user list with search by email prefix
+- [x] AC-3: `GET /v1/admin/users/{user_id}` returns user detail + last 20 credit transactions + source count
+- [x] AC-4: `POST /v1/admin/credits/adjust` adds/removes credits, creates `CreditTransaction` with `type="admin_adjustment"` and `description` (audit trail for support)
+- [x] AC-5: `POST /v1/admin/users/{user_id}/toggle-active` sets `User.is_active = True/False`
+- [x] AC-6: `GET /v1/admin/stats` returns platform metrics including `daily_llm_spend_usd` from Redis circuit breaker key
 
 ### Frontend
 - [ ] AC-7: `/admin` route group protected by middleware: if user's Clerk ID not in `ADMIN_USER_IDS`, redirect to `/dashboard`

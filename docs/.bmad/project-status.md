@@ -7,25 +7,25 @@
 
 ## Current State
 
-**Phase:** A — Backend (Sprints 1–17)
-**Current sprint:** 17
-**Status:** In progress — 18 of 37 stories complete
+**Phase:** A — Backend (Sprints 1–18)
+**Current sprint:** 18
+**Status:** In progress — 19 of 37 stories complete
 
-**Next story to implement:** STORY-036-BE
-**Story file:** `docs/stories/EPIC-08-polish/STORY-036.md`
+**Next story to implement:** STORY-037
+**Story file:** `docs/stories/EPIC-08-polish/STORY-037.md`
 
 ---
 
 ## Last Completed Story
 
-**STORY-029 — Natural Language Graph Query (Backend)** (2026-03-29)
-`POST /v1/graph/query` converts natural language to Cypher via LLMRouter("cypher_generation") (Gemini 2.5 Flash primary, Claude Haiku fallback), validates query is read-only, injects tenant_id as a Cypher parameter, executes against Neo4j, and returns nodes/edges/explanation/query_time_ms. Credit cost: 2 per query.
+**STORY-036-BE — Admin API Endpoints** (2026-03-29)
+`require_admin` dependency + 5 endpoints under `/v1/admin/`: paginated user list with email search, user detail with last-20 transactions + source count, credit adjustment with `CreditTransaction(operation="admin_adjustment")` audit trail (allows negative balances), user ban/unban toggle, and platform stats reading Redis `llm:daily_spend:{today}` key via arq_pool.
 
 ---
 
 ## Context for Next Session
 
-STORY-029 merged to main. NL graph query endpoint is live: GraphQueryService uses LLMRouter for Cypher generation, write-keyword safety check, tenant_id parameter injection (RULE 11), and CreditService.deduct(2) before LLM call. Backend sequence continues: [BACKEND GATE]→036-BE→037. STORY-036-BE is the admin dashboard backend (5 endpoints).
+STORY-036-BE merged to main. Admin API is live: `src/api/routes/admin.py`, `src/services/admin_service.py`, `src/api/dependencies/admin.py`. Backend sequence: 036-BE→037. STORY-037 is next.
 
 ---
 

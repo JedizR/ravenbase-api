@@ -115,7 +115,7 @@
 | STORY-033 | Legal pages (Privacy Policy, Terms of Service, Cookie Consent) | P0 | Small | 🔲 |
 | STORY-034 | Referral system (code gen, reward on first upload, Settings → Referrals) | P1 | Medium | 🔲 |
 | STORY-035 | Data export / portability (multi-store ZIP, email link, Settings → Data) | P1 | Medium | 🔲 |
-| STORY-036 | Internal admin dashboard (user management, credit adjustment, stats) | P1 | Medium | 🔲 |
+| STORY-036 | Internal admin dashboard (user management, credit adjustment, stats) | P1 | Medium | ✅ BE / 🔲 FE |
 | STORY-037 | Cold data lifecycle — inactivity archival for Free-tier users (CRON, warning email, data purge) | P1 | Medium | 🔲 |
 
 ---
