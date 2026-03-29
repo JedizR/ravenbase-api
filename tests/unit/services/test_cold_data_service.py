@@ -104,6 +104,20 @@ async def test_purge_skips_user_on_step_failure_no_is_archived(mocker):
 
 
 @pytest.mark.asyncio
+async def test_warning_email_failure_is_nonfatal(mocker):
+    """AC-7: email failure must not abort the batch — user is skipped, count stays 0."""
+    user = _free_user()
+    db = _db_for_warning([user])
+    email = AsyncMock()
+    email.send_account_deletion_warning = AsyncMock(side_effect=Exception("Resend 429"))
+    mocker.patch("src.services.cold_data_service.settings", ADMIN_USER_IDS="")
+    count = await ColdDataService(email_service=email).send_inactivity_warnings(db)
+    assert count == 0          # not counted as sent
+    db.add.assert_not_called()  # no DataRetentionLog written on email failure
+    db.commit.assert_not_called()
+
+
+@pytest.mark.asyncio
 async def test_purge_skips_admin(mocker):
     user = _free_user(uid="admin2", days_inactive=200)
     db = _db_for_purge([user])

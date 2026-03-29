@@ -72,7 +72,7 @@ class ColdDataService(BaseService):
         for user in candidates:
             ulog = log.bind(tenant_id=user.id)
             if user.id in admin_ids:
-                ulog.info("cold_data.warnings.skip_admin")
+                ulog.info("cold_data.skip_admin")
                 continue
 
             dedup = await db.exec(
@@ -86,11 +86,15 @@ class ColdDataService(BaseService):
                 ulog.info("cold_data.warnings.already_sent")
                 continue
 
-            await self._get_email().send_account_deletion_warning(
-                to_email=user.email,
-                display_name=user.display_name,
-                user_id=user.id,
-            )
+            try:
+                await self._get_email().send_account_deletion_warning(
+                    to_email=user.email,
+                    display_name=user.display_name,
+                    user_id=user.id,
+                )
+            except Exception as exc:
+                ulog.error("cold_data.warning_email_failed", error=str(exc))
+                continue  # AC-7: non-fatal — skip this user, try next
 
             days_inactive = (now - user.last_active_at).days
             db.add(DataRetentionLog(
@@ -131,7 +135,7 @@ class ColdDataService(BaseService):
         for user in candidates:
             ulog = log.bind(tenant_id=user.id)
             if user.id in admin_ids:
-                ulog.info("cold_data.purge.skip_admin")
+                ulog.info("cold_data.skip_admin")
                 continue
 
             src_count_result = await db.exec(
@@ -162,6 +166,9 @@ class ColdDataService(BaseService):
                 event_type="data_purged",
                 days_inactive=days_inactive,
                 sources_deleted=src_count,
+                qdrant_vectors_deleted=0,   # AC-13: deletion service doesn't return counts
+                neo4j_nodes_deleted=0,
+                storage_bytes_freed=0,
             ))
             await db.commit()
             ulog.info("cold_data.purge.archived", sources_deleted=src_count, days_inactive=days_inactive)
