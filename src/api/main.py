@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from src.api.routes import (
     account,
+    admin,
     chat,
     conflict,
     credits,
@@ -49,6 +50,7 @@ def create_app() -> FastAPI:
     )
 
     app.include_router(health.router)
+    app.include_router(admin.router)
     app.include_router(ingest.router)
     app.include_router(graph.router)
     app.include_router(conflict.router)
