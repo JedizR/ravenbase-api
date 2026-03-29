@@ -64,9 +64,7 @@ User query:
 <user_query>{query}</user_query>
 """
 
-_FIRST_NODE_VAR: re.Pattern[str] = re.compile(
-    r"MATCH\s*\(([a-zA-Z_][a-zA-Z0-9_]*)", re.IGNORECASE
-)
+_FIRST_NODE_VAR: re.Pattern[str] = re.compile(r"MATCH\s*\(([a-zA-Z_][a-zA-Z0-9_]*)", re.IGNORECASE)
 
 
 def inject_tenant_filter(cypher: str) -> str:
@@ -183,16 +181,13 @@ class GraphQueryService(BaseService):
         log.info("graph_query.executed", row_count=len(rows), query_time_ms=query_time_ms)
 
         # Step 5: Parse rows — AC-5 (reuse existing static helper)
-        graph_response: GraphResponse = GraphService._rows_to_graph_response(
-            rows, node_types=None
-        )
+        graph_response: GraphResponse = GraphService._rows_to_graph_response(rows, node_types=None)
 
         # Step 6: Explanation — AC-6, AC-9
         node_count = len(graph_response.nodes)
         if node_count:
             explanation = (
-                f"Found {node_count} node{'s' if node_count != 1 else ''} "
-                f"matching your query."
+                f"Found {node_count} node{'s' if node_count != 1 else ''} matching your query."
             )
         else:
             explanation = "No memories found matching your query."
