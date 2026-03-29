@@ -33,7 +33,7 @@ STORY-037 merged to main. All backend stories complete. Before starting Phase B 
 
 Complete these before starting Phase B (frontend):
 
-- [x] All backend stories merged to main (STORY-037 was the final backend story)
+- [ ] All backend stories merged to main
 - [ ] `make test` passes from clean checkout (0 failures)
 - [ ] `make quality` passes (0 ruff errors, 0 pyright errors)
 - [ ] `npm run generate-client` in ravenbase-web produces a non-empty `src/lib/api-client/`

@@ -13,8 +13,8 @@
 | Field | Value |
 |---|---|
 | Total stories complete | 20 / 37 |
-| Current phase | Phase A — Backend COMPLETE |
-| Current sprint | 19 (Backend Gate) |
+| Current phase | Phase A — Backend (Sprints 1–19) — COMPLETE |
+| Current sprint | 19 |
 | Active repo | ravenbase-api |
 | Project started | 2026-03-25 |
 | Last entry | 2026-03-29 (STORY-037) |
@@ -841,13 +841,13 @@ _No entries yet._
 
 _No entries yet._
 
-## Sprint 35 — Cold Data Lifecycle
+## Sprint 19 — Cold Data Lifecycle
 
 > Inactivity CRON, activity middleware, 150/180-day purge.
-> Sprint 35 covers STORY-037.
+> Sprint 19 covers STORY-037.
 
 ### STORY-037 — Cold Data Lifecycle — Inactivity Archival
-**Date:** 2026-03-29 | **Sprint:** 35 | **Phase:** A | **Repo:** ravenbase-api
+**Date:** 2026-03-29 | **Sprint:** 19 | **Phase:** A | **Repo:** ravenbase-api
 **Quality gate:** ✅ clean — 333 tests passing, 0 ruff errors, 0 pyright errors
 **Commit:** `ee6299d`
 
