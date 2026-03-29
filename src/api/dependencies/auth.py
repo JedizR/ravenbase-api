@@ -1,6 +1,6 @@
 import jwt
 import structlog
-from fastapi import Header, HTTPException, Query
+from fastapi import Header, HTTPException, Query, Request
 
 from src.core.config import settings
 
@@ -48,14 +48,16 @@ def _decode_jwt(token: str) -> dict:
         ) from None
 
 
-async def require_user(authorization: str | None = Header(None)) -> dict:
+async def require_user(request: Request, authorization: str | None = Header(None)) -> dict:
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(
             status_code=401,
             detail={"code": "MISSING_AUTH", "message": "Authorization header required"},
         )
     token = authorization.removeprefix("Bearer ")
-    return _decode_jwt(token)
+    user = _decode_jwt(token)
+    request.state.user_id = user["user_id"]
+    return user
 
 
 async def verify_token_query_param(token: str | None = Query(None)) -> dict:  # type: ignore[return]

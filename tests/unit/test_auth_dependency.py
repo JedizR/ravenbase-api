@@ -20,16 +20,20 @@ from src.api.dependencies.auth import _decode_jwt, require_user, verify_token_qu
 
 @pytest.mark.asyncio
 async def test_require_user_no_header_returns_401():
+    mock_request = MagicMock()
+    mock_request.state = MagicMock()
     with pytest.raises(HTTPException) as exc:
-        await require_user(authorization=None)
+        await require_user(mock_request, authorization=None)
     assert exc.value.status_code == 401
     assert exc.value.detail["code"] == "MISSING_AUTH"
 
 
 @pytest.mark.asyncio
 async def test_require_user_non_bearer_returns_401():
+    mock_request = MagicMock()
+    mock_request.state = MagicMock()
     with pytest.raises(HTTPException) as exc:
-        await require_user(authorization="Token abc123")
+        await require_user(mock_request, authorization="Token abc123")
     assert exc.value.status_code == 401
     assert exc.value.detail["code"] == "MISSING_AUTH"
 
@@ -44,9 +48,11 @@ async def test_require_user_valid_token_returns_user_dict():
     mock_client = MagicMock()
     mock_client.get_signing_key_from_jwt.return_value = MagicMock()
 
+    mock_request = MagicMock()
+    mock_request.state = MagicMock()
     with patch("src.api.dependencies.auth._get_jwks_client", return_value=mock_client):
         with patch("jwt.decode", return_value=mock_payload):
-            result = await require_user(authorization="Bearer valid.jwt.here")
+            result = await require_user(mock_request, authorization="Bearer valid.jwt.here")
 
     assert result == {
         "user_id": "user_2vKdE5KqDemoClerkId",
@@ -65,9 +71,11 @@ async def test_require_user_missing_plan_defaults_to_free():
     mock_client = MagicMock()
     mock_client.get_signing_key_from_jwt.return_value = MagicMock()
 
+    mock_request = MagicMock()
+    mock_request.state = MagicMock()
     with patch("src.api.dependencies.auth._get_jwks_client", return_value=mock_client):
         with patch("jwt.decode", return_value=mock_payload):
-            result = await require_user(authorization="Bearer valid.jwt.here")
+            result = await require_user(mock_request, authorization="Bearer valid.jwt.here")
 
     assert result["tier"] == "free"
 
