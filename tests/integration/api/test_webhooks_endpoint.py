@@ -81,10 +81,16 @@ async def test_user_created_inserts_user(webhook_client):
 
     body = json.dumps(_USER_CREATED_PAYLOAD).encode()
 
-    with patch("src.api.routes.webhooks.Webhook") as mock_cls:
+    with (
+        patch("src.api.routes.webhooks.Webhook") as mock_cls,
+        patch("src.api.routes.webhooks.CreditService") as mock_credit_cls,
+    ):
         mock_wh = MagicMock()
         mock_wh.verify.return_value = _USER_CREATED_PAYLOAD
         mock_cls.return_value = mock_wh
+
+        mock_credit_svc = AsyncMock()
+        mock_credit_cls.return_value = mock_credit_svc
 
         resp = await webhook_client.post("/webhooks/clerk", content=body, headers=_SVIX_HEADERS)
 
@@ -102,6 +108,9 @@ async def test_user_created_inserts_user(webhook_client):
     assert len(created_user.referral_code) == 8
     assert created_user.referral_code == created_user.referral_code.upper()
     mock_db.commit.assert_called_once()
+    mock_credit_svc.add_credits.assert_awaited_once_with(
+        mock_db, "user_2vKdE5KqDemoClerkId", 500, "signup_bonus"
+    )
 
 
 @pytest.mark.asyncio

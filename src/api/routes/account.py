@@ -1,12 +1,31 @@
 # src/api/routes/account.py
+from __future__ import annotations
+
 import structlog
-from fastapi import APIRouter, Header, Request
+from fastapi import APIRouter, Depends, Header, HTTPException, Request
+from pydantic import BaseModel
+from sqlmodel import select
+from sqlmodel.ext.asyncio.session import AsyncSession
 
 from src.api.dependencies.auth import require_user
+from src.api.dependencies.db import get_db
+from src.models.user import User
 from src.schemas.account import AccountDeleteResponse
 
 router = APIRouter(prefix="/v1/account", tags=["account"])
 logger = structlog.get_logger()
+
+VALID_MODELS = ("claude-haiku-4-5-20251001", "claude-sonnet-4-6")
+
+
+class ModelPreferenceUpdate(BaseModel):
+    preferred_model: str
+
+
+class NotificationPreferencesUpdate(BaseModel):
+    notify_welcome: bool | None = None
+    notify_low_credits: bool | None = None
+    notify_ingestion_complete: bool | None = None
 
 
 @router.delete("", response_model=AccountDeleteResponse, status_code=202)
@@ -40,3 +59,81 @@ async def delete_account(
 
     log.info("gdpr_deletion.job_enqueued", job_id=job_id)
     return AccountDeleteResponse(job_id=job_id)
+
+
+@router.patch("/model-preference")
+async def update_model_preference(
+    body: ModelPreferenceUpdate,
+    user: dict = Depends(require_user),  # noqa: B008
+    db: AsyncSession = Depends(get_db),  # noqa: B008
+) -> dict:
+    """Update the user's preferred model for generation tasks.
+
+    Valid values: claude-haiku-4-5-20251001, claude-sonnet-4-6
+    """
+    user_id: str = user["user_id"]
+    log = logger.bind(user_id=user_id, preferred_model=body.preferred_model)
+
+    if body.preferred_model not in VALID_MODELS:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "code": "INVALID_MODEL",
+                "message": f"preferred_model must be one of: {', '.join(VALID_MODELS)}",
+            },
+        )
+
+    stmt = select(User).where(User.id == user_id)
+    results = await db.exec(stmt)
+    db_user = results.one_or_none()
+
+    if db_user is None:
+        raise HTTPException(
+            status_code=404,
+            detail={"code": "USER_NOT_FOUND", "message": "User not found"},
+        )
+
+    db_user.preferred_model = body.preferred_model
+    db.add(db_user)
+    await db.commit()
+
+    log.info("account.model_preference_updated", preferred_model=body.preferred_model)
+    return {"preferred_model": body.preferred_model}
+
+
+@router.patch("/notification-preferences")
+async def update_notification_preferences(
+    body: NotificationPreferencesUpdate,
+    user: dict = Depends(require_user),  # noqa: B008
+    db: AsyncSession = Depends(get_db),  # noqa: B008
+) -> dict:
+    """Update the user's notification preference flags.
+
+    All fields are optional — only provided fields are updated.
+    """
+    user_id: str = user["user_id"]
+    log = logger.bind(user_id=user_id)
+
+    stmt = select(User).where(User.id == user_id)
+    results = await db.exec(stmt)
+    db_user = results.one_or_none()
+
+    if db_user is None:
+        raise HTTPException(
+            status_code=404,
+            detail={"code": "USER_NOT_FOUND", "message": "User not found"},
+        )
+
+    update_data = body.model_dump(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(db_user, key, value)
+
+    db.add(db_user)
+    await db.commit()
+
+    log.info("account.notification_preferences_updated", fields=list(update_data.keys()))
+    return {
+        "notify_welcome": db_user.notify_welcome,
+        "notify_low_credits": db_user.notify_low_credits,
+        "notify_ingestion_complete": db_user.notify_ingestion_complete,
+    }

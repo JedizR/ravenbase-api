@@ -17,6 +17,7 @@ from src.api.routes import (
     health,
     ingest,
     metadoc,
+    profiles,
     webhooks,
 )
 from src.core.config import settings
@@ -64,6 +65,7 @@ def create_app() -> FastAPI:
     app.include_router(webhooks.router)
     app.include_router(account.router)
     app.include_router(chat.router)
+    app.include_router(profiles.router)
     return app
 
 

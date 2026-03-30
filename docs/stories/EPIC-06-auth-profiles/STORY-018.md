@@ -187,8 +187,7 @@ The backend require_user and webhook are deployed and verified.
 
 Read first:
 1. CLAUDE.md (the frontend CLAUDE.md in this repo root)
-2. CLAUDE.md (repo root — contains all frontend rules including
-     Server vs Client component apiFetch patterns)
+2. docs/design/CLAUDE_FRONTEND.md (Server vs Client component apiFetch patterns)
 3. docs/architecture/05-security-privacy.md (Clerk JWT flow)
 4. docs/stories/EPIC-06-auth-profiles/STORY-018.md (this file)
 

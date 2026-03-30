@@ -7,12 +7,12 @@
 
 ## Current State
 
-**Phase:** B — Frontend (Sprints 20–38)
-**Current sprint:** 20
-**Status:** In progress — 20 of 37 stories complete (Phase A backend complete)
+**Phase:** A — Backend (Sprints 1–19) — COMPLETE
+**Current sprint:** 19
+**Status:** COMPLETE — 20 of 37 stories complete (all backend stories done)
 
-**Next story to implement:** STORY-018-FE
-**Story file:** `docs/stories/EPIC-06-auth-profiles/STORY-018.md`
+**Next story to implement:** N/A — Backend Gate Checklist must pass before Phase B (frontend)
+**Story file:** N/A
 
 ---
 
@@ -25,9 +25,7 @@
 
 ## Context for Next Session
 
-Phase B has started. All 20 backend stories are merged to ravenbase-api main.
-STORY-018-FE is the first frontend story — Clerk auth pages + middleware.
-Backend require_user and webhook handler are already live from Phase A.
+STORY-037 merged to main. All backend stories complete. Before starting Phase B (frontend work), complete the Backend Gate Checklist below.
 
 ---
 
