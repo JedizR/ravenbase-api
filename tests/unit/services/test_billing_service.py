@@ -1,8 +1,9 @@
 # tests/unit/services/test_billing_service.py
 """Unit tests for _get_price_id — pure function, no DB, no Stripe network calls."""
 
-import pytest
 from unittest.mock import patch
+
+import pytest
 
 from src.services.billing_service import _get_price_id
 
