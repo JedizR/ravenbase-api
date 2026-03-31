@@ -10,6 +10,7 @@ from src.api.middleware.activity import ActivityTrackingMiddleware
 from src.api.routes import (
     account,
     admin,
+    billing,
     chat,
     conflict,
     credits,
@@ -62,6 +63,7 @@ def create_app() -> FastAPI:
     app.include_router(conflict.router)
     app.include_router(metadoc.router)
     app.include_router(credits.router)
+    app.include_router(billing.router)
     app.include_router(webhooks.router)
     app.include_router(account.router)
     app.include_router(chat.router)
