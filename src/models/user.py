@@ -74,6 +74,7 @@ class User(SQLModel, table=True):
     )
     stripe_customer_id: str | None = Field(
         default=None,
+        index=True,
         description=(
             "Stripe Customer ID (cus_...). Set on first checkout session creation. "
             "Required for Customer Portal sessions."
