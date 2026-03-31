@@ -40,6 +40,26 @@ class Settings(BaseSettings):
         default="",
         description="Stripe webhook signing secret (whsec_...). Required in production — set STRIPE_WEBHOOK_SECRET env var.",
     )
+    STRIPE_PRO_MONTHLY_PRICE_ID: str = Field(
+        default="",
+        description="Stripe Price ID for Pro monthly ($15/mo). Starts with price_",
+    )
+    STRIPE_PRO_ANNUAL_PRICE_ID: str = Field(
+        default="",
+        description="Stripe Price ID for Pro annual ($144/yr = $12/mo). Starts with price_",
+    )
+    STRIPE_TEAM_MONTHLY_PRICE_ID: str = Field(
+        default="",
+        description="Stripe Price ID for Team monthly ($49/mo). Starts with price_",
+    )
+    STRIPE_TEAM_ANNUAL_PRICE_ID: str = Field(
+        default="",
+        description="Stripe Price ID for Team annual ($468/yr = $39/mo). Starts with price_",
+    )
+    APP_BASE_URL: str = Field(
+        default="http://localhost:3000",
+        description="Frontend base URL. Used to construct Stripe checkout success/cancel URLs.",
+    )
     RESEND_API_KEY: str = ""
     RESEND_WEBHOOK_SECRET: str = ""
 
