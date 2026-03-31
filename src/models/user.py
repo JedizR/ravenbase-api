@@ -72,6 +72,13 @@ class User(SQLModel, table=True):
             "re-upload. Pro/Team users are NEVER archived."
         ),
     )
+    stripe_customer_id: str | None = Field(
+        default=None,
+        description=(
+            "Stripe Customer ID (cus_...). Set on first checkout session creation. "
+            "Required for Customer Portal sessions."
+        ),
+    )
     notify_account_deletion: bool = Field(
         default=True,
         description=(
