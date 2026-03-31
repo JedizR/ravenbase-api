@@ -115,6 +115,7 @@ async def stripe_webhook(
         return {"status": "already_processed"}  # Must be 200, not 4xx — Stripe retries on non-2xx
 
     # Process event
+    handled = False
     try:
         if event_type == "checkout.session.completed":
             session = event["data"]["object"]
@@ -123,15 +124,19 @@ async def stripe_webhook(
                 await _handle_tier_upgrade(session, db, log)
             else:
                 await _handle_credit_topup(session, db, log)
+            handled = True
         elif event_type == "customer.subscription.deleted":
             subscription = event["data"]["object"]
             await _handle_subscription_deleted(subscription, db, log)
+            handled = True
     except Exception as exc:
         log.error("stripe_webhook.processing_failed", error=str(exc))
         raise HTTPException(status_code=500, detail="Webhook processing failed") from exc
 
     # Mark processed ONLY after successful DB write (AC-12)
-    await redis.setex(idempotency_key, 86400, "1")  # TTL: 24 hours
+    # Only set key for event types we actually handle — don't suppress retries for future handlers
+    if handled:
+        await redis.setex(idempotency_key, 86400, "1")  # TTL: 24 hours
     return {"status": "processed"}
 
 
@@ -143,6 +148,9 @@ async def _handle_tier_upgrade(
     """checkout.session.completed with session_type=tier_upgrade → set User.tier."""
     user_id: str = session["metadata"]["user_id"]
     tier: str = session["metadata"]["tier"]  # "pro" or "team"
+    if tier not in {"pro", "team"}:
+        log.error("stripe_webhook.invalid_tier", tier=tier)
+        raise ValueError(f"Invalid tier value in Stripe metadata: {tier!r}")
 
     result = await db.exec(select(User).where(User.id == user_id))
     user = result.first()
@@ -164,6 +172,8 @@ async def _handle_credit_topup(
     """checkout.session.completed with session_type=credit_topup → add credits."""
     user_id: str = session["metadata"]["user_id"]
     credits: int = int(session["metadata"]["credits"])
+    if credits <= 0:
+        raise ValueError(f"Invalid credits value in Stripe metadata: {credits}")
     credit_svc = CreditService()
     await credit_svc.add_credits(db, user_id, credits, "stripe_topup")
     log.info("stripe_webhook.credits_added", user_id=user_id, credits=credits)
