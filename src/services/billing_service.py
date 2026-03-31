@@ -11,6 +11,7 @@ from src.models.user import User
 from src.services.base import BaseService
 
 logger = structlog.get_logger()
+stripe.api_key = settings.STRIPE_SECRET_KEY
 
 
 def _get_price_id(tier: str, period: str) -> str:
@@ -28,9 +29,6 @@ def _get_price_id(tier: str, period: str) -> str:
 
 
 class BillingService(BaseService):
-    def __init__(self) -> None:
-        stripe.api_key = settings.STRIPE_SECRET_KEY
-
     async def get_or_create_stripe_customer(
         self,
         db: AsyncSession,
@@ -38,7 +36,7 @@ class BillingService(BaseService):
         email: str,
     ) -> str:
         """Return existing Stripe customer ID, or create a new one and persist it."""
-        result = await db.exec(select(User).where(User.id == user_id))
+        result = await db.exec(select(User).where(User.id == user_id).with_for_update())
         user = result.first()
         if user is None:
             raise ValueError(f"User {user_id} not found")
@@ -47,7 +45,7 @@ class BillingService(BaseService):
             return user.stripe_customer_id
 
         log = logger.bind(user_id=user_id)
-        customer = stripe.Customer.create(email=email, metadata={"user_id": user_id})
+        customer = await stripe.Customer.create_async(email=email, metadata={"user_id": user_id})
         user.stripe_customer_id = customer.id
         db.add(user)
         await db.commit()
@@ -67,7 +65,7 @@ class BillingService(BaseService):
         customer_id = await self.get_or_create_stripe_customer(db, user_id, email)
         log = logger.bind(user_id=user_id, tier=tier, period=period)
 
-        session = stripe.checkout.Session.create(
+        session = await stripe.checkout.Session.create_async(
             customer=customer_id,
             payment_method_types=["card"],
             line_items=[{"price": price_id, "quantity": 1}],
@@ -94,9 +92,9 @@ class BillingService(BaseService):
         customer_id = await self.get_or_create_stripe_customer(db, user_id, email)
         log = logger.bind(user_id=user_id)
 
-        session = stripe.billing_portal.Session.create(
+        session = await stripe.billing_portal.Session.create_async(
             customer=customer_id,
             return_url=f"{settings.APP_BASE_URL}/settings/billing",
         )
-        log.info("billing.portal_session_created")
+        log.info("billing.portal_session_created", session_id=session.id)
         return session.url
