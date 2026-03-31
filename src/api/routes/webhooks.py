@@ -5,6 +5,7 @@ from datetime import UTC, datetime
 import stripe
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Request
+from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 from svix.webhooks import Webhook, WebhookVerificationError
 
@@ -75,11 +76,14 @@ async def stripe_webhook(
     request: Request,
     db: AsyncSession = Depends(get_db),  # noqa: B008
 ) -> dict:  # type: ignore[type-arg]
-    """Receive Stripe webhook events for credit top-ups.
+    """Receive Stripe webhook events.
 
-    Validates Stripe signature via stripe.Webhook.construct_event().
-    Handles: checkout.session.completed → add credits to user balance.
-    All other event types are silently acknowledged.
+    Handles:
+      - checkout.session.completed: tier upgrade OR credit top-up (by session_type metadata)
+      - customer.subscription.deleted: revert User.tier to 'free'
+
+    Idempotency: checks Redis key stripe:event:{event_id} before processing.
+    Sets the key ONLY after a successful DB write (AC-11, AC-12).
     """
     payload = await request.body()
     sig_header = request.headers.get("stripe-signature")
@@ -99,18 +103,95 @@ async def stripe_webhook(
             detail={"code": "INVALID_SIGNATURE", "message": "Stripe signature verification failed"},
         ) from None
 
-    event_type = event.get("type")
-    log = logger.bind(event_type=event_type)
+    event_id: str = event["id"]
+    event_type: str = event.get("type", "")
+    log = logger.bind(event_id=event_id, event_type=event_type)
 
-    if event_type == "checkout.session.completed":
-        session = event["data"]["object"]
-        user_id: str = session["metadata"]["user_id"]
-        credits: int = int(session["metadata"]["credits"])
-        credit_svc = CreditService()
-        await credit_svc.add_credits(db, user_id, credits, "stripe_topup")
-        log.info("stripe_webhook.credits_added", user_id=user_id, credits=credits)
+    # Idempotency: return 200 immediately if already processed (AC-11)
+    redis = request.app.state.redis
+    idempotency_key = f"stripe:event:{event_id}"
+    if await redis.exists(idempotency_key):
+        log.info("stripe_webhook.duplicate_skipped")
+        return {"status": "already_processed"}  # Must be 200, not 4xx — Stripe retries on non-2xx
 
-    return {"received": True}
+    # Process event
+    try:
+        if event_type == "checkout.session.completed":
+            session = event["data"]["object"]
+            session_type = session.get("metadata", {}).get("session_type", "credit_topup")
+            if session_type == "tier_upgrade":
+                await _handle_tier_upgrade(session, db, log)
+            else:
+                await _handle_credit_topup(session, db, log)
+        elif event_type == "customer.subscription.deleted":
+            subscription = event["data"]["object"]
+            await _handle_subscription_deleted(subscription, db, log)
+    except Exception as exc:
+        log.error("stripe_webhook.processing_failed", error=str(exc))
+        raise HTTPException(status_code=500, detail="Webhook processing failed") from exc
+
+    # Mark processed ONLY after successful DB write (AC-12)
+    await redis.setex(idempotency_key, 86400, "1")  # TTL: 24 hours
+    return {"status": "processed"}
+
+
+async def _handle_tier_upgrade(
+    session: dict,  # type: ignore[type-arg]
+    db: AsyncSession,
+    log: structlog.stdlib.BoundLogger,
+) -> None:
+    """checkout.session.completed with session_type=tier_upgrade → set User.tier."""
+    user_id: str = session["metadata"]["user_id"]
+    tier: str = session["metadata"]["tier"]  # "pro" or "team"
+
+    result = await db.exec(select(User).where(User.id == user_id))
+    user = result.first()
+    if user is None:
+        log.error("stripe_webhook.user_not_found", user_id=user_id)
+        raise ValueError(f"User {user_id} not found")
+
+    user.tier = tier
+    db.add(user)
+    await db.commit()
+    log.info("stripe_webhook.tier_upgraded", user_id=user_id, tier=tier)
+
+
+async def _handle_credit_topup(
+    session: dict,  # type: ignore[type-arg]
+    db: AsyncSession,
+    log: structlog.stdlib.BoundLogger,
+) -> None:
+    """checkout.session.completed with session_type=credit_topup → add credits."""
+    user_id: str = session["metadata"]["user_id"]
+    credits: int = int(session["metadata"]["credits"])
+    credit_svc = CreditService()
+    await credit_svc.add_credits(db, user_id, credits, "stripe_topup")
+    log.info("stripe_webhook.credits_added", user_id=user_id, credits=credits)
+
+
+async def _handle_subscription_deleted(
+    subscription: dict,  # type: ignore[type-arg]
+    db: AsyncSession,
+    log: structlog.stdlib.BoundLogger,
+) -> None:
+    """customer.subscription.deleted → revert User.tier to 'free'."""
+    customer_id: str = subscription["customer"]
+
+    result = await db.exec(select(User).where(User.stripe_customer_id == customer_id))
+    user = result.first()
+    if user is None:
+        log.warning("stripe_webhook.no_user_for_customer", stripe_customer_id=customer_id)
+        return  # Not an error — customer may not exist if test data
+
+    previous_tier = user.tier
+    user.tier = "free"
+    db.add(user)
+    await db.commit()
+    log.info(
+        "stripe_webhook.subscription_deleted",
+        user_id=user.id,
+        previous_tier=previous_tier,
+    )
 
 
 async def _handle_user_created(
