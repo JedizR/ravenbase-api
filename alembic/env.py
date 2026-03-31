@@ -14,10 +14,7 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-# Use local PostgreSQL for migrations if available, fallback to env config
-# This allows autogenerate to work in development environments
-local_db_url = "postgresql+asyncpg://ravenbase:ravenbase@localhost:5432/ravenbase"
-config.set_main_option("sqlalchemy.url", local_db_url)
+config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
 
 target_metadata = SQLModel.metadata
 
