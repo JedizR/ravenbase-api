@@ -25,7 +25,11 @@ async def graph_extraction(
 
     try:
         service = GraphService()
-        stats = await service.extract_and_write(source_id=source_id, tenant_id=tenant_id)
+        stats = await service.extract_and_write(
+            source_id=source_id,
+            tenant_id=tenant_id,
+            redis=ctx.get("redis"),
+        )
         log.info("graph_extraction.completed", **stats)
 
         # ── Enqueue conflict scan (STORY-012) ──────────────────────────────────

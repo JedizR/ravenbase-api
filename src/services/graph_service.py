@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import json
 import uuid
 from typing import Any
@@ -9,12 +10,14 @@ import structlog
 from src.adapters.llm_router import LLMRouter
 from src.adapters.neo4j_adapter import Neo4jAdapter
 from src.adapters.qdrant_adapter import QdrantAdapter
+from src.core.config import settings
 from src.schemas.graph import ExtractionResult, GraphEdge, GraphNode, GraphResponse
 from src.services.base import BaseService
 
 logger = structlog.get_logger()
 
 _CONFIDENCE_THRESHOLD = 0.6
+_CHUNK_TIMEOUT_SECONDS: int = 30
 
 # Lookup tables for graph node ID and label extraction (STORY-010)
 _NODE_ID_KEYS: dict[str, str] = {
@@ -96,10 +99,20 @@ class GraphService(BaseService):
             self._qdrant = QdrantAdapter()
         return self._qdrant
 
-    async def extract_and_write(self, source_id: str, tenant_id: str) -> dict[str, int]:
+    async def extract_and_write(
+        self,
+        source_id: str,
+        tenant_id: str,
+        redis=None,  # AsyncRedis client; required when ENABLE_PII_MASKING=True
+    ) -> dict[str, int]:
         """Fetch all chunks from Qdrant, extract entities per chunk, write to Neo4j.
 
-        Failed chunks are logged and skipped — they do NOT abort the task.
+        When settings.ENABLE_PII_MASKING is True and redis is provided, each chunk's
+        text is masked via PresidioAdapter before being sent to the LLM. The PII entity
+        map is stored in Redis at pii:map:{source_id} and deleted in the finally block.
+
+        Each chunk is wrapped in asyncio.timeout(_CHUNK_TIMEOUT_SECONDS). Exceeded
+        chunks are counted as failed and skipped — they do NOT abort the task.
 
         Returns:
             {"total_entities": int, "total_memories": int, "failed_chunks": int}
@@ -110,33 +123,56 @@ class GraphService(BaseService):
         chunks = await self._get_qdrant().scroll_by_source(source_id, tenant_id)
         log.info("graph_service.chunks_fetched", chunk_count=len(chunks))
 
+        presidio = None
+        if settings.ENABLE_PII_MASKING and redis is not None:
+            from src.adapters.presidio_adapter import PresidioAdapter  # noqa: PLC0415
+
+            presidio = PresidioAdapter()
+
         total_entities = 0
         total_memories = 0
         failed_chunks = 0
 
-        for chunk in chunks:
-            chunk_id = chunk.get("chunk_id", "unknown")
-            chunk_log = log.bind(chunk_id=chunk_id)
-            try:
-                result = await self._extract_chunk(
-                    text=str(chunk.get("text", "")),
-                    tenant_id=tenant_id,
-                )
-                await self._write_to_neo4j(result=result, source_id=source_id, tenant_id=tenant_id)
-                total_entities += len(result.entities)
-                total_memories += len(result.memories)
-                chunk_log.info(
-                    "graph_service.chunk_processed",
-                    entity_count=len(result.entities),
-                    memory_count=len(result.memories),
-                )
-            except Exception as exc:
-                failed_chunks += 1
-                chunk_log.warning(
-                    "graph_service.chunk_failed",
-                    error=str(exc),
-                    exc_type=type(exc).__name__,
-                )
+        try:
+            for chunk in chunks:
+                chunk_id = chunk.get("chunk_id", "unknown")
+                chunk_log = log.bind(chunk_id=chunk_id)
+                try:
+                    text = str(chunk.get("text", ""))
+                    if presidio is not None:
+                        text = await presidio.mask_text(text, job_id=source_id, redis=redis)
+                    profile_id: str | None = chunk.get("profile_id")
+                    async with asyncio.timeout(_CHUNK_TIMEOUT_SECONDS):
+                        result = await self._extract_chunk(text=text, tenant_id=tenant_id)
+                        await self._write_to_neo4j(
+                            result=result,
+                            source_id=source_id,
+                            tenant_id=tenant_id,
+                            profile_id=profile_id,
+                        )
+                    total_entities += len(result.entities)
+                    total_memories += len(result.memories)
+                    chunk_log.info(
+                        "graph_service.chunk_processed",
+                        entity_count=len(result.entities),
+                        memory_count=len(result.memories),
+                    )
+                except TimeoutError:
+                    failed_chunks += 1
+                    chunk_log.warning(
+                        "graph_service.chunk_timeout",
+                        timeout_seconds=_CHUNK_TIMEOUT_SECONDS,
+                    )
+                except Exception as exc:
+                    failed_chunks += 1
+                    chunk_log.warning(
+                        "graph_service.chunk_failed",
+                        error=str(exc),
+                        exc_type=type(exc).__name__,
+                    )
+        finally:
+            if presidio is not None and redis is not None:
+                await redis.delete(f"pii:map:{source_id}")
 
         log.info(
             "graph_service.extract_and_write.completed",
@@ -163,6 +199,10 @@ class GraphService(BaseService):
         result = ExtractionResult(**data)
         result.entities = [e for e in result.entities if e.confidence >= _CONFIDENCE_THRESHOLD]
         result.memories = [m for m in result.memories if m.confidence >= _CONFIDENCE_THRESHOLD]
+        # Hard caps — spec: 10 entities, 5 memories, 5 relationships per chunk
+        result.entities = result.entities[:10]
+        result.memories = result.memories[:5]
+        result.relationships = result.relationships[:5]
         return result
 
     async def _write_to_neo4j(
@@ -170,6 +210,7 @@ class GraphService(BaseService):
         result: ExtractionResult,
         source_id: str,
         tenant_id: str,
+        profile_id: str | None = None,
     ) -> None:
         neo4j = self._get_neo4j()
 
@@ -203,6 +244,18 @@ class GraphService(BaseService):
                 tenant_id=tenant_id,
                 source_id=source_id,
             )
+
+        # 2b. HAS_MEMORY edges: SystemProfile → Memory (when profile_id known)
+        if profile_id:
+            for memory_id in memory_ids:
+                await neo4j.run_query(
+                    "MATCH (m:Memory {memory_id: $memory_id, tenant_id: $tenant_id}) "
+                    "MERGE (p:SystemProfile {profile_id: $profile_id, tenant_id: $tenant_id}) "
+                    "MERGE (p)-[:HAS_MEMORY]->(m)",
+                    memory_id=memory_id,
+                    profile_id=profile_id,
+                    tenant_id=tenant_id,
+                )
 
         # 3. MERGE Memory → EXTRACTED_FROM → Concept
         for memory_id in memory_ids:
@@ -258,12 +311,12 @@ class GraphService(BaseService):
         query = (
             "MATCH (n) "
             "WHERE n.tenant_id = $tenant_id "
-            # Profile filter applies to Memory nodes only — Concept nodes are
-            # tenant-scoped but not profile-scoped. Future story can refine.
-            # STORY-009 writes profile_id as a property on Memory nodes.
-            "  AND ($profile_id IS NULL OR n.profile_id = $profile_id) "
-            "OPTIONAL MATCH (n)-[r]-(m) "
+            # Profile filter: when profile_id set, traverse HAS_MEMORY edge to get
+            # Memory nodes for that profile. When NULL, match all Memory nodes.
+            # Concept nodes are tenant-scoped but not profile-scoped.
+            "OPTIONAL MATCH (m:Memory)-[:EXTRACTED_FROM]->(c:Concept) "
             "WHERE m.tenant_id = $tenant_id "
+            "  AND ($profile_id IS NULL OR EXISTS((:SystemProfile {profile_id: $profile_id, tenant_id: $tenant_id})-[:HAS_MEMORY]->(m))) "
             "RETURN "
             "  labels(n)[0] AS n_type, "
             "  properties(n) AS n_props, "
