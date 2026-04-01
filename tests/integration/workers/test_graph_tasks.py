@@ -32,6 +32,7 @@ async def test_graph_extraction_returns_ok_on_success(arq_ctx) -> None:
     mock_service.return_value.extract_and_write.assert_called_once_with(
         source_id="src-1",
         tenant_id="t-1",
+        redis=arq_ctx["redis"],
     )
 
 
@@ -63,4 +64,5 @@ async def test_graph_extraction_passes_tenant_id_to_service(arq_ctx) -> None:
     mock_service.return_value.extract_and_write.assert_called_once_with(
         source_id="src-99",
         tenant_id="user-ABC",
+        redis=arq_ctx["redis"],
     )

@@ -7,7 +7,8 @@ from httpx import AsyncClient
 
 @pytest.mark.asyncio
 async def test_health_returns_healthy_with_all_checks(client: AsyncClient, mocker) -> None:
-    # Qdrant and Neo4j are not in the test docker-compose — mock their connectivity
+    # Qdrant, Neo4j, and Redis are not in the test docker-compose when run outside Docker —
+    # mock their connectivity the same way
     mocker.patch(
         "src.api.routes.health.QdrantAdapter.verify_connectivity",
         new=AsyncMock(return_value=True),
@@ -15,6 +16,10 @@ async def test_health_returns_healthy_with_all_checks(client: AsyncClient, mocke
     mocker.patch(
         "src.api.routes.health.Neo4jAdapter.verify_connectivity",
         new=AsyncMock(return_value=True),
+    )
+    mocker.patch(
+        "src.api.routes.health._check_redis",
+        new=AsyncMock(return_value="ok"),
     )
 
     response = await client.get("/health")

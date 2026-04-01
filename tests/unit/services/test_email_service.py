@@ -23,7 +23,8 @@ async def test_send_warning_calls_resend(mocker):
     assert result is True
     call_args = mock_resend.Emails.send.call_args[0][0]
     assert call_args["to"] == ["alice@example.com"]
-    assert "30 days" in call_args["text"]
+    assert "85 days" in call_args["text"]
+    assert "5 days" in call_args["text"]
     assert "Alice" in call_args["text"]
 
 

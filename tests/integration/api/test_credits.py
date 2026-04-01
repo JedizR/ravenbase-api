@@ -261,10 +261,12 @@ async def test_stripe_webhook_invalid_signature():
 async def test_stripe_webhook_checkout_completed_adds_credits():
     """checkout.session.completed adds credits to user balance."""
     stripe_payload = {
+        "id": "evt_test_stripe_001",  # ← was missing
         "type": "checkout.session.completed",
         "data": {
             "object": {
                 "metadata": {
+                    "session_type": "credit_topup",
                     "user_id": "user_stripe_test",
                     "credits": "500",
                 }
@@ -272,7 +274,12 @@ async def test_stripe_webhook_checkout_completed_adds_credits():
         },
     }
 
+    mock_redis = AsyncMock()
+    mock_redis.exists = AsyncMock(return_value=False)
+    mock_redis.setex = AsyncMock()
+
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        app.state.redis = mock_redis  # ← inject redis
         with (
             patch("src.api.routes.webhooks.stripe") as mock_stripe,
             patch("src.api.routes.webhooks.CreditService") as mock_svc_cls,
@@ -293,9 +300,9 @@ async def test_stripe_webhook_checkout_completed_adds_credits():
             assert response.status_code == 200
             mock_svc.add_credits.assert_awaited_once()
             call_args = mock_svc.add_credits.await_args
-            assert call_args.args[1] == "user_stripe_test"  # user_id
-            assert call_args.args[2] == 500  # credits amount
-            assert call_args.args[3] == "stripe_topup"  # operation
+            assert call_args.args[1] == "user_stripe_test"
+            assert call_args.args[2] == 500
+            assert call_args.args[3] == "stripe_topup"
 
 
 @pytest.mark.asyncio
