@@ -14,10 +14,10 @@ logger = structlog.get_logger()
 _WARNING_BODY = """\
 Hi {name},
 
-We noticed you haven't used Ravenbase in 150 days.
+We noticed you haven't used Ravenbase in 85 days.
 
 As a Free-tier user, your stored data (documents, vectors, and knowledge graph) \
-will be permanently deleted in 30 days if your account remains inactive.
+will be permanently deleted in 5 days if your account remains inactive.
 
 To keep your data, log back into Ravenbase:
 https://ravenbase.app/dashboard
@@ -49,7 +49,7 @@ class EmailService(BaseService):
                 {
                     "from": "Ravenbase <noreply@ravenbase.app>",
                     "to": [to_email],
-                    "subject": "Your Ravenbase data will be archived in 30 days",
+                    "subject": "Your Ravenbase data will be deleted in 5 days",
                     "text": body,
                 }
             )

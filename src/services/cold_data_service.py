@@ -18,8 +18,8 @@ from src.services.email_service import EmailService
 
 logger = structlog.get_logger()
 
-_WARNING_DAYS = 150
-_PURGE_DAYS = 180
+_WARNING_DAYS = 85
+_PURGE_DAYS = 90
 BATCH_SIZE = 50
 
 
@@ -47,7 +47,7 @@ class ColdDataService(BaseService):
         return self._email
 
     async def send_inactivity_warnings(self, db: AsyncSession) -> int:
-        """Phase 1: warn Free users inactive 150-179 days. Returns count sent."""
+        """Phase 1: warn Free users inactive 85-90 days (5 days before purge). Returns count sent."""
         log = logger.bind(action="cold_data.warnings")
         now = datetime.now(UTC)
         cutoff_150 = now - timedelta(days=_WARNING_DAYS)
@@ -113,7 +113,7 @@ class ColdDataService(BaseService):
         return sent
 
     async def purge_inactive_users(self, db: AsyncSession) -> int:
-        """Phase 2: purge data for Free users inactive >= 180 days. Returns count purged."""
+        """Phase 2: purge data for Free users inactive >= 90 days. Returns count purged."""
         log = logger.bind(action="cold_data.purge")
         now = datetime.now(UTC)
         cutoff_180 = now - timedelta(days=_PURGE_DAYS)

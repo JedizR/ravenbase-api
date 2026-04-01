@@ -66,7 +66,7 @@ class User(SQLModel, table=True):
     is_archived: bool = Field(
         default=False,
         description=(
-            "True when a Free-tier user's data has been purged after 180 days "
+            "True when a Free-tier user's data has been purged after 90 days "
             "of inactivity. User record and Clerk identity are KEPT — only storage "
             "data (files, vectors, graph) is deleted. User can still log in and "
             "re-upload. Pro/Team users are NEVER archived."
@@ -83,7 +83,7 @@ class User(SQLModel, table=True):
     notify_account_deletion: bool = Field(
         default=True,
         description=(
-            "Whether to send the 30-day inactivity warning email (day 150 warning). "
+            "Whether to send the 5-day inactivity warning email (day 85 warning). "
             "Part of the notify_* family — user can disable in Settings → Notifications."
         ),
     )
