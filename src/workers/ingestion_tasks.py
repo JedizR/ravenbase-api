@@ -129,8 +129,9 @@ def _extract_text_preview(content: bytes, mime_type: str, max_chars: int = 4000)
                     xml_str = xml_bytes.decode("utf-8", errors="ignore")
                     text = re.sub(r"<[^>]+>", " ", xml_str)
                     return " ".join(text.split())[:max_chars]
-        except Exception:
-            pass  # fall through to generic extraction
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("ingestion.zip_parse_fallback", error=str(exc))
+            # fall through to generic extraction
 
     # PDF or fallback: printable ASCII chars from raw bytes
     raw = content.decode("latin-1", errors="ignore")

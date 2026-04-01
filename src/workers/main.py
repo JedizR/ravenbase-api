@@ -1,4 +1,3 @@
-import structlog
 from arq import cron
 from arq.connections import RedisSettings
 
@@ -10,23 +9,11 @@ from src.workers.graph_tasks import graph_extraction
 from src.workers.ingestion_tasks import ingest_text, parse_document
 from src.workers.metadoc_tasks import generate_meta_document
 
-logger = structlog.get_logger()
-
-
-async def hello_world(_ctx: dict) -> dict:  # type: ignore[type-arg]
-    """Stub task to verify ARQ worker is running. Returns {"status": "ok"}."""
-    log = logger.bind(job="hello_world")
-    log.info("hello_world.started")
-    log.info("hello from worker")
-    log.info("hello_world.completed")
-    return {"status": "ok"}
-
 
 class WorkerSettings:
     """ARQ WorkerSettings. Add real tasks in later stories."""
 
     functions = [
-        hello_world,
         parse_document,
         ingest_text,
         graph_extraction,

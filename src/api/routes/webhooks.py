@@ -5,7 +5,6 @@ from datetime import UTC, datetime
 import stripe
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Request
-from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 from svix.webhooks import Webhook, WebhookVerificationError
 
@@ -13,6 +12,7 @@ from src.api.dependencies.db import get_db
 from src.core.config import settings
 from src.models.user import User
 from src.services.credit_service import CreditService
+from src.services.user_service import UserService
 
 logger = structlog.get_logger()
 router = APIRouter(prefix="/webhooks", tags=["webhooks"])
@@ -67,6 +67,8 @@ async def clerk_webhook(
 
     if event_type == "user.created":
         await _handle_user_created(payload["data"], db, log)
+    elif event_type == "user.deleted":
+        await _handle_user_deleted(payload["data"], request, log)
 
     return {"status": "ok"}
 
@@ -147,20 +149,11 @@ async def _handle_tier_upgrade(
 ) -> None:
     """checkout.session.completed with session_type=tier_upgrade → set User.tier."""
     user_id: str = session["metadata"]["user_id"]
-    tier: str = session["metadata"]["tier"]  # "pro" or "team"
+    tier: str = session["metadata"]["tier"]
     if tier not in {"pro", "team"}:
         log.error("stripe_webhook.invalid_tier", tier=tier)
         raise ValueError(f"Invalid tier value in Stripe metadata: {tier!r}")
-
-    result = await db.exec(select(User).where(User.id == user_id))
-    user = result.first()
-    if user is None:
-        log.error("stripe_webhook.user_not_found", user_id=user_id)
-        raise ValueError(f"User {user_id} not found")
-
-    user.tier = tier
-    db.add(user)
-    await db.commit()
+    await UserService().update_user_tier(db, user_id, tier)
     log.info("stripe_webhook.tier_upgraded", user_id=user_id, tier=tier)
 
 
@@ -186,22 +179,29 @@ async def _handle_subscription_deleted(
 ) -> None:
     """customer.subscription.deleted → revert User.tier to 'free'."""
     customer_id: str = subscription["customer"]
+    await UserService().revert_subscription_to_free(db, customer_id)
+    log.info("stripe_webhook.subscription_deleted", stripe_customer_id=customer_id)
 
-    result = await db.exec(select(User).where(User.stripe_customer_id == customer_id))
-    user = result.first()
-    if user is None:
-        log.warning("stripe_webhook.no_user_for_customer", stripe_customer_id=customer_id)
-        return  # Not an error — customer may not exist if test data
 
-    previous_tier = user.tier
-    user.tier = "free"
-    db.add(user)
-    await db.commit()
-    log.info(
-        "stripe_webhook.subscription_deleted",
-        user_id=user.id,
-        previous_tier=previous_tier,
+async def _handle_user_deleted(
+    data: dict,  # type: ignore[type-arg]
+    request: Request,
+    log: structlog.stdlib.BoundLogger,
+) -> None:
+    """user.deleted → enqueue cascade deletion. Clerk identity is already gone.
+
+    Uses the same ARQ job as DELETE /v1/account. The deletion task handles
+    a missing Clerk user gracefully (last step, logs and continues).
+    """
+    clerk_user_id: str = data["id"]
+    log = log.bind(user_id=clerk_user_id)
+    job_id = f"gdpr:{clerk_user_id}"
+    await request.app.state.arq_pool.enqueue_job(
+        "cascade_delete_account",
+        user_id=clerk_user_id,
+        _job_id=job_id,
     )
+    log.info("webhook.user_deleted_gdpr_enqueued", user_id=clerk_user_id, job_id=job_id)
 
 
 async def _handle_user_created(
