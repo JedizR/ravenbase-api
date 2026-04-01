@@ -44,6 +44,19 @@ class UserSettingsService(BaseService):
         log.info("account.model_preference_updated")
         return user
 
+    async def get_notification_preferences(self, db: AsyncSession, user_id: str) -> User:
+        """Fetch the user's notification preference flags."""
+        log = logger.bind(user_id=user_id)
+        result = await db.exec(select(User).where(User.id == user_id))
+        user = result.one_or_none()
+        if user is None:
+            raise HTTPException(
+                status_code=404,
+                detail={"code": "USER_NOT_FOUND", "message": "User not found"},
+            )
+        log.info("account.notification_preferences_fetched")
+        return user
+
     async def update_notification_preferences(
         self,
         db: AsyncSession,
