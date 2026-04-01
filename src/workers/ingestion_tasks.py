@@ -20,6 +20,7 @@ from src.api.dependencies.db import async_session_factory
 from src.models.source import Source, SourceStatus
 from src.models.user import User
 from src.services.credit_service import CreditService
+from src.services.referral_service import ReferralService
 from src.workers.utils import publish_progress
 
 logger = structlog.get_logger()
@@ -267,6 +268,22 @@ async def parse_document(
         await _set_source_completed(source_id, chunk_count=len(chunks))
         await publish_progress(source_id, 100, "Ingestion complete!", "completed")
 
+        # ── 9b. Award referrer if this is referee's first upload (AC-4, AC-5, AC-6, AC-7) ──
+        try:
+            async with async_session_factory() as referral_session:
+                await ReferralService().award_referrer_on_first_upload(
+                    referral_session,
+                    referee_user_id=tenant_id,
+                )
+        except Exception as referral_exc:
+            # Non-fatal: log and continue — ingestion job must not fail
+            logger.warning(
+                "parse_document.referral_award_failed",
+                tenant_id=tenant_id,
+                source_id=source_id,
+                error=str(referral_exc),
+            )
+
         # ── 10. Enqueue graph_extraction (AC-10) ──────────────────────────────
         await ctx["redis"].enqueue_job(
             "graph_extraction",
@@ -351,6 +368,22 @@ async def ingest_text(
         # ── 6. COMPLETED ──────────────────────────────────────────────────────
         await _set_source_completed(source_id, chunk_count=len(chunks))
         await publish_progress(source_id, 100, "Text capture complete!", "completed")
+
+        # ── 6b. Award referrer if this is referee's first upload ───────────────
+        try:
+            async with async_session_factory() as referral_session:
+                await ReferralService().award_referrer_on_first_upload(
+                    referral_session,
+                    referee_user_id=tenant_id,
+                )
+        except Exception as referral_exc:
+            # Non-fatal: log and continue
+            logger.warning(
+                "ingest_text.referral_award_failed",
+                tenant_id=tenant_id,
+                source_id=source_id,
+                error=str(referral_exc),
+            )
 
         # ── 7. Enqueue graph extraction ───────────────────────────────────────
         await ctx["redis"].enqueue_job(

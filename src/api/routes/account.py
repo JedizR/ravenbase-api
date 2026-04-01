@@ -14,6 +14,8 @@ from src.schemas.account import (
     ModelPreferenceUpdate,
     NotificationPreferencesUpdate,
 )
+from src.schemas.referral import ApplyReferralRequest, ReferralResponse
+from src.services.referral_service import ReferralService
 from src.services.user_settings_service import UserSettingsService
 
 router = APIRouter(prefix="/v1/account", tags=["account"])
@@ -159,3 +161,34 @@ async def send_test_notification_email(
             status_code=500,
             detail={"code": "EMAIL_SEND_FAILED", "message": "Failed to send test email"},
         ) from exc
+
+
+@router.get("/referral", response_model=ReferralResponse)
+async def get_referral_info(
+    user: dict = Depends(require_user),  # noqa: B008
+    db: AsyncSession = Depends(get_db),  # noqa: B008
+) -> ReferralResponse:
+    """Return the current user's referral code, URL, and stats (AC-8).
+
+    Used by Settings → Referrals page.
+    """
+    return await ReferralService().get_referral_info(db, user["user_id"])
+
+
+@router.post("/apply-referral")
+async def apply_referral_code(
+    body: ApplyReferralRequest,
+    user: dict = Depends(require_user),  # noqa: B008
+    db: AsyncSession = Depends(get_db),  # noqa: B008
+) -> dict:
+    """Apply a referral code to the authenticated user's account (AC-2, AC-3, AC-10).
+
+    Awards the referee +200 signup bonus immediately.
+    Silently ignores invalid codes (not an error to the user).
+    """
+    await ReferralService().apply_referral_code(
+        db,
+        referee_user_id=user["user_id"],
+        raw_referral_code=body.referral_code,
+    )
+    return {"status": "applied"}
