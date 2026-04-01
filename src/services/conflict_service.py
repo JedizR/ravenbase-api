@@ -6,6 +6,7 @@ import uuid
 from datetime import UTC, datetime, timedelta
 
 import structlog
+from fastapi import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import func, select
 
@@ -31,6 +32,9 @@ logger = structlog.get_logger()
 
 # Minimum cosine similarity to consider a pair as candidate
 _SIMILARITY_THRESHOLD = 0.87
+
+# LLM classification confidence below this threshold: pair is skipped (no Conflict created).
+_CONFIDENCE_GATE: float = 0.70
 
 # Maximum conflicts created per ingestion batch (AC-9)
 _MAX_CONFLICTS_PER_BATCH = 5
@@ -171,6 +175,16 @@ class ConflictService(BaseService):
                     classification=result.classification,
                     confidence=result.confidence,
                 )
+
+                # Skip low-confidence classifications (AC-spec: threshold 0.70)
+                if result.confidence < _CONFIDENCE_GATE:
+                    log.info(
+                        "conflict_service.low_confidence_skipped",
+                        confidence=result.confidence,
+                        threshold=_CONFIDENCE_GATE,
+                    )
+                    skipped_count += 1
+                    continue
 
                 if result.classification in _CONFLICT_CLASSIFICATIONS:
                     # Load authority weights for auto-resolution
@@ -356,32 +370,64 @@ class ConflictService(BaseService):
         mutations = GraphMutations()
 
         if action == ResolveAction.ACCEPT_NEW:
-            await self._get_neo4j().run_query(
-                "MATCH (c:Memory {memory_id: $challenger_id}) "
-                "MATCH (i:Memory {memory_id: $incumbent_id}) "
-                "WHERE c.tenant_id = $tenant_id AND i.tenant_id = $tenant_id "
-                "MERGE (c)-[r:SUPERSEDES]->(i) "
-                "SET c.is_valid = true, i.is_valid = false",
-                challenger_id=conflict.challenger_memory_id,
-                incumbent_id=conflict.incumbent_memory_id,
-                tenant_id=user_id,
-            )
+            conflict.status = ConflictStatus.RESOLVED_ACCEPT_NEW
+            db.add(conflict)
+            await db.commit()  # DB committed FIRST
+
+            # Neo4j write AFTER DB commit — with revert on failure
+            try:
+                await self._get_neo4j().run_query(
+                    "MATCH (c:Memory {memory_id: $challenger_id}) "
+                    "MATCH (i:Memory {memory_id: $incumbent_id}) "
+                    "WHERE c.tenant_id = $tenant_id AND i.tenant_id = $tenant_id "
+                    "MERGE (c)-[r:SUPERSEDES]->(i) "
+                    "SET c.is_valid = true, i.is_valid = false",
+                    challenger_id=conflict.challenger_memory_id,
+                    incumbent_id=conflict.incumbent_memory_id,
+                    tenant_id=user_id,
+                )
+            except Exception as neo4j_exc:
+                log.error(
+                    "conflict_service.neo4j_write_failed_post_commit",
+                    conflict_id=conflict_id,
+                    error=str(neo4j_exc),
+                )
+                # Best-effort DB revert to keep systems consistent
+                try:
+                    conflict.status = ConflictStatus.PENDING
+                    conflict.resolved_at = None
+                    db.add(conflict)
+                    await db.commit()
+                except Exception as revert_exc:
+                    log.critical(
+                        "conflict_service.db_revert_failed",
+                        conflict_id=conflict_id,
+                        error=str(revert_exc),
+                    )
+                raise HTTPException(
+                    status_code=503,
+                    detail={
+                        "code": "NEO4J_WRITE_FAILED",
+                        "message": "Resolution failed — please retry",
+                    },
+                ) from neo4j_exc
+
             mutations = GraphMutations(
                 superseded_memory_id=conflict.incumbent_memory_id,
                 active_memory_id=conflict.challenger_memory_id,
             )
-            conflict.status = ConflictStatus.RESOLVED_ACCEPT_NEW
 
         elif action == ResolveAction.KEEP_OLD:
             conflict.status = ConflictStatus.RESOLVED_KEEP_OLD
+            db.add(conflict)
+            await db.commit()
 
         else:  # CUSTOM
             mutations = await self._apply_custom_resolution(conflict, custom_text or "", user_id)
             conflict.status = ConflictStatus.RESOLVED_CUSTOM
+            db.add(conflict)
+            await db.commit()
 
-        conflict.resolved_at = datetime.now(UTC)
-        db.add(conflict)
-        await db.commit()
         log.info("conflict_service.resolved", status=conflict.status)
         return ResolveResponse(
             conflict_id=conflict.id,
@@ -579,7 +625,12 @@ class ConflictService(BaseService):
             if incumbent_source is None:
                 return 5
             return await self._load_authority_weight_by_type(user_id, incumbent_source.file_type)
-        except Exception:
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(
+                "conflict_service.authority_weight_lookup_failed",
+                error=str(exc),
+                source_id=source_id_str,
+            )
             return 5
 
     async def _load_authority_weight_by_type(
