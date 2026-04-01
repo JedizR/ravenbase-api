@@ -4,6 +4,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 
 from src.api.dependencies.auth import require_user
 from src.api.dependencies.db import get_db
+from src.core.credit_costs import NL_GRAPH_QUERY
 from src.schemas.graph import GraphQueryRequest, GraphQueryResponse, GraphResponse
 from src.services.credit_service import CreditService
 from src.services.graph_query_service import GraphQueryService
@@ -59,9 +60,6 @@ async def get_graph_neighborhood(
         )
 
 
-_GRAPH_QUERY_CREDITS = 2
-
-
 @router.post("/query", response_model=GraphQueryResponse)
 async def natural_language_graph_query(
     body: GraphQueryRequest,
@@ -79,7 +77,7 @@ async def natural_language_graph_query(
     await CreditService().deduct(
         db=db,
         user_id=user["user_id"],
-        amount=_GRAPH_QUERY_CREDITS,
+        amount=NL_GRAPH_QUERY,
         operation="graph_query",
     )
 

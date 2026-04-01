@@ -16,7 +16,8 @@ class ChatMessageRequest(BaseModel):
 class CitationItem(BaseModel):
     memory_id: str | None = None  # str(chunk.memory_id) — may be None for non-memory chunks
     content_preview: str  # first 200 chars of chunk content
-    source_id: str  # str(chunk.source_id) — no source_filename on RetrievedChunk
+    source_id: str  # str(chunk.source_id)
+    source_filename: str | None = None  # human-readable original filename; None if lookup fails
 
 
 class ChatSessionSummary(BaseModel):

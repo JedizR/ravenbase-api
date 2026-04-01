@@ -13,6 +13,7 @@ from fastapi import HTTPException
 from sqlmodel import desc, func, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
+from src.core.credit_costs import CHAT_COSTS
 from src.core.errors import ErrorCode
 from src.models.chat_session import ChatSession
 from src.models.user import User
@@ -31,10 +32,6 @@ logger = structlog.get_logger()
 MODEL_ALIASES: dict[str, str] = {
     "haiku": "claude-haiku-4-5-20251001",
     "sonnet": "claude-sonnet-4-6",
-}
-CREDIT_COSTS: dict[str, int] = {
-    "claude-haiku-4-5-20251001": 3,
-    "claude-sonnet-4-6": 8,
 }
 _DEFAULT_MODEL = "claude-haiku-4-5-20251001"
 
@@ -57,7 +54,7 @@ class ChatService(BaseService):
         if user.tier != "pro" and model == "claude-sonnet-4-6":
             model = _DEFAULT_MODEL
 
-        credit_cost = CREDIT_COSTS.get(model, CREDIT_COSTS[_DEFAULT_MODEL])
+        credit_cost = CHAT_COSTS.get(model, CHAT_COSTS[_DEFAULT_MODEL])
         return model, credit_cost
 
     async def get_or_create_session(
@@ -126,16 +123,21 @@ class ChatService(BaseService):
             f"<memory_context>\n{context_block}\n</memory_context>"
         )
 
-    def extract_citations(self, chunks: list[RetrievedChunk]) -> list[CitationItem]:
+    def extract_citations(
+        self,
+        chunks: list[RetrievedChunk],
+        filename_map: dict[str, str] | None = None,
+    ) -> list[CitationItem]:
         """Build citation list from retrieved chunks.
 
-        Correction: source_id used (not source_filename — field doesn't exist).
+        filename_map: {str(source_id): original_filename} — from batch DB lookup in stream_turn.
         """
         return [
             CitationItem(
                 memory_id=str(c.memory_id) if c.memory_id else None,
                 content_preview=c.content[:200],
                 source_id=str(c.source_id),
+                source_filename=(filename_map or {}).get(str(c.source_id)),
             )
             for c in chunks
         ]
@@ -204,6 +206,21 @@ class ChatService(BaseService):
             rag.cleanup()
         log.info("chat_service.retrieved", chunk_count=len(chunks))
 
+        # Batch-fetch source filenames for citations (one query per chat turn)
+        source_ids = [str(c.source_id) for c in chunks]
+        filename_map: dict[str, str] = {}
+        if source_ids:
+            from sqlmodel import select as _select  # noqa: PLC0415
+
+            from src.models.source import Source  # noqa: PLC0415
+
+            src_result = await db.exec(
+                _select(Source.id, Source.original_filename).where(  # type: ignore[arg-type]
+                    Source.id.in_(source_ids)  # type: ignore[attr-defined]
+                )
+            )
+            filename_map = {str(row[0]): row[1] for row in src_result.all()}
+
         history = self.build_history(session.messages[-6:])  # AC-7: last 6 messages
         system_prompt = self.build_system_prompt(chunks)
 
@@ -251,7 +268,7 @@ class ChatService(BaseService):
         )
         log.info("chat_service.turn_complete", credits_deducted=credits_needed)
 
-        citations = self.extract_citations(chunks)
+        citations = self.extract_citations(chunks, filename_map=filename_map)
         yield {
             "data": json.dumps(
                 {

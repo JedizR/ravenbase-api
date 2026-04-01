@@ -12,3 +12,4 @@ class RetrievedChunk(BaseModel):
     semantic_score: float
     recency_weight: float
     page_number: int | None = None
+    source_filename: str | None = None

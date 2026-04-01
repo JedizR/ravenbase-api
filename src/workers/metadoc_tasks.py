@@ -13,16 +13,12 @@ from src.adapters.anthropic_adapter import AnthropicAdapter
 from src.adapters.neo4j_adapter import Neo4jAdapter
 from src.api.dependencies.db import async_session_factory
 from src.core.config import settings
+from src.core.credit_costs import META_DOC_COSTS
 from src.models.meta_document import MetaDocument
 from src.services.credit_service import CreditService
 from src.services.rag_service import RAGService
 
 logger = structlog.get_logger()
-
-_CREDIT_COSTS: dict[str, int] = {
-    "claude-haiku-4-5-20251001": 18,
-    "claude-sonnet-4-6": 45,
-}
 
 _ALLOWED_TAGS = [
     "h1",
@@ -106,7 +102,7 @@ async def generate_meta_document(
     log = logger.bind(job_id=job_id, tenant_id=tenant_id, model=model)
     log.info("generate_meta_document.started")
 
-    credit_cost = _CREDIT_COSTS.get(model, 18)
+    credit_cost = META_DOC_COSTS.get(model, META_DOC_COSTS["claude-haiku-4-5-20251001"])
     doc_id = str(uuid.uuid4())
 
     try:
@@ -117,7 +113,7 @@ async def generate_meta_document(
                 prompt=prompt,
                 tenant_id=tenant_id,
                 profile_id=profile_id,
-                limit=10,
+                limit=15,
             )
             log.info("generate_meta_document.retrieved", chunk_count=len(chunks))
 

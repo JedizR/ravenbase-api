@@ -7,6 +7,7 @@ import structlog
 from fastapi import HTTPException
 from sqlmodel.ext.asyncio.session import AsyncSession
 
+from src.core.credit_costs import META_DOC_COSTS
 from src.core.errors import ErrorCode
 from src.models.user import User
 from src.schemas.metadoc import GenerateResponse
@@ -17,10 +18,6 @@ logger = structlog.get_logger()
 MODEL_ALIASES: dict[str, str] = {
     "haiku": "claude-haiku-4-5-20251001",
     "sonnet": "claude-sonnet-4-6",
-}
-CREDIT_COSTS: dict[str, int] = {
-    "claude-haiku-4-5-20251001": 18,
-    "claude-sonnet-4-6": 45,
 }
 _DEFAULT_MODEL = "claude-haiku-4-5-20251001"
 
@@ -48,7 +45,7 @@ class MetadocService(BaseService):
         if user.tier != "pro" and model == "claude-sonnet-4-6":
             model = _DEFAULT_MODEL
 
-        credit_cost = CREDIT_COSTS.get(model, CREDIT_COSTS[_DEFAULT_MODEL])
+        credit_cost = META_DOC_COSTS.get(model, META_DOC_COSTS[_DEFAULT_MODEL])
         return model, credit_cost
 
     async def handle_generate(
