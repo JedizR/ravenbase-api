@@ -62,6 +62,10 @@ class Settings(BaseSettings):
     )
     RESEND_API_KEY: str = ""
     RESEND_WEBHOOK_SECRET: str = ""
+    RESEND_FROM_EMAIL: str = Field(
+        default="onboarding@resend.dev",
+        description="From address for transactional emails. Use onboarding@resend.dev until a sending domain is verified in Resend.",
+    )
 
     CLOUDFLARE_ORIGIN_SECRET: str = ""
 

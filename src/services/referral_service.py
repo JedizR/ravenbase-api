@@ -21,7 +21,7 @@ logger = structlog.get_logger()
 REFERRAL_SIGNUP_BONUS = 200
 REFERRAL_FIRST_UPLOAD_BONUS = 200
 MONTHLY_CAP = 50
-APP_BASE_URL = getattr(settings, "APP_BASE_URL", None) or "https://ravenbase.app"
+APP_BASE_URL = settings.APP_BASE_URL.rstrip("/")
 
 
 class ReferralService(BaseService):

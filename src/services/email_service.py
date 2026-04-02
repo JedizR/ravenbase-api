@@ -15,8 +15,12 @@ from src.services.base import BaseService
 
 logger = structlog.get_logger()
 
-_WARNING_BODY = """\
-Hi {name},
+# Read once at module load — driven by APP_BASE_URL + RESEND_FROM_EMAIL env vars
+_APP_BASE_URL: str = settings.APP_BASE_URL.rstrip("/")
+_FROM_EMAIL: str = settings.RESEND_FROM_EMAIL
+
+_WARNING_BODY = f"""\
+Hi {{name}},
 
 We noticed you haven't used Ravenbase in 85 days.
 
@@ -24,7 +28,7 @@ As a Free-tier user, your stored data (documents, vectors, and knowledge graph) 
 will be permanently deleted in 5 days if your account remains inactive.
 
 To keep your data, log back into Ravenbase:
-https://ravenbase.app/dashboard
+{_APP_BASE_URL}/chat
 
 If you no longer need your account, no action is required.
 
@@ -55,14 +59,14 @@ def _render_welcome_email(first_name: str) -> str:
           <p style="font-size:16px;color:#374151;line-height:1.6;margin:0 0 24px;">
             Your exocortex is ready. Start by uploading your notes, chat exports, or documents — Ravenbase will build your knowledge graph automatically.
           </p>
-          <a href="https://ravenbase.app/dashboard"
+          <a href="{_APP_BASE_URL}/chat"
              style="display:inline-block;background:{_BRAND_GREEN};color:#ffffff;text-decoration:none;
                     padding:14px 28px;border-radius:9999px;font-size:14px;font-weight:600;margin-bottom:32px;">
             Open Ravenbase
           </a>
           <p style="font-size:13px;color:#9ca3af;border-top:1px solid #e5e7eb;padding-top:24px;margin:0;">
             You received this because you created a Ravenbase account.
-            <a href="https://ravenbase.app/privacy" style="color:{_BRAND_GREEN};">Privacy Policy</a>
+            <a href="{_APP_BASE_URL}/privacy" style="color:{{_BRAND_GREEN}};">Privacy Policy</a>
           </p>
         </td></tr>
       </table>
@@ -96,14 +100,14 @@ def _render_low_credits_email(balance: int, plan_limit: int) -> str:
           <div style="background:#e8ebe6;border-radius:9999px;height:8px;width:100%;margin-bottom:24px;">
             <div style="background:{_BRAND_GREEN};border-radius:9999px;height:8px;width:{pct}%;"></div>
           </div>
-          <a href="https://ravenbase.app/settings/billing"
+          <a href="{_APP_BASE_URL}/settings/billing"
              style="display:inline-block;background:{_BRAND_GREEN};color:#ffffff;text-decoration:none;
                     padding:14px 28px;border-radius:9999px;font-size:14px;font-weight:600;margin-bottom:32px;">
             Upgrade to Pro
           </a>
           <p style="font-size:13px;color:#9ca3af;border-top:1px solid #e5e7eb;padding-top:24px;margin:0;">
             Your credits reset at the start of each billing cycle.
-            <a href="https://ravenbase.app/privacy" style="color:{_BRAND_GREEN};">Privacy Policy</a>
+            <a href="{_APP_BASE_URL}/privacy" style="color:{{_BRAND_GREEN}};">Privacy Policy</a>
           </p>
         </td></tr>
       </table>
@@ -131,14 +135,14 @@ def _render_ingestion_complete_email(filename: str, node_count: int) -> str:
           <p style="font-size:16px;color:#374151;line-height:1.6;margin:0 0 24px;">
             Your document has been indexed. <strong>{node_count} memory nodes</strong> have been extracted and added to your knowledge graph.
           </p>
-          <a href="https://ravenbase.app/graph"
+          <a href="{_APP_BASE_URL}/graph"
              style="display:inline-block;background:{_BRAND_GREEN};color:#ffffff;text-decoration:none;
                     padding:14px 28px;border-radius:9999px;font-size:14px;font-weight:600;margin-bottom:32px;">
             View Knowledge Graph
           </a>
           <p style="font-size:13px;color:#9ca3af;border-top:1px solid #e5e7eb;padding-top:24px;margin:0;">
             You received this because a large file (over 2MB) finished processing.
-            <a href="https://ravenbase.app/privacy" style="color:{_BRAND_GREEN};">Privacy Policy</a>
+            <a href="{_APP_BASE_URL}/privacy" style="color:{{_BRAND_GREEN}};">Privacy Policy</a>
           </p>
         </td></tr>
       </table>
@@ -167,7 +171,7 @@ class EmailService(BaseService):
             resend.api_key = settings.RESEND_API_KEY
             resend.Emails.send(
                 {
-                    "from": "Ravenbase <noreply@ravenbase.app>",
+                    "from": f"Ravenbase <{_FROM_EMAIL}>",
                     "to": [to_email],
                     "subject": "Your Ravenbase data will be deleted in 5 days",
                     "text": body,
@@ -204,7 +208,7 @@ class EmailService(BaseService):
             resend.api_key = settings.RESEND_API_KEY
             resend.Emails.send(
                 {
-                    "from": "Ravenbase <hello@ravenbase.app>",
+                    "from": f"Ravenbase <{_FROM_EMAIL}>",
                     "to": [email],
                     "subject": "Welcome to Ravenbase",
                     "html": html,
@@ -241,7 +245,7 @@ class EmailService(BaseService):
             resend.api_key = settings.RESEND_API_KEY
             resend.Emails.send(
                 {
-                    "from": "Ravenbase <hello@ravenbase.app>",
+                    "from": f"Ravenbase <{_FROM_EMAIL}>",
                     "to": [email],
                     "subject": f"You have {balance} credits remaining — Ravenbase",
                     "html": html,
@@ -277,7 +281,7 @@ class EmailService(BaseService):
             resend.api_key = settings.RESEND_API_KEY
             resend.Emails.send(
                 {
-                    "from": "Ravenbase <hello@ravenbase.app>",
+                    "from": f"Ravenbase <{_FROM_EMAIL}>",
                     "to": [email],
                     "subject": f"✓ {filename} has been processed — Ravenbase",
                     "html": html,
@@ -333,7 +337,7 @@ class EmailService(BaseService):
           </a>
           <p style="font-size:13px;color:#9ca3af;border-top:1px solid #e5e7eb;padding-top:24px;margin:0;">
             You received this because you requested a data export from Ravenbase.
-            <a href="https://ravenbase.app/privacy" style="color:{_BRAND_GREEN};">Privacy Policy</a>
+            <a href="{_APP_BASE_URL}/privacy" style="color:{{_BRAND_GREEN}};">Privacy Policy</a>
           </p>
         </td></tr>
       </table>
@@ -344,7 +348,7 @@ class EmailService(BaseService):
             resend.api_key = settings.RESEND_API_KEY
             resend.Emails.send(
                 {
-                    "from": "Ravenbase <hello@ravenbase.app>",
+                    "from": f"Ravenbase <{_FROM_EMAIL}>",
                     "to": [email],
                     "subject": "Your Ravenbase data export is ready",
                     "html": html,

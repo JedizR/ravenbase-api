@@ -32,7 +32,7 @@ class User(SQLModel, table=True):
         index=True,
         description=(
             "First 8 hex chars of a UUID, uppercase. Set on user creation. "
-            "Used as: ravenbase.app/register?ref=CODE"
+            "Used as: {APP_BASE_URL}/register?ref=CODE (APP_BASE_URL env var)"
         ),
     )
     referred_by_user_id: str | None = Field(

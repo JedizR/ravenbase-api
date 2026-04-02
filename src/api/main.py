@@ -43,9 +43,7 @@ def create_app() -> FastAPI:
     )
 
     origins = (
-        ["http://localhost:3000"]
-        if settings.APP_ENV == "development"
-        else ["https://ravenbase.app"]
+        ["http://localhost:3000"] if settings.APP_ENV == "development" else [settings.APP_BASE_URL]
     )
     app.add_middleware(
         CORSMiddleware,
