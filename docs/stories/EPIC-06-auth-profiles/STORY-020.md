@@ -251,10 +251,13 @@ Implement STORY-020: System Profile Switching.
 
 Read first:
 1. CLAUDE.md (architecture rules)
-2. docs/design/CLAUDE_FRONTEND.md (no form tags, apiFetch pattern)
-3. docs/design/02-component-library.md (Omnibar spec — /profile command)
-4. docs/design/03-screen-flows.md (Dashboard layout — sidebar profile switcher)
-5. docs/stories/EPIC-06-auth-profiles/STORY-020.md (this file)
+2. docs/design/AGENT_DESIGN_PREAMBLE.md — NON-NEGOTIABLE visual rules, anti-patterns, and pre-commit checklist. Read fully before writing any JSX.
+3. docs/design/00-brand-identity.md — logo spec, voice rules, mono label pattern
+4. docs/design/01-design-system.md — all color tokens, typography
+5. docs/design/CLAUDE_FRONTEND.md (no form tags, apiFetch pattern)
+6. docs/design/02-component-library.md (Omnibar spec — /profile command)
+7. docs/design/03-screen-flows.md (Dashboard layout — sidebar profile switcher)
+8. docs/stories/EPIC-06-auth-profiles/STORY-020.md (this file)
 
 Key constraints:
 - Profile switching is PURE CLIENT STATE — no API call on switch

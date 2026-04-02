@@ -313,7 +313,7 @@ describe("useKeyboardInbox", () => {
 import { test, expect } from "@playwright/test";
 
 test("Memory Inbox binary triage flow", async ({ page }) => {
-  await page.goto("/dashboard/inbox");
+  await page.goto("/inbox");
   
   // Verify conflict card visible
   await expect(page.locator("[data-testid='conflict-card']").first()).toBeVisible();
@@ -476,7 +476,7 @@ export const test = base.extend({
     await page.click("[data-locator='continue']");
     await page.fill("[name=password]", process.env.E2E_TEST_PASSWORD!);
     await page.click("[data-locator='continue']");
-    await page.waitForURL("**/dashboard**");
+    await page.waitForURL("**/chat**");
     await use(page);
   },
 });
@@ -497,7 +497,7 @@ test("core revenue loop: upload → process → generate → credit deducted", a
   const creditsBefore = parseInt(balanceBefore!.replace(/\D/g, ""), 10);
 
   // 2. Upload a small fixture PDF
-  await page.goto("/dashboard/sources");
+  await page.goto("/sources");
   const fileInput = page.locator("input[type='file']");
   await fileInput.setInputFiles(path.join(__dirname, "fixtures/test-invoice.pdf"));
 
@@ -507,7 +507,7 @@ test("core revenue loop: upload → process → generate → credit deducted", a
   });
 
   // 4. Navigate to Workstation and generate a Meta-Document
-  await page.goto("/dashboard/workstation");
+  await page.goto("/workstation");
   await page.fill("[data-testid='prompt-input']", "Summarize the key facts in this document.");
   await page.keyboard.press("Enter");
 

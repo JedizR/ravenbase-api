@@ -37,7 +37,7 @@ As a user, I want to review and resolve conflicts from a keyboard-navigable inbo
 - API: STORY-013 endpoints (`GET /v1/conflicts`, `POST /v1/conflicts/{id}/resolve`, `POST /v1/conflicts/{id}/undo`)
 
 ## Acceptance Criteria
-- [ ] AC-1: Memory Inbox accessible at `/dashboard/inbox`
+- [ ] AC-1: Memory Inbox accessible at `/inbox`
 - [ ] AC-2: **Flow 1 (Binary Triage):** J/K cycles through conflicts, Enter accepts AI resolution, Backspace rejects (keep old), all with < 200ms UI update
 - [ ] AC-3: **Flow 2 (Conversational):** C key expands active card to inline chat; typing custom text and pressing Enter calls `CUSTOM` resolve action
 - [ ] AC-4: **Flow 3 (Auto-resolved):** Auto-resolved conflicts appear as toast "Updated [X]. Undo?" with 30-second countdown
@@ -178,6 +178,35 @@ const handleResolve = async (action: "ACCEPT_NEW" | "KEEP_OLD") => {
 - [ ] Empty state renders after last conflict resolved
 - [ ] `npm run build` passes (no TypeScript errors)
 
+## Final Localhost Verification (mandatory before marking complete)
+
+After `npm run build` passes and all tests pass, verify the running application works:
+
+**Step 1 — Clear stale cache:**
+```bash
+rm -rf .next
+```
+
+**Step 2 — Start dev server:**
+```bash
+npm run dev
+```
+
+**Step 3 — Verify no runtime errors:**
+- Open http://localhost:3000 in the browser
+- Sign in if redirected to /login
+- Navigate to `/inbox`
+- Confirm NO "Internal Server Error" or webpack runtime errors
+- Confirm CSS loads correctly (no unstyled content)
+- Open browser DevTools → Console tab
+- Confirm no red errors (yellow warnings acceptable)
+
+**Step 4 — Report one of:**
+- ✅ `localhost verified` — page renders correctly
+- ⚠️ `Issue found: [describe issue]` — fix before committing docs
+
+Only commit the docs update (epics.md, story-counter, project-status, journal) AFTER localhost verification passes.
+
 ## Testing This Story
 
 ```bash
@@ -186,7 +215,7 @@ npm run build
 
 # Manual test (requires seeded conflict data):
 # 1. uv run python scripts/seed_dev_data.py (seed 3+ conflicts)
-# 2. Open http://localhost:3000/dashboard/inbox
+# 2. Open http://localhost:3000/inbox
 # 3. Press J — move to next conflict
 # 4. Press K — move to previous conflict
 # 5. Press Enter — resolve with ACCEPT_NEW (verify optimistic update + API call)
@@ -207,10 +236,13 @@ Implement STORY-014: Memory Inbox UI (Keyboard Navigation + 3 Flows).
 
 Read first:
 1. CLAUDE.md (architecture rules)
-2. docs/design/CLAUDE_FRONTEND.md (no form tags, apiFetch, Tailwind only)
-3. docs/prd/03-feature-specs/F3-memory-inbox.md (3 flows: Binary Triage, Conversational, Auto-resolved)
-4. docs/design/04-ux-patterns.md (keyboard navigation patterns)
-5. docs/stories/EPIC-04-conflict/STORY-014.md (this file)
+2. docs/design/AGENT_DESIGN_PREAMBLE.md — NON-NEGOTIABLE visual rules, anti-patterns, and pre-commit checklist. Read fully before writing any JSX.
+3. docs/design/00-brand-identity.md — logo spec, voice rules, mono label pattern
+4. docs/design/01-design-system.md — all color tokens, typography
+5. docs/design/CLAUDE_FRONTEND.md (no form tags, apiFetch, Tailwind only)
+6. docs/prd/03-feature-specs/F3-memory-inbox.md (3 flows: Binary Triage, Conversational, Auto-resolved)
+7. docs/design/04-ux-patterns.md (keyboard navigation patterns)
+8. docs/stories/EPIC-04-conflict/STORY-014.md (this file)
 
 Key constraints:
 - No <form> tags — ConflictChat uses div + onClick + controlled input

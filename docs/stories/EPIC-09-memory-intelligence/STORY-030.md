@@ -205,6 +205,35 @@ useEffect(() => {
 - [ ] Zero results shows empty state message
 - [ ] `npm run build` passes (0 TypeScript errors)
 
+## Final Localhost Verification (mandatory before marking complete)
+
+After `npm run build` passes and all tests pass, verify the running application works:
+
+**Step 1 — Clear stale cache:**
+```bash
+rm -rf .next
+```
+
+**Step 2 — Start dev server:**
+```bash
+npm run dev
+```
+
+**Step 3 — Verify no runtime errors:**
+- Open http://localhost:3000 in the browser
+- Sign in if redirected to /login
+- Navigate to `/graph`
+- Confirm NO "Internal Server Error" or webpack runtime errors
+- Confirm CSS loads correctly (no unstyled content)
+- Open browser DevTools → Console tab
+- Confirm no red errors (yellow warnings acceptable)
+
+**Step 4 — Report one of:**
+- ✅ `localhost verified` — page renders correctly
+- ⚠️ `Issue found: [describe issue]` — fix before committing docs
+
+Only commit the docs update (epics.md, story-counter, project-status, journal) AFTER localhost verification passes.
+
 ## Testing This Story
 
 ```bash
@@ -212,7 +241,7 @@ useEffect(() => {
 npm run build
 
 # Manual test:
-# 1. Navigate to /dashboard/graph
+# 1. Navigate to /graph
 # 2. Verify query bar appears above filter row
 # 3. Click an example chip — verify it fills the query input
 # 4. Submit query "Show my Python projects"
@@ -234,9 +263,12 @@ Backend is complete. Run npm run generate-client first.
 
 Read first:
 1. CLAUDE.md (frontend rules in this repo root)
-2. docs/design/CLAUDE_FRONTEND.md (useApiFetch hook, no form tags)
-3. docs/stories/EPIC-03-graph/STORY-011.md (existing Cytoscape setup to extend)
-4. docs/stories/EPIC-09-memory-intelligence/STORY-030.md (this file)
+2. docs/design/AGENT_DESIGN_PREAMBLE.md — NON-NEGOTIABLE visual rules, anti-patterns, and pre-commit checklist. Read fully before writing any JSX.
+3. docs/design/00-brand-identity.md — logo spec, voice rules, mono label pattern
+4. docs/design/01-design-system.md — all color tokens, typography
+5. docs/design/CLAUDE_FRONTEND.md (useApiFetch hook, no form tags)
+6. docs/stories/EPIC-03-graph/STORY-011.md (existing Cytoscape setup to extend)
+7. docs/stories/EPIC-09-memory-intelligence/STORY-030.md (this file)
 
 Key constraints:
 - "use client" already on GraphExplorer — add query bar as a child component

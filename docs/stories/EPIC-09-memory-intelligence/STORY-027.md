@@ -40,12 +40,12 @@ and receive streamed answers with citations linking back to my source memories.
 - Sessions: persisted in backend; sidebar shows history
 
 ## Acceptance Criteria
-- [ ] AC-1: `/dashboard/chat` page renders with sidebar (session list) + main chat area
+- [ ] AC-1: `/chat` page renders with sidebar (session list) + main chat area
 - [ ] AC-2: User types a message, presses Enter or clicks Send — tokens stream in real-time
 - [ ] AC-3: First SSE event `{type: "session"}` captures `session_id` stored in component state
 - [ ] AC-4: AI message bubble appears immediately and fills token-by-token (streaming cursor ▌)
 - [ ] AC-5: Final `{type: "done"}` event renders citation footnotes below the message
-- [ ] AC-6: Clicking a citation opens the Graph Explorer with that node highlighted (route: `/dashboard/graph?node={memory_id}`)
+- [ ] AC-6: Clicking a citation opens the Graph Explorer with that node highlighted (route: `/graph?node={memory_id}`)
 - [ ] AC-7: Sidebar shows all past sessions (title = first 60 chars of first message); click to load and resume
 - [ ] AC-8: Model selector (Haiku / Sonnet) shows credit cost next to each option
 - [ ] AC-9: Insufficient credits: `402` response shows upgrade prompt modal (not a console error)
@@ -97,7 +97,7 @@ iOS Safari address bar jump that makes the layout shift during scroll.
 - SSE token: use `new EventSource(url)` directly (not via apiFetch) — EventSource is browser-native
 - Token must be appended as query param: `?token={clerkToken}` (EventSource cannot set headers)
 - Use `useApiFetch()` hook for non-streaming calls (session list, session load, delete)
-- Citation click: use Next.js `router.push('/dashboard/graph?node=${memory_id}')` — do not use `<a>` tags
+- Citation click: use Next.js `router.push('/graph?node=${memory_id}')` — do not use `<a>` tags
 - No `<form>` tags — chat input is a `<textarea>` with `onKeyDown` handler for Enter key
 - Textarea: Enter sends, Shift+Enter inserts newline
 - Model selector: shadcn `<Select>` component
@@ -192,7 +192,7 @@ export function CitationCard({ citation }: { citation: Citation }) {
   const router = useRouter();
   return (
     <button
-      onClick={() => router.push(`/dashboard/graph?node=${citation.memory_id}`)}
+      onClick={() => router.push(`/graph?node=${citation.memory_id}`)}
       className="text-xs font-mono text-muted-foreground border border-border
                  rounded px-2 py-0.5 hover:border-primary hover:text-primary
                  transition-colors"
@@ -206,12 +206,12 @@ export function CitationCard({ citation }: { citation: Citation }) {
 ### Sidebar Navigation Entry
 Add to `app/(dashboard)/layout.tsx` sidebar items:
 ```tsx
-{ icon: MessageSquare, label: "Chat", href: "/dashboard/chat" }
+{ icon: MessageSquare, label: "Chat", href: "/chat" }
 // Place between Graph Explorer and Memory Inbox in the nav
 ```
 
 ## Definition of Done
-- [ ] Chat page renders at `/dashboard/chat` in dark mode
+- [ ] Chat page renders at `/chat` in dark mode
 - [ ] Sending a message streams tokens in real-time (visible token-by-token)
 - [ ] Multi-turn: second message in same session has context of first
 - [ ] Citations render as clickable cards after each AI message
@@ -221,6 +221,35 @@ Add to `app/(dashboard)/layout.tsx` sidebar items:
 - [ ] `npm run build` passes (0 TypeScript errors)
 - [ ] `npm run test` passes
 
+## Final Localhost Verification (mandatory before marking complete)
+
+After `npm run build` passes and all tests pass, verify the running application works:
+
+**Step 1 — Clear stale cache:**
+```bash
+rm -rf .next
+```
+
+**Step 2 — Start dev server:**
+```bash
+npm run dev
+```
+
+**Step 3 — Verify no runtime errors:**
+- Open http://localhost:3000 in the browser
+- Sign in if redirected to /login
+- Navigate to `/chat`
+- Confirm NO "Internal Server Error" or webpack runtime errors
+- Confirm CSS loads correctly (no unstyled content)
+- Open browser DevTools → Console tab
+- Confirm no red errors (yellow warnings acceptable)
+
+**Step 4 — Report one of:**
+- ✅ `localhost verified` — page renders correctly
+- ⚠️ `Issue found: [describe issue]` — fix before committing docs
+
+Only commit the docs update (epics.md, story-counter, project-status, journal) AFTER localhost verification passes.
+
 ## Testing This Story
 
 ```bash
@@ -229,7 +258,7 @@ npm run build
 # Expected: 0 TypeScript errors
 
 # Manual test:
-# 1. Navigate to localhost:3000/dashboard/chat
+# 1. Navigate to localhost:3000/chat
 # 2. Type "What Python projects have I worked on?"
 # 3. Verify: tokens appear one by one (streaming cursor visible)
 # 4. Verify: citation cards appear after response completes
@@ -252,10 +281,12 @@ Backend is complete. Run npm run generate-client first.
 
 Read first:
 1. CLAUDE.md (frontend rules in this repo root)
-2. docs/design/CLAUDE_FRONTEND.md (useApiFetch hook, no form tags, approved packages)
-3. docs/design/01-design-system.md (dark mode dashboard tokens)
-4. docs/stories/EPIC-02-ingestion/STORY-007.md (SSE streaming pattern reference)
-5. docs/stories/EPIC-09-memory-intelligence/STORY-027.md (this file)
+2. docs/design/AGENT_DESIGN_PREAMBLE.md — NON-NEGOTIABLE visual rules, anti-patterns, and pre-commit checklist. Read fully before writing any JSX.
+3. docs/design/00-brand-identity.md — logo spec, voice rules, mono label pattern
+4. docs/design/01-design-system.md — all color tokens, typography
+5. docs/design/CLAUDE_FRONTEND.md (useApiFetch hook, no form tags, approved packages)
+6. docs/stories/EPIC-02-ingestion/STORY-007.md (SSE streaming pattern reference)
+7. docs/stories/EPIC-09-memory-intelligence/STORY-027.md (this file)
 
 Key constraints:
 - "use client" on MemoryChat.tsx — uses state, EventSource, useAuth

@@ -269,9 +269,9 @@ The user just completed the wizard and uploaded their first file. Processing is 
 The graph is empty while Docling and entity extraction run (typically 10–120 seconds).
 
 ```tsx
-// app/(dashboard)/dashboard/page.tsx — detect first-run via URL query param
+// app/(dashboard)/page.tsx — detect first-run via URL query param
 // After completing onboarding, the wizard appends ?first_run=true to the redirect:
-// router.push("/dashboard?first_run=true")
+// router.push("/chat?first_run=true")
 // This param is read once, then removed from the URL via router.replace
 
 // The GettingStartedChecklist renders if:
@@ -356,14 +356,14 @@ const steps = [
   {
     id: "graph",
     label: "Explore your knowledge graph",
-    // completed when: user has navigated to /dashboard/graph
-    href: "/dashboard/graph",
+    // completed when: user has navigated to /graph
+    href: "/graph",
   },
   {
     id: "ask",
     label: "Ask your first question",
     // completed when: chat_sessions.length > 0
-    href: "/dashboard/chat",
+    href: "/chat",
   },
 ]
 

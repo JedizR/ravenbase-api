@@ -183,7 +183,7 @@ ravenbase-web/
 │   │   └── onboarding/page.tsx
 │   └── (dashboard)/                   ← Route group: dark mode, requires auth
 │       ├── layout.tsx                 ← DashboardLayout + Sidebar
-│       ├── page.tsx                   ← Redirect to /dashboard/graph
+│       ├── page.tsx                   ← Redirect to /graph
 │       ├── graph/page.tsx
 │       ├── inbox/page.tsx
 │       ├── workstation/page.tsx
@@ -237,7 +237,7 @@ ravenbase-web/
 │   ├── api.ts                         ← apiFetch() with Clerk token
 │   └── api-client/                    ← AUTO-GENERATED from FastAPI OpenAPI (never edit)
 │
-└── middleware.ts                      ← Clerk auth middleware (protects /dashboard/*)
+└── middleware.ts                      ← Clerk auth middleware (protects dashboard routes)
 ```
 
 ---

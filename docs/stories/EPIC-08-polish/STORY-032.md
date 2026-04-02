@@ -8,7 +8,7 @@
 ---
 
 ## Functional Requirements
-<!-- Which FR acceptance criteria does this story satisfy? -->
+<!-- Which FR acceptance criteria does this story does this story satisfy? -->
 None — transactional email story.
 
 ## Component
@@ -279,6 +279,41 @@ Add to dependencies:
 "resend>=2.5.0",
 ```
 
+## UX & Visual Quality Requirements
+
+### Settings → Notifications UX
+1. Email preview cards for each template type:
+   - Welcome email preview
+   - Low credits warning preview (triggers at < 100 credits)
+   - Ingestion complete preview
+   Each card: bg-card rounded-2xl border border-border p-4
+   Preview shows styled mock of the email header + first paragraph
+
+2. "Send test email" button per template:
+   - Button: rounded-full bg-primary text-primary-foreground h-10 px-4 text-sm
+   - Loading state: spinner + "Sending..."
+   - Success: toast.success("Test email sent to your@email.com")
+   - Error: toast.error("Failed to send. Check your Resend API key in .env")
+
+3. Toggle per notification type:
+   - Forest green switch when on (same Toggle component as settings page)
+   - Label: text-sm font-medium text-foreground
+   - Description: text-xs text-muted-foreground below label
+
+### Email Template Visual Requirements
+4. All email templates must use brand colors:
+   - Header: forest green #2d4a3e background with white Ravenbase logo text
+   - Body background: warm cream #f5f3ee
+   - Body text: DM Sans (font-family in inline styles for email compatibility)
+   - CTAs: forest green #2d4a3e background, white text, border-radius: 9999px
+   - Mono labels: JetBrains Mono (or fallback Courier New for email)
+   - Footer: muted text with ◆ ALL_SYSTEMS_OPERATIONAL
+   Use inline styles for all email HTML (not Tailwind — email clients ignore it)
+
+5. All 3 email templates must render as actual HTML that can be previewed.
+   Store templates as functions that return HTML strings in
+   src/services/email_templates.py (ravenbase-api).
+
 ## Definition of Done
 - [ ] Welcome email sends successfully when Clerk `user.created` webhook fires
 - [ ] Low credits email fires when balance < 10% (only once per billing period)
@@ -286,6 +321,26 @@ Add to dependencies:
 - [ ] Failed sends log at error level but never raise (non-fatal)
 - [ ] Emails skip when `APP_ENV=test`
 - [ ] `make quality && make test` passes (0 errors, 0 failures)
+
+## Final Localhost Verification (mandatory before marking complete)
+
+After `make quality && make test` passes and all tests pass, verify the running application works:
+
+**Step 1 — Start dev server:**
+```bash
+cd ravenbase-api && make run
+```
+
+**Step 2 — Verify no runtime errors:**
+- Test the email sending endpoint manually or via webhook simulator
+- Confirm no unhandled exceptions in server logs
+- Confirm structlog output is clean (no ERROR level emails)
+
+**Step 3 — Report one of:**
+- ✅ `localhost verified` — email service initializes and runs correctly
+- ⚠️ `Issue found: [describe issue]` — fix before committing docs
+
+Only commit the docs update (epics.md, story-counter, project-status, journal) AFTER localhost verification passes.
 
 ## Testing This Story
 
@@ -311,25 +366,509 @@ asyncio.run(EmailService().send_welcome('test@test.com', 'Test'))
 
 ---
 
-## Agent Implementation Brief
+## Frontend Agent Brief
+
+> **Skill Invocations — invoke each skill before the corresponding phase:**
+>
+> **Phase 1 (Read/Design):** `Use /frontend-design — enforce production-grade aesthetic compliance`
+> **Phase 2 (Components):** `Use /tailwindcss — for Tailwind CSS v4 token system`
+> **Phase 3 (Settings UI):** `Use /tailwindcss-advanced-layouts — for settings page layout patterns`
+> **Phase 4 (Accessibility):** `Use /tailwindcss-animations — for micro-interaction verification`
+> **Phase 5 (Verification):** `Use /superpowers:verification-before-completion — before claiming done`
+
+---
 
 ```
-Implement STORY-032: Transactional Email System.
+🎯 Target: Claude Code / MiniMax-M2.7 — Ultra-detailed planning and implementation
+💡 Optimization: MiniMax-M2.7 directive — WRITE EVERYTHING IN MAXIMUM DETAIL.
+   Complete code for every component. Complete grep commands for every AC.
 
-Read first:
-1. CLAUDE.md (architecture rules — RULE 6: heavy imports lazy, RULE 7: no print)
-2. docs/architecture/05-security-privacy.md (PII rules)
-3. docs/stories/EPIC-06-auth-profiles/STORY-018.md (webhook handler to extend)
-4. docs/stories/EPIC-08-polish/STORY-032.md (this file)
+═══════════════════════════════════════════════════════════════════
+CONTEXT
+═══════════════════════════════════════════════════════════════════
 
-Key constraints:
-- resend import is LAZY (inside function body)
-- Email failure is NEVER fatal — always catch and log, never re-raise
-- Skip all sends when APP_ENV=test
-- Never log email addresses
-- welcome email: triggered from webhooks.py user.created handler
-- low credits: triggered from credit_service.deduct() when balance < 10%
-- ingestion complete: triggered from ingestion task when file > 2MB AND status = COMPLETED
+Ravenbase Frontend: Next.js 15 App Router + Tailwind CSS v4 + shadcn/ui + TanStack Query
+Design system: CSS variables only (no hardcoded hex). Brand: Primary=#2d4a3e, Background=#f5f3ee
+Page to build: app/(dashboard)/settings/notifications/page.tsx
+API endpoints used:
+  GET /v1/users/me  → current user notification preferences
+  PATCH /v1/users/me/notification-prefs → update preferences
+  POST /v1/notification-prefs/test/:type → send test email
+
+Notification types:
+  - welcome: "Welcome email" (first email after signup)
+  - low_credits: "Low credits warning" (triggers at < 10% balance)
+  - ingestion_complete: "Processing complete" (files > 2MB)
+
+═══════════════════════════════════════════════════════════════════
+READING ORDER
+═══════════════════════════════════════════════════════════════════
+
+INVOKE: Use /frontend-design
+
+Read ALL files. Write "✅ CONFIRMED READ: [filename]" after each:
+
+1. CLAUDE.md — all 19 rules
+2. docs/design/AGENT_DESIGN_PREAMBLE.md
+   → Anti-patterns to reject:
+     ❌ bg-[#2d4a3e] → bg-primary
+     ❌ rounded-lg on cards → rounded-2xl
+     ❌ rounded-md on CTAs → rounded-full
+     ❌ <form> tag → onClick + controlled inputs
+3. docs/design/00-brand-identity.md — mono label ◆ PATTERN, logo usage
+4. docs/design/01-design-system.md — brand colors, typography, radius scale
+5. docs/stories/EPIC-08-polish/STORY-032.md (this file — all ACs)
+
+═══════════════════════════════════════════════════════════════════
+STEP 1 — VERIFY API CLIENT GENERATED (Phase 1a)
+═══════════════════════════════════════════════════════════════════
+
+INVOKE: Use /tailwindcss
+
+Check if notification preference types exist in the API client:
+
+grep -n "NotificationPrefs\|notification_prefs\|notify_welcome" \
+  src/lib/api-client/ --include="*.ts" -r
+
+Expected output: types found in schemas
+
+If NOT found — run the generate-client command:
+npm run generate-client
+
+Then grep again to confirm.
+
+Also verify the test endpoint exists:
+grep -n "test.*email\|notification.*test" src/lib/api-client/ -r
+
+═══════════════════════════════════════════════════════════════════
+STEP 2 — CREATE SETTINGS NOTIFICATIONS PAGE (Phase 2a)
+═══════════════════════════════════════════════════════════════════
+
+FILE: app/(dashboard)/settings/notifications/page.tsx
+
+"use client"
+import { useState } from "react"
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
+import { Mail, Zap, FileCheck, Bell, BellOff, CheckCircle2 } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Switch } from "@/components/ui/switch"
+import { Skeleton } from "@/components/ui/skeleton"
+import { toast } from "sonner"
+
+interface NotificationPrefs {
+  notify_welcome: boolean
+  notify_low_credits: boolean
+  notify_ingestion_complete: boolean
+}
+
+// ------------------------------------------------------------------
+// Email Preview Card — shared sub-component
+// ------------------------------------------------------------------
+function EmailPreviewCard({
+  type,
+  label,
+  description,
+  previewLines,
+  testMutation,
+  currentEmail,
+}: {
+  type: "welcome" | "low_credits" | "ingestion_complete"
+  label: string
+  description: string
+  previewLines: string[]
+  testMutation: ReturnType<typeof useMutation>
+  currentEmail: string
+}) {
+  const isSending = testMutation.isPending
+
+  return (
+    <div className="bg-card rounded-2xl border border-border p-6 space-y-4">
+      {/* Card header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-secondary flex items-center justify-center">
+            {type === "welcome" && <Mail className="w-5 h-5 text-primary" />}
+            {type === "low_credits" && <Zap className="w-5 h-5 text-warning" />}
+            {type === "ingestion_complete" && <FileCheck className="w-5 h-5 text-success" />}
+          </div>
+          <div>
+            <h3 className="text-sm font-medium text-foreground">{label}</h3>
+            <p className="text-xs text-muted-foreground">{description}</p>
+          </div>
+        </div>
+        {/* Test button */}
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() =>
+            testMutation.mutate({ type }),
+          }
+          disabled={isSending}
+          className="rounded-full text-xs h-8 px-3"
+        >
+          {isSending ? (
+            <>
+              <span className="mr-1.5 inline-block w-3 h-3 border border-primary border-t-transparent rounded-full animate-spin" />
+              Sending...
+            </>
+          ) : (
+            "Send test"
+          )}
+        </Button>
+      </div>
+
+      {/* Email preview mockup */}
+      <div className="rounded-xl border border-border overflow-hidden">
+        {/* Email header bar */}
+        <div className="bg-primary px-4 py-3 flex items-center gap-2">
+          <span className="text-primary-foreground text-xs font-mono tracking-wider">
+            RAVENBASE
+          </span>
+          <span className="text-primary-foreground/40 text-xs">·</span>
+          <span className="text-primary-foreground/60 text-xs font-mono">
+            WHAT HAPPENED, WHERE, AND WHEN. ALWAYS.
+          </span>
+        </div>
+        {/* Email body mockup */}
+        <div className="bg-background p-4 space-y-2">
+          {previewLines.map((line, i) => (
+            <p
+              key={i}
+              className={`text-xs ${
+                i === 0 ? "font-serif text-base font-semibold text-foreground" : "text-muted-foreground"
+              }`}
+            >
+              {line}
+            </p>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ------------------------------------------------------------------
+// Toggle Row — shared sub-component
+// ------------------------------------------------------------------
+function ToggleRow({
+  label,
+  description,
+  checked,
+  onCheckedChange,
+  icon,
+}: {
+  label: string
+  description: string
+  checked: boolean
+  onCheckedChange: (checked: boolean) => void
+  icon: React.ReactNode
+}) {
+  return (
+    <div className="flex items-center justify-between py-4 border-b border-border last:border-0">
+      <div className="flex items-center gap-3">
+        <div className="w-9 h-9 rounded-lg bg-secondary flex items-center justify-center">
+          {icon}
+        </div>
+        <div>
+          <p className="text-sm font-medium text-foreground">{label}</p>
+          <p className="text-xs text-muted-foreground">{description}</p>
+        </div>
+      </div>
+      <div className="flex items-center gap-2">
+        {checked ? (
+          <CheckCircle2 className="w-4 h-4 text-success mr-2" />
+        ) : (
+          <BellOff className="w-4 h-4 text-muted-foreground mr-2" />
+        )}
+        <Switch
+          checked={checked}
+          onCheckedChange={onCheckedChange}
+          className="data-[state=checked]:bg-primary"
+        />
+      </div>
+    </div>
+  )
+}
+
+// ------------------------------------------------------------------
+// Main Page
+// ------------------------------------------------------------------
+export default function NotificationsPage() {
+  const queryClient = useQueryClient()
+
+  const { data: prefs, isLoading } = useQuery<NotificationPrefs>({
+    queryKey: ["notification-prefs"],
+    queryFn: () => apiFetch<NotificationPrefs>("/v1/users/me/notification-prefs"),
+    staleTime: 60_000,
+  })
+
+  const updateMutation = useMutation({
+    mutationFn: (updates: Partial<NotificationPrefs>) =>
+      apiFetch("/v1/users/me/notification-prefs", {
+        method: "PATCH",
+        body: JSON.stringify(updates),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["notification-prefs"] })
+      toast.success("Preferences saved")
+    },
+    onError: () => {
+      toast.error("Failed to save preferences. Please try again.")
+    },
+  })
+
+  const testMutation = useMutation({
+    mutationFn: ({ type }: { type: "welcome" | "low_credits" | "ingestion_complete" }) =>
+      apiFetch(`/v1/notification-prefs/test/${type}`, { method: "POST" }),
+    onSuccess: () => {
+      toast.success("Test email sent. Check your inbox.")
+    },
+    onError: () => {
+      toast.error("Failed to send test email. Check your Resend API key in .env.")
+    },
+  })
+
+  if (isLoading) {
+    return (
+      <div className="p-6 space-y-6 max-w-2xl">
+        <Skeleton className="h-6 w-48" />
+        <Skeleton className="h-4 w-64" />
+        <Skeleton className="h-64 rounded-2xl" />
+        <Skeleton className="h-48 rounded-2xl" />
+      </div>
+    )
+  }
+
+  return (
+    <div className="p-6 max-w-2xl space-y-8">
+      {/* Page header */}
+      <div>
+        <h1 className="font-serif text-3xl text-foreground">Notification Preferences</h1>
+        <p className="text-sm text-muted-foreground mt-1">
+          Choose which emails Ravenbase sends you.
+        </p>
+      </div>
+
+      {/* ◆ EMAIL_NOTIFICATIONS section label */}
+      <div>
+        <span className="text-xs font-mono text-muted-foreground tracking-wider">
+          ◆ EMAIL_NOTIFICATIONS
+        </span>
+
+        {/* Toggle rows */}
+        <div className="bg-card rounded-2xl border border-border px-6 mt-3">
+          <ToggleRow
+            label="Welcome email"
+            description="Sent once when you create your account"
+            icon={<Mail className="w-4 h-4 text-primary" />}
+            checked={prefs?.notify_welcome ?? true}
+            onCheckedChange={(checked) =>
+              updateMutation.mutate({ notify_welcome: checked })
+            }
+          />
+          <ToggleRow
+            label="Low credits warning"
+            description="Sent when your balance falls below 10%"
+            icon={<Zap className="w-4 h-4 text-warning" />}
+            checked={prefs?.notify_low_credits ?? true}
+            onCheckedChange={(checked) =>
+              updateMutation.mutate({ notify_low_credits: checked })
+            }
+          />
+          <ToggleRow
+            label="Processing complete"
+            description="Sent when large file uploads finish (files over 2MB)"
+            icon={<FileCheck className="w-4 h-4 text-success" />}
+            checked={prefs?.notify_ingestion_complete ?? true}
+            onCheckedChange={(checked) =>
+              updateMutation.mutate({ notify_ingestion_complete: checked })
+            }
+          />
+        </div>
+      </div>
+
+      {/* ◆ EMAIL_PREVIEW section label */}
+      <div>
+        <span className="text-xs font-mono text-muted-foreground tracking-wider">
+          ◆ EMAIL_PREVIEW
+        </span>
+        <p className="text-xs text-muted-foreground mt-1 mb-4">
+          Click "Send test" to receive a sample of each email at your account address.
+        </p>
+
+        <div className="grid grid-cols-1 gap-4">
+          <EmailPreviewCard
+            type="welcome"
+            label="Welcome Email"
+            description="Your first email from Ravenbase"
+            previewLines={[
+              "Welcome, [Your Name].",
+              "Your exocortex is ready. Start by uploading your notes...",
+              "[Open Ravenbase → CTA button]",
+            ]}
+            testMutation={testMutation}
+            currentEmail={""}
+          />
+          <EmailPreviewCard
+            type="low_credits"
+            label="Low Credits Warning"
+            description="Triggers when balance drops below 10%"
+            previewLines={[
+              "[X] credits remaining.",
+              "[Credit usage bar]",
+              "[Upgrade to Pro → CTA button]",
+            ]}
+            testMutation={testMutation}
+            currentEmail={""}
+          />
+          <EmailPreviewCard
+            type="ingestion_complete"
+            label="Processing Complete"
+            description="Sent when files over 2MB finish processing"
+            previewLines={[
+              "[filename].pdf — ✓ PROCESSED",
+              "[X] memory nodes indexed",
+              "[View Knowledge Graph → CTA button]",
+            ]}
+            testMutation={testMutation}
+            currentEmail={""}
+          />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+═══════════════════════════════════════════════════════════════════
+STEP 3 — CREATE LOADING STATE (Phase 2b)
+═══════════════════════════════════════════════════════════════════
+
+FILE: app/(dashboard)/settings/notifications/loading.tsx
+
+import { Skeleton } from "@/components/ui/skeleton"
+
+export default function NotificationsLoading() {
+  return (
+    <div className="p-6 max-w-2xl space-y-8">
+      <div>
+        <Skeleton className="h-8 w-56" />
+        <Skeleton className="h-4 w-80 mt-2" />
+      </div>
+      {/* Toggle section skeleton */}
+      <div>
+        <Skeleton className="h-4 w-40 mb-3" />
+        <div className="bg-card rounded-2xl border border-border px-6 py-4 space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Skeleton className="w-9 h-9 rounded-lg" />
+              <div className="space-y-1.5">
+                <Skeleton className="h-4 w-32" />
+                <Skeleton className="h-3 w-48" />
+              </div>
+            </div>
+            <Skeleton className="w-10 h-6 rounded-full" />
+          </div>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Skeleton className="w-9 h-9 rounded-lg" />
+              <div className="space-y-1.5">
+                <Skeleton className="h-4 w-36" />
+                <Skeleton className="h-3 w-44" />
+              </div>
+            </div>
+            <Skeleton className="w-10 h-6 rounded-full" />
+          </div>
+        </div>
+      </div>
+      {/* Preview section skeleton */}
+      <div>
+        <Skeleton className="h-4 w-36 mb-4" />
+        <div className="space-y-4">
+          <Skeleton className="h-56 rounded-2xl" />
+          <Skeleton className="h-48 rounded-2xl" />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+═══════════════════════════════════════════════════════════════════
+STEP 4 — ADD TO SETTINGS LAYOUT NAV (Phase 2c)
+═══════════════════════════════════════════════════════════════════
+
+INVOKE: Use /tailwindcss-advanced-layouts
+
+If there is a settings layout or sidebar with settings navigation:
+Add a link to "/settings/notifications" with bell icon.
+
+Grep to find the settings navigation:
+grep -rn "settings" app/\(dashboard\)/layout.tsx app/\(dashboard\)/settings/
+
+═══════════════════════════════════════════════════════════════════
+STEP 5 — VERIFY ALL FRONTEND ACCEPTANCE CRITERIA (Phase 3)
+═══════════════════════════════════════════════════════════════════
+
+INVOKE: Use /superpowers:verification-before-completion
+
+For each AC, write a one-line verification result:
+
+□ Page: notifications/page.tsx created with bg-card rounded-2xl
+□ EmailPreviewCard: 3 cards rendered (welcome, low_credits, ingestion_complete)
+□ EmailPreviewCard: each has green header (bg-primary), preview body (bg-background)
+□ ToggleRow: 3 toggles for notify_welcome, notify_low_credits, notify_ingestion_complete
+□ Switch: shadcn Switch component, className="data-[state=checked]:bg-primary"
+□ Send test button: rounded-full bg-primary text-sm h-8 px-3
+□ Send test loading state: spinner + "Sending..." text
+□ TanStack Query: useQuery for prefs, useMutation for update and test
+□ toast.success on test email sent
+□ toast.error on test email failure
+□ toast.success on preference saved
+□ loading.tsx: skeleton matching page structure
+□ No <form> tags — all via onClick/onCheckedChange
+□ All className strings use CSS variables (bg-primary, not #2d4a3e)
+□ rounded-2xl on all cards
+□ rounded-full on primary CTAs (Send test button)
+□ loading.tsx has aria-busy or role="status" equivalent via Skeleton
+
+Run grep verification:
+grep -rn "className.*#2d4a3e\|className.*#f5f3ee" app/\(dashboard\)/settings/notifications/
+# Expected: 0 matches (must use CSS variables only)
+
+grep -rn "<form" app/\(dashboard\)/settings/notifications/
+# Expected: 0 matches (no form tags per RULE 1)
+
+grep -n "notifications" app/\(dashboard\)/settings/
+# Expected: page.tsx + loading.tsx found
+
+═══════════════════════════════════════════════════════════════════
+WHAT NOT TO DO (Anti-patterns — reject these on sight)
+═══════════════════════════════════════════════════════════════════
+
+❌ DO NOT use bg-[#2d4a3e] in any className — use bg-primary
+❌ DO NOT use bg-[#f5f3ee] in any className — use bg-background
+❌ DO NOT use rounded-lg on cards — must be rounded-2xl
+❌ DO NOT use rounded-md on Send test button — must be rounded-full
+❌ DO NOT use <form onSubmit> — use onClick + controlled inputs only
+❌ DO NOT use console.log() — use toast or ignore
+❌ DO NOT hardcode email addresses in test emails
+❌ DO NOT use default TanStack Query staleTime — must set per-query staleTime
+❌ DO NOT show blank loading state — must have loading.tsx with skeleton
+❌ DO NOT use plain <button> for Send test — use shadcn Button component
+
+═══════════════════════════════════════════════════════════════════
+SUCCESS CRITERIA — ALL must be YES to report complete
+═══════════════════════════════════════════════════════════════════
+
+✅ app/(dashboard)/settings/notifications/page.tsx created
+✅ app/(dashboard)/settings/notifications/loading.tsx created
+✅ 3 EmailPreviewCard components with green header + preview body
+✅ 3 ToggleRow components with Switch (forest green when on)
+✅ Send test button: rounded-full, loading state with spinner
+✅ TanStack Query: useQuery for prefs, useMutation for update + test
+✅ toast.success/toast.error on all mutation outcomes
+✅ All className strings use CSS variables (0 hardcoded hex)
+✅ npm run build passes (0 TypeScript errors)
+✅ No <form> tags anywhere on the page
 
 Show plan first. Do not implement yet.
 ```
@@ -341,6 +880,7 @@ Show plan first. Do not implement yet.
 Follow the full loop defined in `docs/DEVELOPMENT_LOOP.md`.
 
 ```bash
+# Backend:
 make quality && make test
 git add -A && git commit -m "feat(ravenbase): STORY-032 transactional email system (Resend)"
 git push

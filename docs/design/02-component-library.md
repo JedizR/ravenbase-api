@@ -76,8 +76,8 @@ interface OmnibarProps {
 // /search [query]    → semantic search
 // /profile [name]    → switch profile
 // /generate [prompt] → open workstation with prompt
-// /inbox             → navigate to inbox
-// /graph             → navigate to graph
+// /inbox             → navigate to /inbox
+// /graph             → navigate to /graph
 
 // Visual: matches template's CTA rounded-pill input aesthetic
 // className: "bg-secondary/50 border border-border rounded-full px-4 py-2.5
@@ -247,13 +247,13 @@ The streaming Markdown renderer in the Workstation.
 // Sidebar items:
 // - Ravenbase logo
 // - [Profile switcher dropdown]
-// - Graph Explorer     /dashboard/graph
-// - Memory Inbox       /dashboard/inbox  [conflict badge]
-// - Workstation        /dashboard/workstation
-// - Sources            /dashboard/sources
+// - Graph Explorer     /graph
+// - Memory Inbox       /inbox  [conflict badge]
+// - Workstation        /workstation
+// - Sources            /sources
 // - ─────────────
-// - Settings           /dashboard/settings
-// - Credits [balance]  /dashboard/settings/billing
+// - Settings           /settings
+// - Credits [balance]  /settings/billing
 ```
 
 ### `<MarketingLayout />`

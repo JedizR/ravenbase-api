@@ -179,23 +179,43 @@ Backend constraints:
 Show plan first. Do not implement yet.
 ```
 
-## Frontend Agent Brief (for ravenbase-web/ session — only after backend Part 1 merged)
+## Frontend Agent Brief (for ravenbase-web/ session)
 
 ```
-Implement STORY-018 Part 2 (Frontend): Clerk auth pages + middleware.
-The backend require_user and webhook are deployed and verified.
+Implement STORY-018 Part 2 — Frontend: Clerk auth pages + middleware.
+Part 1 (backend) was completed in Phase A as STORY-018-BE and is
+already merged to ravenbase-api main.
 
-Read first:
-1. CLAUDE.md (the frontend CLAUDE.md in this repo root)
-2. docs/design/CLAUDE_FRONTEND.md (Server vs Client component apiFetch patterns)
-3. docs/architecture/05-security-privacy.md (Clerk JWT flow)
-4. docs/stories/EPIC-06-auth-profiles/STORY-018.md (this file)
+Read these files FIRST — in this exact order — before planning:
+1. CLAUDE.md (repo root — all 19 frontend rules)
+2. docs/design/AGENT_DESIGN_PREAMBLE.md (NON-NEGOTIABLE — read fully)
+3. docs/design/00-brand-identity.md (logo spec, voice, mono labels)
+4. docs/design/01-design-system.md (all color tokens and typography)
+5. docs/stories/EPIC-06-auth-profiles/STORY-018.md (this file)
 
-Frontend constraints:
-- No <form> tags. Use Clerk's <SignIn /> and <SignUp /> components.
-- Dashboard routes ("use client") use useApiFetch() from lib/api-client.ts
-- Server components use apiFetch() from lib/api.ts
-- middleware.ts protects all /dashboard/* routes
+What to build:
+- app/(auth)/login/page.tsx — Clerk <SignIn /> with Ravenbase branding
+- app/(auth)/register/page.tsx — Clerk <SignUp /> with Ravenbase branding
+- app/(auth)/layout.tsx — light mode, centered, cream background
+- lib/api.ts — apiFetch<T>() for Server Components
+- lib/api-client.ts — useApiFetch() hook for Client Components
+- middleware.ts — protect all /dashboard/* routes via clerkMiddleware()
+- components/brand/RavenbaseLogo.tsx — SVG mark (spec in 00-brand-identity.md)
+- components/brand/RavenbaseLockup.tsx — mark + wordmark
+- components/brand/index.ts — re-exports
+
+Constraints:
+- No <form> tags anywhere (RULE 1)
+- Auth pages: warm cream background, RavenbaseLockup centered above
+  the Clerk component, light mode only
+- Clerk <SignIn /> and <SignUp /> appear inside a bg-card rounded-2xl
+  shadow-sm card — not floating on a blank page
+- After login: redirect to /dashboard (no onboarding check yet —
+  that is STORY-019's responsibility)
+- middleware.ts protects /dashboard/* and redirects to /login
+- story-counter.txt is already 018-FE
+- Journal entry goes under a NEW ## Sprint 20 section (**Sprint:** 20)
+- story-counter after completion: 019
 
 Show plan first. Do not implement yet.
 ```

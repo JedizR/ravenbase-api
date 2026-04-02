@@ -201,9 +201,12 @@ The backend SSE endpoint is deployed. Run npm run generate-client first.
 
 Read first:
 1. CLAUDE.md (the frontend CLAUDE.md in this repo root)
-2. docs/design/CLAUDE_FRONTEND.md (useApiFetch, "use client" rules)
-3. docs/design/02-component-library.md (Progress + Skeleton patterns)
-4. docs/stories/EPIC-02-ingestion/STORY-007.md (this file)
+2. docs/design/AGENT_DESIGN_PREAMBLE.md — NON-NEGOTIABLE visual rules, anti-patterns, and pre-commit checklist. Read fully before writing any JSX.
+3. docs/design/00-brand-identity.md — logo spec, voice rules, mono label pattern
+4. docs/design/01-design-system.md — all color tokens, typography
+5. docs/design/CLAUDE_FRONTEND.md (useApiFetch, "use client" rules)
+6. docs/design/02-component-library.md (Progress + Skeleton patterns)
+7. docs/stories/EPIC-02-ingestion/STORY-007.md (this file)
 
 Constraints:
 - EventSource connects directly (not via apiFetch — EventSource is browser-native)

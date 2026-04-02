@@ -93,8 +93,8 @@ const COMMANDS = {
   "/search": handleSearch,
   "/profile": handleProfile,
   "/generate": handleGenerate,
-  "/inbox": () => router.push("/dashboard/inbox"),
-  "/graph": () => router.push("/dashboard/graph"),
+  "/inbox": () => router.push("/inbox"),
+  "/graph": () => router.push("/graph"),
 };
 
 function parseCommand(input: string): { command: string; args: string } {
@@ -209,13 +209,16 @@ POST /v1/ingest/text endpoint is already live from the backend session.
 
 Read first:
 1. CLAUDE.md (frontend architecture rules — mandatory)
-2. docs/.bmad/project-status.md (confirm current state)
-3. docs/.bmad/journal.md (last 2–3 entries — check STORY-008-BE notes)
-4. docs/design/CLAUDE_FRONTEND.md (no form tags, apiFetch, Tailwind only)
-5. docs/design/02-component-library.md (Omnibar component spec)
-6. docs/design/04-ux-patterns.md (toast notification patterns)
-7. docs/architecture/03-api-contract.md (POST /v1/ingest/text spec)
-8. docs/stories/EPIC-02-ingestion/STORY-008.md (this file)
+2. docs/design/AGENT_DESIGN_PREAMBLE.md — NON-NEGOTIABLE visual rules, anti-patterns, and pre-commit checklist. Read fully before writing any JSX.
+3. docs/design/00-brand-identity.md — logo spec, voice rules, mono label pattern
+4. docs/design/01-design-system.md — all color tokens, typography
+5. docs/.bmad/project-status.md (confirm current state)
+6. docs/.bmad/journal.md (last 2–3 entries — check STORY-008-BE notes)
+7. docs/design/CLAUDE_FRONTEND.md (no form tags, apiFetch, Tailwind only)
+8. docs/design/02-component-library.md (Omnibar component spec)
+9. docs/design/04-ux-patterns.md (toast notification patterns)
+10. docs/architecture/03-api-contract.md (POST /v1/ingest/text spec)
+11. docs/stories/EPIC-02-ingestion/STORY-008.md (this file)
 
 Scope for this session — frontend only:
 - Create components/domain/Omnibar.tsx

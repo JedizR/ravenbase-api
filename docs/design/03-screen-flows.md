@@ -18,7 +18,7 @@
 │   └── onboarding/page.tsx    → 3-step wizard
 │
 └── (dashboard)/               ← Requires auth, light by default (dark if user toggled)
-    ├── page.tsx               → Redirect to /dashboard/graph
+    ├── page.tsx               → Redirect to /graph
     ├── graph/page.tsx         → Graph Explorer
     ├── inbox/page.tsx         → Memory Inbox
     ├── workstation/page.tsx   → Meta-Document generator
@@ -142,7 +142,7 @@ OMNIBAR (appears at bottom of main content area, desktop)
 ## Memory Inbox Page
 
 ```
-ROUTE: /dashboard/inbox
+ROUTE: /inbox
 
 ┌─────────────────────────────────────────────────────────────────┐
 │  ◆ MEMORY_INBOX          [3 pending]   [filter: all profiles]   │
@@ -175,7 +175,7 @@ ROUTE: /dashboard/inbox
 ## Workstation Page
 
 ```
-ROUTE: /dashboard/workstation
+ROUTE: /workstation
 
 ┌─────────────────────────────────────────────────────────────────┐
 │  LEFT PANEL (documents history)   │  MAIN EDITOR                │
@@ -206,7 +206,7 @@ ROUTE: /dashboard/workstation
 ## Graph Explorer Page
 
 ```
-ROUTE: /dashboard/graph
+ROUTE: /graph
 
 ┌─────────────────────────────────────────────────────────────────┐
 │  FILTER BAR                                                     │

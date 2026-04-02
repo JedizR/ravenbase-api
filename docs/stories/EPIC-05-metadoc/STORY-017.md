@@ -29,7 +29,7 @@ COMP-04: GenerationEngine
 As a user, I want a dedicated workspace where I can generate, view, and export my Meta-Documents.
 
 ## Acceptance Criteria
-- [ ] AC-1: Workstation accessible at `/dashboard/workstation`
+- [ ] AC-1: Workstation accessible at `/workstation`
 - [ ] AC-2: Prompt input at bottom; on submit, opens SSE stream and streams Markdown to editor
 - [ ] AC-3: Streaming text renders as formatted Markdown in real-time (not raw text)
 - [ ] AC-4: "Export as Markdown" button downloads `.md` file
@@ -153,6 +153,35 @@ const handleGenerate = async () => {
 - [ ] Mobile: prompt input is fixed to bottom (tested at 375px)
 - [ ] `npm run build` passes (0 TypeScript errors)
 
+## Final Localhost Verification (mandatory before marking complete)
+
+After `npm run build` passes and all tests pass, verify the running application works:
+
+**Step 1 — Clear stale cache:**
+```bash
+rm -rf .next
+```
+
+**Step 2 — Start dev server:**
+```bash
+npm run dev
+```
+
+**Step 3 — Verify no runtime errors:**
+- Open http://localhost:3000 in the browser
+- Sign in if redirected to /login
+- Navigate to `/workstation`
+- Confirm NO "Internal Server Error" or webpack runtime errors
+- Confirm CSS loads correctly (no unstyled content)
+- Open browser DevTools → Console tab
+- Confirm no red errors (yellow warnings acceptable)
+
+**Step 4 — Report one of:**
+- ✅ `localhost verified` — page renders correctly
+- ⚠️ `Issue found: [describe issue]` — fix before committing docs
+
+Only commit the docs update (epics.md, story-counter, project-status, journal) AFTER localhost verification passes.
+
 ## Testing This Story
 
 ```bash
@@ -160,7 +189,7 @@ const handleGenerate = async () => {
 npm run build
 
 # Manual test:
-# 1. Open http://localhost:3000/dashboard/workstation
+# 1. Open http://localhost:3000/workstation
 # 2. Type a prompt: "Summarize my skills in Python and machine learning"
 # 3. Click Generate — verify Markdown streams in real-time
 # 4. Click "Export as Markdown" — verify .md file downloads
@@ -181,10 +210,13 @@ Implement STORY-017: Workstation UI (Streaming + Markdown + Export).
 
 Read first:
 1. CLAUDE.md (architecture rules)
-2. docs/design/CLAUDE_FRONTEND.md (no form tags, apiFetch, Tailwind only)
-3. docs/design/03-screen-flows.md (Workstation layout — history panel + editor + prompt input)
-4. docs/architecture/03-api-contract.md (POST /v1/metadoc/generate + stream spec)
-5. docs/stories/EPIC-05-metadoc/STORY-017.md (this file)
+2. docs/design/AGENT_DESIGN_PREAMBLE.md — NON-NEGOTIABLE visual rules, anti-patterns, and pre-commit checklist. Read fully before writing any JSX.
+3. docs/design/00-brand-identity.md — logo spec, voice rules, mono label pattern
+4. docs/design/01-design-system.md — all color tokens, typography
+5. docs/design/CLAUDE_FRONTEND.md (no form tags, apiFetch, Tailwind only)
+6. docs/design/03-screen-flows.md (Workstation layout — history panel + editor + prompt input)
+7. docs/architecture/03-api-contract.md (POST /v1/metadoc/generate + stream spec)
+8. docs/stories/EPIC-05-metadoc/STORY-017.md (this file)
 
 Key constraints:
 - Install: npm install react-markdown remark-gfm

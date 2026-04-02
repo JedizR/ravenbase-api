@@ -227,6 +227,34 @@ npx lighthouse http://localhost:3000 --only-categories=seo --form-factor=mobile
 - [ ] Lighthouse mobile: Performance > 90, Accessibility > 95
 - [ ] `npm run build` passes
 
+## Final Localhost Verification (mandatory before marking complete)
+
+After `npm run build` passes and all tests pass, verify the running application works:
+
+**Step 1 — Clear stale cache:**
+```bash
+rm -rf .next
+```
+
+**Step 2 — Start dev server:**
+```bash
+npm run dev
+```
+
+**Step 3 — Verify no runtime errors:**
+- Open http://localhost:3000 in the browser
+- Navigate to `/` (landing page — no auth required)
+- Confirm NO "Internal Server Error" or webpack runtime errors
+- Confirm CSS loads correctly (no unstyled content)
+- Open browser DevTools → Console tab
+- Confirm no red errors (yellow warnings acceptable)
+
+**Step 4 — Report one of:**
+- ✅ `localhost verified` — page renders correctly
+- ⚠️ `Issue found: [describe issue]` — fix before committing docs
+
+Only commit the docs update (epics.md, story-counter, project-status, journal) AFTER localhost verification passes.
+
 ## Testing This Story
 
 ```bash
@@ -259,11 +287,12 @@ Implement STORY-021: Landing Page.
 
 Read first:
 1. CLAUDE.md (architecture rules)
-2. docs/design/CLAUDE_FRONTEND.md (Tailwind only, no form tags)
-3. docs/design/00-brand-identity.md (brand identity, tagline, tone)
-4. docs/design/01-design-system.md (font tokens, mono label pattern, color tokens)
-5. docs/design/03-screen-flows.md (landing page section layout)
-6. docs/stories/EPIC-07-marketing/STORY-021.md (this file)
+2. docs/design/AGENT_DESIGN_PREAMBLE.md — NON-NEGOTIABLE visual rules, anti-patterns, and pre-commit checklist. Read fully before writing any JSX.
+3. docs/design/00-brand-identity.md — logo spec, voice rules, mono label pattern
+4. docs/design/01-design-system.md — all color tokens, typography
+5. docs/design/CLAUDE_FRONTEND.md (Tailwind only, no form tags)
+6. docs/design/03-screen-flows.md (landing page section layout)
+7. docs/stories/EPIC-07-marketing/STORY-021.md (this file)
 
 Key constraints:
 - Install: npm install framer-motion
