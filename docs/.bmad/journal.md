@@ -1396,7 +1396,7 @@ Backend: `ExportService` collects PostgreSQL (sources, meta_documents, profiles,
 ### STORY-039 — Critical Bug Fixes (BUG-001 through BUG-033)
 **Date:** 2026-04-02 | **Sprint:** 39 | **Phase:** B | **Repo:** ravenbase-web + ravenbase-api
 **Quality gate:** ✅ clean — 350 tests passing, 0 ruff errors, 0 pyright errors, 0 TypeScript errors (24 routes compiled)
-**Commit:** `TBD`
+**Commit:** `fbeaa2c` (api), `f249675` (web)
 
 **What was built:**
 Fixed 20+ production blockers across both repos. Key fixes: removed double Header/Footer renders on all marketing pages (layout.tsx already renders them); created `app/dashboard/page.tsx` (top-level, not inside route group) to redirect `/dashboard` → `/chat`; stripped `backdrop-blur-sm` from Header scroll state (design system violation); patched `middleware.ts` to redirect authenticated users from `/` to `/chat`; changed all OnboardingWizard completion redirects from `/dashboard` to `/chat`; fixed `DELETE /v1/account` call from Settings → Data (was showing success toast without calling any API — CRITICAL); added skip link to dashboard layout (WCAG 2.1 AA); fixed MemoryChat SSE reader leak via `readerRef`; clamped MemoryInbox `activeIndex` to `Math.max(0,...)` to prevent out-of-bounds; removed unimplemented `/search` and `/generate` Omnibar commands; made GraphQueryBar example clicks auto-execute; fixed admin progress bar to use `w-(--progress-width)` CSS custom property (Tailwind v4 canonical); fixed COLOR_OPTIONS in profiles page (removed duplicate `var(--accent)`, switched from inline `style={{ backgroundColor }}` to `className`); fixed `bg-white` in PricingToggle to `bg-secondary`; replaced fake testimonials with `null` render; fixed Header NAV_LINKS to use absolute anchor paths (`/#how-it-works`); validated checkout URL before redirect (BUG-033); fixed Dockerfile.api `--reload` → `--workers 2`.
@@ -1425,7 +1425,7 @@ Fixed 20+ production blockers across both repos. Key fixes: removed double Heade
 ### STORY-040 — Admin Bypass System (ADMIN-001 through ADMIN-004)
 **Date:** 2026-04-02 | **Sprint:** 40 | **Phase:** B | **Repo:** ravenbase-api + ravenbase-web
 **Quality gate:** ✅ clean — 350 tests passing, 0 ruff errors, 0 pyright errors, 0 TypeScript errors
-**Commit:** `TBD`
+**Commit:** `fbeaa2c` (api), `f249675` (web)
 
 **What was built:**
 Full admin bypass system. Backend: `CreditService.deduct()` returns a zero-amount `CreditTransaction` with `balance_after=-1` (sentinel) for any `user_id` in `ADMIN_USER_IDS` env var — admin users never blocked by credit checks. New `GET /v1/users/me` endpoint (on `users_router` with prefix `/v1/users`) returns `{id, email, display_name, tier, credits_balance, preferred_model, is_admin, has_completed_onboarding}` — both flags computed at request time from env var and profile existence. `POST /v1/users/me/complete-onboarding` added as no-op idempotent endpoint. Frontend: Sidebar queries `GET /v1/users/me` and shows `◆ ADMIN_ACCESS` in the credits footer for admin users. Pricing page shows an admin bypass message (no tier cards, no upgrade CTAs) when `is_admin: true`.
@@ -1454,7 +1454,7 @@ Full admin bypass system. Backend: `CreditService.deduct()` returns a zero-amoun
 ### STORY-041 — Sources Page Upload + UX Gaps + Deployment Config
 **Date:** 2026-04-02 | **Sprint:** 41 | **Phase:** B | **Repo:** ravenbase-web
 **Quality gate:** ✅ clean — 0 TypeScript errors, 24 routes compiled
-**Commit:** `TBD`
+**Commit:** `f249675`
 
 **What was built:**
 Sources page Upload tab now renders `<IngestionDropzone>` with full upload flow: `POST /v1/ingest/upload` via `useApiUpload`, `<IngestionProgress sourceId={...}>` conditionally rendered after upload. Created `ravenbase-web/vercel.json` with 6 security headers (X-Content-Type-Options, X-Frame-Options DENY, X-XSS-Protection, Referrer-Policy, HSTS, Permissions-Policy), `Cache-Control: no-store` on `/api/(.*)` routes, and `/dashboard` → `/chat` redirect. Updated `next.config.mjs` with `images.remotePatterns` for `img.clerk.com`, `*.supabase.co`, and `images.unsplash.com` (required for production Vercel image optimization).
