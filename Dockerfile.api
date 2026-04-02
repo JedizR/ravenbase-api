@@ -22,8 +22,9 @@ WORKDIR /app
 # Copy only the compiled virtualenv — uv tool itself is not needed at runtime
 COPY --from=builder /app/.venv /app/.venv
 
-# Copy application source
+# Copy application source and alembic migrations
 COPY src ./src
+COPY alembic ./alembic
 
 ENV PATH="/app/.venv/bin:$PATH"
 CMD ["uvicorn", "src.api.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "2"]
