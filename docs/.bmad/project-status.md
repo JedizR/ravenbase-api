@@ -7,25 +7,57 @@
 
 ## Current State
 
-**Phase:** A — Backend (Sprints 1–19) — COMPLETE
-**Current sprint:** 19
-**Status:** COMPLETE — 20 of 37 stories complete (all backend stories done)
+**Phase:** B — Production Launch
+**Current sprint:** 42
+**Status:** DEPLOYMENT READY — STORY-039/040/041 complete. All critical bugs fixed, admin bypass implemented, deployment configs created. Next: STORY-042 Production Deployment.
 
-**Next story to implement:** N/A — Backend Gate Checklist must pass before Phase B (frontend)
-**Story file:** N/A
+**Next story to implement:** STORY-042 (Production Deployment — Railway + Vercel)
+**Story file:** `docs/stories/EPIC-10-production-launch/STORY-042.md`
+
+**State:** All critical bugs fixed. System is code-complete and ready for deployment.
+- ✅ BUG-001: Double Header/Footer removed from marketing pages
+- ✅ BUG-002: /dashboard → redirects to /chat (app/dashboard/page.tsx)
+- ✅ BUG-003: Header backdrop-blur removed (solid bg-background)
+- ✅ BUG-004: Authenticated users visiting / redirect to /chat
+- ✅ BUG-005: Onboarding completion → /chat (not /dashboard)
+- ✅ BUG-009: Dockerfile.api --reload → --workers 2
+- ✅ BUG-010: vercel.json created with security headers
+- ✅ BUG-013: Nav links now absolute paths (/#how-it-works)
+- ✅ BUG-014: Fake testimonials removed
+- ✅ BUG-015: Delete Account now calls API (CRITICAL fix)
+- ✅ BUG-021: /search and /generate removed from Omnibar
+- ✅ BUG-022: MemoryChat reader cancelled on unmount
+- ✅ BUG-025: GraphQueryBar example clicks auto-execute
+- ✅ BUG-026: Admin progress bar uses CSS custom property
+- ✅ BUG-028: MemoryInbox activeIndex clamped to 0
+- ✅ BUG-033: Checkout URL validated before redirect
+- ✅ ADMIN-001: CreditService admin bypass
+- ✅ ADMIN-002: GET /v1/users/me returns is_admin
+- ✅ ADMIN-003: Sidebar shows ◆ ADMIN_ACCESS for admin users
+- ✅ ADMIN-004: Pricing page shows admin bypass message
+- ✅ UX-001: Sources Upload tab wired to IngestionDropzone
+- ✅ DEPLOY-001: vercel.json created
+- ✅ DEPLOY-002: next.config.mjs updated with image remotePatterns
 
 ---
 
-## Last Completed Story
+## Last Completed Stories
 
-**STORY-037 — Cold Data Lifecycle** (2026-03-29)
-`ActivityTrackingMiddleware` updates `last_active_at` (Redis-debounced, once/day); `ColdDataService` runs two-phase CRON: Phase 1 warns Free users inactive 150–179 days (email via `EmailService`, dedup via `DataRetentionLog`); Phase 2 purges data for users inactive ≥180 days (Storage→Qdrant→Neo4j→Postgres content rows, sets `is_archived=True`, zeros `credits_balance`). ARQ CRON fires Sundays 02:00 UTC.
+**STORY-041 (2026-04-02)** — Sources Page Upload + UX Gaps + Deployment Config
+**STORY-040 (2026-04-02)** — Admin Bypass System
+**STORY-039 (2026-04-02)** — Critical Bug Fixes
 
 ---
 
 ## Context for Next Session
 
-STORY-037 merged to main. All backend stories complete. Before starting Phase B (frontend work), complete the Backend Gate Checklist below.
+Documentation is now authoritative. All bugs documented with exact fix instructions in `docs/components/REFACTOR_PLAN.md`. Story counter set to 039. Begin STORY-039 (Critical Bug Fixes). Key context:
+
+1. Routes: `/dashboard/xxx` does NOT exist — correct URLs are `/chat`, `/inbox`, `/graph`, etc.
+2. Onboarding is at `app/(auth)/onboarding/` — NOT under `(dashboard)`
+3. Admin bypass MUST be implemented before any LLM feature testing (BUG-006)
+4. `REFACTOR_PLAN.md` has exact code changes for every bug — use it as the implementation guide
+5. `npm run build` must pass (0 TypeScript errors) before committing any story
 
 ---
 
@@ -62,3 +94,7 @@ as part of the final commit step (see `DEVELOPMENT_LOOP.md` → Post-Story Commi
 
 _Use this section for anything that doesn't fit the structure above:
 blockers encountered, decisions made, deferred issues, environment quirks._
+
+Brand color fix and UX quality gates added to all remaining stories STORY-031
+through STORY-036. STORY-038 created as final polish story. Total stories
+increased from 37 to 38.

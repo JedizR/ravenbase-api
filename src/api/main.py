@@ -66,6 +66,7 @@ def create_app() -> FastAPI:
     app.include_router(billing.router)
     app.include_router(webhooks.router)
     app.include_router(account.router)
+    app.include_router(account.users_router)
     app.include_router(chat.router)
     app.include_router(profiles.router)
     return app

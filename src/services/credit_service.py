@@ -6,12 +6,19 @@ from fastapi import HTTPException
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
+from src.core.config import settings
 from src.core.errors import ErrorCode
 from src.models.credit import CreditTransaction
 from src.models.user import User
 from src.services.base import BaseService
 
 logger = structlog.get_logger()
+
+
+def _is_admin(user_id: str) -> bool:
+    """Return True if user_id is in the ADMIN_USER_IDS env var."""
+    admin_ids = {u.strip() for u in settings.ADMIN_USER_IDS.split(",") if u.strip()}
+    return user_id in admin_ids
 
 
 class CreditService(BaseService):
@@ -29,8 +36,19 @@ class CreditService(BaseService):
 
         Raises 402 INSUFFICIENT_CREDITS if balance < amount.
         Uses SELECT FOR UPDATE to prevent concurrent overdraw.
+        Admin users (ADMIN_USER_IDS) are bypassed — returns a zero-amount transaction.
         """
         log = logger.bind(user_id=user_id, amount=amount, operation=operation)
+
+        if _is_admin(user_id):
+            log.info("credit_service.admin_bypass.deduct", operation=operation)
+            return CreditTransaction(
+                user_id=user_id,
+                amount=0,
+                balance_after=-1,
+                operation=f"admin_bypass:{operation}",
+                reference_id=reference_id,
+            )
 
         user = (await db.exec(select(User).where(User.id == user_id).with_for_update())).one()
 

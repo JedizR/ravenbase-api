@@ -20,6 +20,7 @@ from src.services.referral_service import ReferralService
 from src.services.user_settings_service import UserSettingsService
 
 router = APIRouter(prefix="/v1/account", tags=["account"])
+users_router = APIRouter(prefix="/v1/users", tags=["users"])
 logger = structlog.get_logger()
 
 
@@ -292,3 +293,63 @@ async def get_export_status(
         progress=result_data.get("progress", 0) if result_data else 0,
         error=result_data.get("error") if result_data else None,
     )
+
+
+# ---------------------------------------------------------------------------
+# GET /v1/users/me — current user profile with is_admin flag (ADMIN-002)
+# ---------------------------------------------------------------------------
+
+
+@users_router.get("/me")
+async def get_current_user(
+    user: dict = Depends(require_user),  # noqa: B008
+    db: AsyncSession = Depends(get_db),  # noqa: B008
+) -> dict:
+    """Return current user profile including is_admin flag.
+
+    is_admin is computed from ADMIN_USER_IDS env var — no DB field needed.
+    has_completed_onboarding is computed by checking for profile existence.
+    """
+    from sqlmodel import select as _select  # noqa: PLC0415
+
+    from src.core.config import settings  # noqa: PLC0415
+    from src.models.profile import SystemProfile as Profile  # noqa: PLC0415
+    from src.models.user import User  # noqa: PLC0415
+
+    user_id = user["user_id"]
+    admin_ids = {u.strip() for u in settings.ADMIN_USER_IDS.split(",") if u.strip()}
+    is_admin = user_id in admin_ids
+
+    db_user = await db.get(User, user_id)
+    if db_user is None:
+        raise HTTPException(
+            status_code=404,
+            detail={"code": "USER_NOT_FOUND", "message": "User not found"},
+        )
+
+    # Compute has_completed_onboarding from profile existence
+    profile_result = await db.exec(_select(Profile).where(Profile.user_id == user_id).limit(1))
+    has_completed_onboarding = profile_result.first() is not None
+
+    return {
+        "id": db_user.id,
+        "email": db_user.email,
+        "display_name": db_user.display_name,
+        "tier": db_user.tier,
+        "credits_balance": db_user.credits_balance,
+        "preferred_model": db_user.preferred_model,
+        "is_admin": is_admin,
+        "has_completed_onboarding": has_completed_onboarding,
+    }
+
+
+@users_router.post("/me/complete-onboarding")
+async def complete_onboarding(
+    _user: dict = Depends(require_user),  # noqa: B008
+) -> dict:
+    """Mark onboarding as complete for the current user.
+
+    No-op — onboarding completion is tracked by profile existence.
+    Frontend calls this after the onboarding wizard completes.
+    """
+    return {"status": "ok"}

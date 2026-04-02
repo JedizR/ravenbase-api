@@ -1,8 +1,8 @@
 # Stories — Epics & Story Master List
 
-> **Status key:** 🔲 DRAFT | ✅ DONE | 🔄 IN_PROGRESS | 🔍 IN_REVIEW | ✅ BE / 🔲 FE PARTIAL (cross-repo story, backend done, frontend pending Phase B)
+> **Status key:** 🔲 DRAFT | ✅ DONE | 🔄 IN_PROGRESS | 🔍 IN_REVIEW | ✅ BE / 🔲 FE PARTIAL (cross-repo story, backend done, frontend pending Phase B) | 🚫 BLOCKED
 >
-> **Total stories:** 37 | **Total epics:** 9
+> **Total stories:** 42 | **Total epics:** 10
 >
 > **Execution order:** Stories within each epic must be completed in order (each builds on the previous). Epics must be completed before moving to the next epic.
 
@@ -32,7 +32,7 @@
 | STORY-005 | File upload endpoint + Supabase Storage | P0 | Medium | ✅ |
 | STORY-006 | Docling parse + chunk + embed worker | P0 | Large | ✅ |
 | STORY-007 | SSE progress stream (Redis pub/sub) | P0 | Medium | ✅ BE / 🔲 FE |
-| STORY-008 | Text quick-capture (Omnibar /ingest) | P0 | Small | ✅ BE / 🔲 FE |
+| STORY-008 | Text quick-capture (Omnibar /ingest) | P0 | Small | ✅ |
 
 ---
 
@@ -45,7 +45,7 @@
 |---|---|---|---|---|
 | STORY-009 | Entity extraction (Claude Haiku) + Neo4j writer | P0 | Large | ✅ |
 | STORY-010 | Graph API endpoints (nodes + neighborhood) | P0 | Medium | ✅ |
-| STORY-011 | Graph Explorer UI (Cytoscape.js, node click panel) | P1 | Large | 🔲 |
+| STORY-011 | Graph Explorer UI (Cytoscape.js, node click panel) | P1 | Large | ✅ |
 
 ---
 
@@ -58,7 +58,7 @@
 |---|---|---|---|---|
 | STORY-012 | Conflict detection worker (Qdrant scan + LLM classify) | P0 | Large | ✅ |
 | STORY-013 | Conflict API (list, resolve, undo) | P0 | Medium | ✅ |
-| STORY-014 | Memory Inbox UI (keyboard navigation, 3 flows) | P0 | Large | 🔲 |
+| STORY-014 | Memory Inbox UI (keyboard navigation, 3 flows) | P0 | Large | ✅ |
 
 ---
 
@@ -71,7 +71,7 @@
 |---|---|---|---|---|
 | STORY-015 | Hybrid retrieval service (Qdrant + Neo4j) | P0 | Large | ✅ |
 | STORY-016 | Meta-Doc generation worker (PII mask + LLM stream) | P0 | Large | ✅ |
-| STORY-017 | Workstation UI (SSE streaming, Markdown render, export) | P0 | Medium | 🔲 |
+| STORY-017 | Workstation UI (SSE streaming, Markdown render, export) | P0 | Medium | ✅ |
 
 ---
 
@@ -82,9 +82,9 @@
 
 | Story | Title | Priority | Complexity | Status |
 |---|---|---|---|---|
-| STORY-018 | Clerk auth integration (FE + BE webhook) | P0 | Medium | ✅ BE / 🔲 FE |
-| STORY-019 | Onboarding wizard (profile creation + first upload) | P0 | Medium | 🔲 |
-| STORY-020 | System Profile switching (Omnibar /profile command) | P1 | Small | 🔲 |
+| STORY-018 | Clerk auth integration (FE + BE webhook) | P0 | Medium | ✅ |
+| STORY-019 | Onboarding wizard (profile creation + first upload) | P0 | Medium | ✅ |
+| STORY-020 | System Profile switching (Omnibar /profile command) | P1 | Small | ✅ |
 
 ---
 
@@ -95,8 +95,8 @@
 
 | Story | Title | Priority | Complexity | Status |
 |---|---|---|---|---|
-| STORY-021 | Landing page (hero + features + workflow + CTA) | P1 | Large | 🔲 |
-| STORY-022 | Pricing page + Stripe checkout integration | P1 | Medium | 🔲 |
+| STORY-021 | Landing page (hero + features + workflow + CTA) | P1 | Large | ✅ |
+| STORY-022 | Pricing page + Stripe checkout integration | P1 | Medium | ✅ |
 
 ---
 
@@ -110,13 +110,14 @@
 | STORY-023 | Credits system (deduction, top-up, ledger) | P1 | Medium | ✅ |
 | STORY-024 | GDPR account deletion cascade | P1 | Medium | ✅ |
 | STORY-025 | PII masking in production + Presidio config | P1 | Medium | ✅ |
-| STORY-031 | Dark mode toggle (localStorage + .dark class) | P1 | Small | 🔲 |
-| STORY-032 | Transactional email (welcome, low-credits, ingestion complete via Resend) | P1 | Medium | 🔲 |
-| STORY-033 | Legal pages (Privacy Policy, Terms of Service, Cookie Consent) | P0 | Small | 🔲 |
-| STORY-034 | Referral system (code gen, reward on first upload, Settings → Referrals) | P1 | Medium | 🔲 |
-| STORY-035 | Data export / portability (multi-store ZIP, email link, Settings → Data) | P1 | Medium | 🔲 |
-| STORY-036 | Internal admin dashboard (user management, credit adjustment, stats) | P1 | Medium | ✅ BE / 🔲 FE |
+| STORY-031 | Dark mode toggle (localStorage + .dark class) | P1 | Small | ✅ |
+| STORY-032 | Transactional email (welcome, low-credits, ingestion complete via Resend) | P1 | Medium | ✅ |
+| STORY-033 | Legal pages (Privacy Policy, Terms of Service, Cookie Consent) | P0 | Small | ✅ |
+| STORY-034 | Referral system (code gen, reward on first upload, Settings → Referrals) | P1 | Medium | ✅ |
+| STORY-035 | Data export / portability (multi-store ZIP, email link, Settings → Data) | P1 | Medium | ✅ |
+| STORY-036 | Internal admin dashboard (user management, credit adjustment, stats) | P1 | Medium | ✅ |
 | STORY-037 | Cold data lifecycle — inactivity archival for Free-tier users (CRON, warning email, data purge) | P1 | Medium | ✅ |
+| STORY-038 | Final UX Polish Pass — Lighthouse audit, axe-core, cross-browser, brand audit | P0 | Large | 🚫 BLOCKED by STORY-039 |
 
 ---
 
@@ -134,10 +135,27 @@ see highlighted results.
 | Story | Title | Priority | Complexity | Status |
 |---|---|---|---|---|
 | STORY-026 | Conversational memory chat — backend | P0 | Large | ✅ |
-| STORY-027 | Conversational memory chat — frontend | P0 | Large | 🔲 |
-| STORY-028 | AI chat context import helper | P1 | Medium | ✅ BE / 🔲 FE |
+| STORY-027 | Conversational memory chat — frontend | P0 | Large | ✅ |
+| STORY-028 | AI chat context import helper | P1 | Medium | ✅ |
 | STORY-029 | Natural language graph query — backend | P1 | Medium | ✅ |
-| STORY-030 | Natural language graph query — frontend | P1 | Medium | 🔲 |
+| STORY-030 | Natural language graph query — frontend | P1 | Medium | ✅ |
+
+---
+
+---
+
+## EPIC-10: Production Launch
+
+**Goal:** Fix all critical bugs, implement admin bypass, deploy to Railway + Vercel. Live production system at ravenbase.app.
+**Completion signal:** All smoke tests in `docs/components/REFACTOR_PLAN.md PART 10` pass.
+
+| Story | Title | Priority | Complexity | Status |
+|---|---|---|---|---|
+| STORY-039 | Critical Bug Fixes (BUG-001 through BUG-033) | P0 | Large | ✅ |
+| STORY-040 | Admin Bypass System (ADMIN-001 through ADMIN-004) | P0 | Medium | ✅ |
+| STORY-041 | Sources Page Upload + UX Gaps + Deployment Config | P1 | Medium | ✅ |
+| STORY-042 | Production Deployment (Railway + Vercel) | P0 | Large | 🔲 |
+| STORY-043 | Final UX Polish Pass (renamed from STORY-038) | P1 | Large | 🔲 BLOCKED by STORY-042 |
 
 ---
 
@@ -185,10 +203,16 @@ docs/stories/
 │   ├── STORY-035.md
 │   ├── STORY-036.md
 │   └── STORY-037.md
-└── EPIC-09-memory-intelligence/
-    ├── STORY-026.md
-    ├── STORY-027.md
-    ├── STORY-028.md
-    ├── STORY-029.md
-    └── STORY-030.md
+├── EPIC-09-memory-intelligence/
+│   ├── STORY-026.md
+│   ├── STORY-027.md
+│   ├── STORY-028.md
+│   ├── STORY-029.md
+│   └── STORY-030.md
+└── EPIC-10-production-launch/
+    ├── STORY-039.md
+    ├── STORY-040.md
+    ├── STORY-041.md
+    ├── STORY-042.md
+    └── STORY-043.md
 ```
