@@ -1,12 +1,28 @@
+# syntax=docker/dockerfile:1
+
+# ---- Build stage ----
+FROM python:3.12-slim AS builder
+
+WORKDIR /app
+RUN pip install uv --no-cache-dir
+
+# Copy dependency files first — cached layer, only invalidated when deps change
+COPY pyproject.toml uv.lock ./
+
+# Install only main dependencies (no dev group, no worker group)
+# This excludes docling, presidio, and all their heavy transitive dependencies
+# (torch ~1.2 GB, transformers ~400 MB, docling-ibm-models ~500 MB, spaCy ~560 MB)
+RUN uv sync --frozen --no-dev
+
+# ---- Runtime stage ----
 FROM python:3.12-slim
 
 WORKDIR /app
 
-RUN pip install uv
+# Copy only the compiled virtualenv — uv tool itself is not needed at runtime
+COPY --from=builder /app/.venv /app/.venv
 
-COPY pyproject.toml uv.lock ./
-RUN uv sync --frozen --no-dev
-
+# Copy application source
 COPY src ./src
 
 ENV PATH="/app/.venv/bin:$PATH"

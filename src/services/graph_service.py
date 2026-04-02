@@ -125,9 +125,12 @@ class GraphService(BaseService):
 
         presidio = None
         if settings.ENABLE_PII_MASKING and redis is not None:
-            from src.adapters.presidio_adapter import PresidioAdapter  # noqa: PLC0415
+            try:
+                from src.adapters.presidio_adapter import PresidioAdapter  # noqa: PLC0415
 
-            presidio = PresidioAdapter()
+                presidio = PresidioAdapter()
+            except ImportError:
+                log.warning("graph_service.presidio_not_installed.skipping_pii_masking")
 
         total_entities = 0
         total_memories = 0

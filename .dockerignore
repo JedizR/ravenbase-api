@@ -1,0 +1,48 @@
+# Git history
+.git
+.gitignore
+
+# Virtual environments (Docker builds its own — don't copy local one)
+.venv
+env/
+venv/
+
+# Dev/test artifacts
+tests/
+docs/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# IDE and OS
+.vscode/
+.idea/
+.DS_Store
+*.swp
+*.swo
+
+# Claude dev files
+.claude/
+CLAUDE.md
+CLAUDE_BACKEND.md
+
+# Dev config (not needed inside image)
+.pre-commit-config.yaml
+pyrightconfig.json
+ruff.toml
+Makefile
+
+# Docker compose overrides (not needed inside image)
+docker-compose.override.yml
+docker-compose.prod.yml
+
+# Secrets — never copy into image
+.envs/
+
+# Misc
+.worktrees/
+*.pyc
+__pycache__/
+*.egg-info/
+scripts/
