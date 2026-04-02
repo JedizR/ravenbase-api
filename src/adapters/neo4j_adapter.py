@@ -260,6 +260,46 @@ class Neo4jAdapter(BaseAdapter):
 
         return [row["name"] for row in rows if row.get("name")]
 
+    async def get_all_nodes_by_tenant(self, tenant_id: str) -> list[dict]:
+        """Return all Neo4j nodes for a tenant as list of serializable dicts.
+
+        Returns node id, labels, and all properties (excluding internal Neo4j metadata).
+        Does NOT return vector embedding properties (GDPR: derived data).
+        """
+        rows = await self.run_query(
+            """
+            MATCH (n)
+            WHERE n.tenant_id = $tenant_id
+            RETURN elementid(n) AS neo4j_id, labels(n) AS labels, n {
+                .* - apoc.map.subsetOfKeys(n, ['embedding', 'embedding_model', 'embedding_dim'])
+            } AS properties
+            """,
+            tenant_id=tenant_id,
+        )
+        return [
+            {"neo4j_id": row["neo4j_id"], "labels": row["labels"], **row["properties"]}
+            for row in rows
+        ]
+
+    async def get_all_relationships_by_tenant(self, tenant_id: str) -> list[dict]:
+        """Return all Neo4j relationships for a tenant as list of serializable dicts.
+
+        Returns relationship id, type, start/end node ids, and all properties.
+        """
+        rows = await self.run_query(
+            """
+            MATCH (a)-[r]->(b)
+            WHERE a.tenant_id = $tenant_id
+            RETURN elementid(r) AS neo4j_rel_id,
+                   type(r) AS rel_type,
+                   elementid(a) AS start_node_id,
+                   elementid(b) AS end_node_id,
+                   r { .* } AS properties
+            """,
+            tenant_id=tenant_id,
+        )
+        return [dict(row) for row in rows]
+
     async def delete_all_by_tenant(self, tenant_id: str) -> None:
         """DETACH DELETE all nodes where tenant_id = $tenant_id, then the User root node.
 

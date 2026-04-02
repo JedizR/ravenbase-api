@@ -8,12 +8,13 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from src.api.dependencies.auth import require_user
-from src.api.dependencies.db import get_db
+from src.api.dependencies.db import async_session_factory, get_db
 from src.schemas.account import (
     AccountDeleteResponse,
     ModelPreferenceUpdate,
     NotificationPreferencesUpdate,
 )
+from src.schemas.export import ExportQueuedResponse, ExportRequest, ExportStatusResponse
 from src.schemas.referral import ApplyReferralRequest, ReferralResponse
 from src.services.referral_service import ReferralService
 from src.services.user_settings_service import UserSettingsService
@@ -192,3 +193,102 @@ async def apply_referral_code(
         raw_referral_code=body.referral_code,
     )
     return {"status": "applied"}
+
+
+@router.post("/export", status_code=202, response_model=ExportQueuedResponse)
+async def start_export(
+    request: Request,
+    body: ExportRequest,
+    user: dict = Depends(require_user),  # noqa: B008
+) -> ExportQueuedResponse:
+    """Enqueue data export job. Rate limited to 1 per 24h per user (AC-2).
+
+    Returns 202 immediately with job_id. Client polls /export/status for progress.
+    """
+    user_id = user["user_id"]
+    log = logger.bind(user_id=user_id)
+
+    # Check rate limit via Redis before enqueuing
+    redis = request.app.state.redis
+    cooldown_key = f"export:cooldown:{user_id}"
+    ttl_bytes = await redis.exists(cooldown_key)
+    if ttl_bytes:
+        ttl = await redis.ttl(cooldown_key)
+        raise HTTPException(
+            status_code=429,
+            detail={
+                "code": "EXPORT_RATE_LIMITED",
+                "retry_after_seconds": max(ttl, 0),
+            },
+        )
+
+    # Enqueue ARQ job
+    job = await request.app.state.arq_pool.enqueue_job(
+        "generate_user_export",
+        user_id=user_id,
+        format=body.format,
+    )
+    job_id = job.job_id if job else f"export:{user_id}"
+
+    # Store job metadata in JobStatus table
+    async with async_session_factory() as session:
+        from src.models.job_status import JobStatus  # noqa: PLC0415
+
+        status = JobStatus(
+            id=job_id,
+            user_id=user_id,
+            job_type="export",
+            status="queued",
+        )
+        session.add(status)
+        await session.commit()
+
+    log.info("export.started", job_id=job_id, format=body.format)
+    return ExportQueuedResponse(job_id=job_id, status="queued")
+
+
+@router.get("/export/status", response_model=ExportStatusResponse)
+async def get_export_status(
+    job_id: str,
+    user: dict = Depends(require_user),  # noqa: B008
+) -> ExportStatusResponse:
+    """Return export job status and download URL if ready (AC-7)."""
+    user_id = user["user_id"]
+
+    async with async_session_factory() as session:
+        import json as json_lib  # noqa: PLC0415
+
+        from sqlmodel import select  # noqa: PLC0415
+
+        from src.models.job_status import JobStatus  # noqa: PLC0415
+
+        result_db = await session.exec(
+            select(JobStatus).where(
+                JobStatus.user_id == user_id,
+                JobStatus.id == job_id,
+                JobStatus.job_type == "export",
+            )
+        )
+        job_status = result_db.first()
+
+    if job_status is None:
+        raise HTTPException(
+            status_code=404,
+            detail={"code": "NOT_FOUND", "message": "Export job not found"},
+        )
+
+    # Parse result data from message JSON field
+    result_data = {}
+    if job_status.message:
+        try:
+            result_data = json_lib.loads(job_status.message)
+        except Exception:
+            pass
+
+    return ExportStatusResponse(
+        status=job_status.status or "idle",
+        job_id=job_id,
+        download_url=result_data.get("download_url") if result_data else None,
+        progress=result_data.get("progress", 0) if result_data else 0,
+        error=result_data.get("error") if result_data else None,
+    )

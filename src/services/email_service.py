@@ -288,3 +288,68 @@ class EmailService(BaseService):
             )
         except Exception as exc:
             log.error("email.send_failed", type="ingestion_complete", error=str(exc))
+
+    async def send_export_complete(
+        self,
+        *,
+        email: str,
+        download_url: str,
+        notify: bool = True,
+    ) -> None:
+        """Send data export ready notification with download link. Non-fatal — never raise."""
+        import resend  # noqa: PLC0415
+
+        log = logger.bind(action="email.export_complete", to_email_hash=hash(email) % 10_000)
+        if os.getenv("APP_ENV") == "test":
+            log.info("email.skipped", reason="APP_ENV=test")
+            return
+        if not notify:
+            log.info("email.skipped", reason="user_preference")
+            return
+        if not settings.RESEND_API_KEY:
+            log.warning("email.skipped", reason="RESEND_API_KEY not set")
+            return
+        try:
+            html = f"""<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="margin:0;padding:0;background:{_BRAND_CREAM};font-family:'DM Sans',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0">
+    <tr><td align="center" style="padding:40px 20px;">
+      <table width="560" cellpadding="0" cellspacing="0" style="background:{_BRAND_CARD};border-radius:12px;overflow:hidden;">
+        <tr><td style="background:{_BRAND_GREEN};padding:32px 40px;">
+          <p style="color:#ffffff;font-size:22px;font-weight:800;letter-spacing:0.1em;margin:0;font-family:Arial,sans-serif;">RAVENBASE</p>
+          <p style="color:rgba(255,255,255,0.7);font-size:11px;letter-spacing:0.15em;margin:4px 0 0;font-family:monospace;">WHAT HAPPENED, WHERE, AND WHEN. ALWAYS.</p>
+        </td></tr>
+        <tr><td style="padding:40px;">
+          <h1 style="font-size:28px;color:#1a1a1a;margin:0 0 16px;font-family:Georgia,serif;">Your data export is ready.</h1>
+          <p style="font-size:16px;color:#374151;line-height:1.6;margin:0 0 24px;">
+            Your data export has been prepared and is available for download. The download link will expire in 24 hours.
+          </p>
+          <a href="{download_url}"
+             style="display:inline-block;background:{_BRAND_GREEN};color:#ffffff;text-decoration:none;
+                    padding:14px 28px;border-radius:9999px;font-size:14px;font-weight:600;margin-bottom:32px;">
+            Download Your Data
+          </a>
+          <p style="font-size:13px;color:#9ca3af;border-top:1px solid #e5e7eb;padding-top:24px;margin:0;">
+            You received this because you requested a data export from Ravenbase.
+            <a href="https://ravenbase.app/privacy" style="color:{_BRAND_GREEN};">Privacy Policy</a>
+          </p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>"""
+            resend.api_key = settings.RESEND_API_KEY
+            resend.Emails.send(
+                {
+                    "from": "Ravenbase <hello@ravenbase.app>",
+                    "to": [email],
+                    "subject": "Your Ravenbase data export is ready",
+                    "html": html,
+                }
+            )
+            log.info("email.sent", type="export_complete")
+        except Exception as exc:
+            log.error("email.send_failed", type="export_complete", error=str(exc))
