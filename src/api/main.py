@@ -42,9 +42,16 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
 
-    origins = (
-        ["http://localhost:3000"] if settings.APP_ENV == "development" else [settings.APP_BASE_URL]
-    )
+    if settings.APP_ENV == "development":
+        origins = ["http://localhost:3000"]
+    else:
+        # Allow both www and non-www variants of the production domain
+        base = settings.APP_BASE_URL.rstrip("/")
+        origins = [base]
+        if base.startswith("https://www."):
+            origins.append(base.replace("https://www.", "https://", 1))
+        elif base.startswith("https://") and "://www." not in base:
+            origins.append(base.replace("https://", "https://www.", 1))
     app.add_middleware(
         CORSMiddleware,
         allow_origins=origins,
