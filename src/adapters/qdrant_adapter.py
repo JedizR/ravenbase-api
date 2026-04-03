@@ -35,6 +35,19 @@ class QdrantAdapter(BaseAdapter):
             )
         return self._client
 
+    async def ensure_collection(self) -> None:
+        """Create the collection if it doesn't exist. Safe to call multiple times."""
+        from qdrant_client.models import Distance, VectorParams  # noqa: PLC0415
+
+        client = self._get_client()
+        collections = await client.get_collections()
+        exists = any(c.name == self.COLLECTION_NAME for c in collections.collections)
+        if not exists:
+            await client.create_collection(
+                collection_name=self.COLLECTION_NAME,
+                vectors_config=VectorParams(size=1536, distance=Distance.COSINE),
+            )
+
     def _tenant_filter(self, tenant_id: str) -> Filter:
         """ALWAYS include this in every search/scroll/delete call. Security boundary."""
         return Filter(must=[FieldCondition(key="tenant_id", match=MatchValue(value=tenant_id))])

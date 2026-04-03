@@ -235,7 +235,9 @@ async def parse_document(
             )
             for i in range(len(chunks))
         ]
-        await QdrantAdapter().upsert(points)
+        qdrant = QdrantAdapter()
+        await qdrant.ensure_collection()
+        await qdrant.upsert(points)
         log.info("parse_document.indexed", point_count=len(points))
 
         # ── Credit deduction: 1 per page (AFTER successful indexing) ────────
@@ -362,7 +364,9 @@ async def ingest_text(
             )
             for i in range(len(chunks))
         ]
-        await QdrantAdapter().upsert(points)
+        qdrant = QdrantAdapter()
+        await qdrant.ensure_collection()
+        await qdrant.upsert(points)
         log.info("ingest_text.indexed", point_count=len(points))
 
         # ── 6. COMPLETED ──────────────────────────────────────────────────────
