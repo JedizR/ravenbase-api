@@ -31,6 +31,9 @@ class AnthropicAdapter(BaseAdapter):
 
         from src.core.config import settings  # noqa: PLC0415
 
+        if not settings.ANTHROPIC_API_KEY:
+            raise ValueError("ANTHROPIC_API_KEY is not configured on the server")
+
         client = AsyncAnthropic(api_key=settings.ANTHROPIC_API_KEY)
         log = logger.bind(model=model)
         log.info("anthropic_adapter.stream_completion.started")
