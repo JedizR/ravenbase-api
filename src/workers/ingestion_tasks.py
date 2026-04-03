@@ -195,10 +195,16 @@ async def parse_document(
                 log.warning("parse_document.moderation_soft_reject")
             return {"status": "failed_moderation", "source_id": source_id}
 
-        # ── 5. Parse + chunk via Docling (in executor) ──────────────────────
+        # ── 5. Parse + chunk ────────────────────────────────────────────────
         await publish_progress(source_id, 20, "Parsing document...", "processing")
-        chunks = await DoclingAdapter().parse_and_chunk(content, original_filename)
-        log.info("parse_document.parsed", chunk_count=len(chunks))
+        if mime_type == "text/plain":
+            # Docling doesn't support plain text — decode and chunk directly
+            text = content.decode("utf-8", errors="ignore")
+            chunks = _chunk_plain_text(text)
+            log.info("parse_document.plain_text_chunked", chunk_count=len(chunks))
+        else:
+            chunks = await DoclingAdapter().parse_and_chunk(content, original_filename)
+            log.info("parse_document.parsed", chunk_count=len(chunks))
 
         if not chunks:
             await _set_source_failed(source_id, "No content extracted from document")

@@ -1,4 +1,5 @@
 # src/api/routes/graph.py
+import structlog
 from fastapi import APIRouter, Depends, Query
 from sqlmodel.ext.asyncio.session import AsyncSession
 
@@ -10,6 +11,7 @@ from src.services.credit_service import CreditService
 from src.services.graph_query_service import GraphQueryService
 from src.services.graph_service import GraphService
 
+logger = structlog.get_logger()
 router = APIRouter(prefix="/v1/graph", tags=["graph"])
 
 
@@ -31,13 +33,17 @@ async def get_graph_nodes(
     if node_types:
         node_types_list = [t.strip() for t in node_types.split(",") if t.strip()]
 
-    with GraphService() as svc:
-        return await svc.get_nodes_for_explorer(
-            tenant_id=user["user_id"],
-            profile_id=profile_id,
-            node_types=node_types_list,
-            limit=limit,
-        )
+    try:
+        with GraphService() as svc:
+            return await svc.get_nodes_for_explorer(
+                tenant_id=user["user_id"],
+                profile_id=profile_id,
+                node_types=node_types_list,
+                limit=limit,
+            )
+    except Exception as exc:
+        logger.warning("graph.nodes.neo4j_unavailable", error=str(exc))
+        return GraphResponse(nodes=[], edges=[])
 
 
 @router.get("/neighborhood/{node_id}", response_model=GraphResponse)
@@ -51,13 +57,17 @@ async def get_graph_neighborhood(
 
     tenant_id is extracted from JWT only (RULE 2).
     """
-    with GraphService() as svc:
-        return await svc.get_neighborhood(
-            node_id=node_id,
-            tenant_id=user["user_id"],
-            hops=hops,
-            limit=limit,
-        )
+    try:
+        with GraphService() as svc:
+            return await svc.get_neighborhood(
+                node_id=node_id,
+                tenant_id=user["user_id"],
+                hops=hops,
+                limit=limit,
+            )
+    except Exception as exc:
+        logger.warning("graph.neighborhood.neo4j_unavailable", error=str(exc))
+        return GraphResponse(nodes=[], edges=[])
 
 
 @router.post("/query", response_model=GraphQueryResponse)

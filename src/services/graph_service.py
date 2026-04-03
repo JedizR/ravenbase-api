@@ -120,6 +120,12 @@ class GraphService(BaseService):
         log = logger.bind(tenant_id=tenant_id, source_id=source_id)
         log.info("graph_service.extract_and_write.started")
 
+        # Pre-check: skip all work if Neo4j is unreachable (saves LLM API cost)
+        neo4j = self._get_neo4j()
+        if not await neo4j.verify_connectivity():
+            log.warning("graph_service.neo4j_unreachable.skipping")
+            return {"total_entities": 0, "total_memories": 0, "failed_chunks": 0, "skipped": True}
+
         chunks = await self._get_qdrant().scroll_by_source(source_id, tenant_id)
         log.info("graph_service.chunks_fetched", chunk_count=len(chunks))
 
