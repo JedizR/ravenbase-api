@@ -288,10 +288,14 @@ class IngestionService(BaseService):
         log = logger.bind(tenant_id=tenant_id, profile_id=profile_id)
         log.info("import_prompt.started")
 
-        concepts = await self._get_neo4j().get_concepts_for_tenant(
-            tenant_id=tenant_id,
-            profile_id=profile_id,
-        )
+        try:
+            concepts = await self._get_neo4j().get_concepts_for_tenant(
+                tenant_id=tenant_id,
+                profile_id=profile_id,
+            )
+        except Exception as exc:
+            log.warning("import_prompt.neo4j_unavailable", error=str(exc))
+            concepts = []
 
         if concepts:
             concept_list = ", ".join(concepts)

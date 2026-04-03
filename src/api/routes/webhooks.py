@@ -289,6 +289,11 @@ async def _handle_user_created(
         )
         db.add(user)
         await db.commit()
+        # Give signup bonus if re-registered user had 0 credits
+        if old_credits == 0:
+            credit_svc = CreditService()
+            await credit_svc.add_credits(db, clerk_user_id, 500, "signup_bonus")
+            log.info("webhook.reregistered_signup_bonus_added", user_id=clerk_user_id)
         log.info("webhook.user_reregistered_ok", user_id=clerk_user_id, email=email)
         return
 
