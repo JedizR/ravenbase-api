@@ -2,14 +2,21 @@ import json
 
 import redis.asyncio as aioredis
 import structlog
-from fastapi import APIRouter, Depends, Request, UploadFile
+from fastapi import APIRouter, Depends, Query, Request, UploadFile
+from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 from sse_starlette.sse import EventSourceResponse
 
 from src.api.dependencies.auth import require_user, verify_token_query_param
 from src.api.dependencies.db import get_db
 from src.core.config import settings
-from src.schemas.ingest import ImportPromptResponse, TextIngestRequest, UploadResponse
+from src.models.source import Source
+from src.schemas.ingest import (
+    ImportPromptResponse,
+    SourceListResponse,
+    TextIngestRequest,
+    UploadResponse,
+)
 from src.services.ingestion_service import IngestionService
 
 router = APIRouter(prefix="/v1/ingest", tags=["ingestion"])
@@ -54,6 +61,31 @@ async def ingest_text(
         arq_pool=request.app.state.arq_pool,
         db=db,
     )
+
+
+@router.get("/sources", response_model=SourceListResponse)
+async def list_sources(
+    user: dict = Depends(require_user),  # type: ignore[type-arg]  # noqa: B008
+    db: AsyncSession = Depends(get_db),  # noqa: B008
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+) -> SourceListResponse:
+    """List all sources for the authenticated user, newest first."""
+    stmt = (
+        select(Source)
+        .where(Source.user_id == user["user_id"])
+        .order_by(Source.ingested_at.desc())  # type: ignore[union-attr]
+        .offset(offset)
+        .limit(limit)
+    )
+    results = await db.exec(stmt)
+    sources = list(results.all())
+
+    count_stmt = select(Source).where(Source.user_id == user["user_id"])
+    count_results = await db.exec(count_stmt)
+    total = len(list(count_results.all()))
+
+    return SourceListResponse(items=sources, total=total)
 
 
 @router.get("/stream/{source_id}")

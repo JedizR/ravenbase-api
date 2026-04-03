@@ -251,8 +251,9 @@ class ChatService(BaseService):
             yield {"data": json.dumps({"type": "error", "message": "Response timed out"})}
             return
         except Exception as exc:
-            log.error("chat_service.stream_error", error=str(exc))
-            yield {"data": json.dumps({"type": "error", "message": "Stream failed"})}
+            log.error("chat_service.stream_error", error=str(exc), exc_info=True)
+            err_msg = str(exc)[:200] if str(exc) else "Stream failed"
+            yield {"data": json.dumps({"type": "error", "message": err_msg})}
             return
 
         # Save turn and deduct ONLY after successful full response (AC-8)
