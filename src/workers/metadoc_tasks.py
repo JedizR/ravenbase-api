@@ -4,7 +4,7 @@ from __future__ import annotations
 import asyncio
 import json
 import uuid
-from datetime import UTC, datetime
+from datetime import datetime
 
 import redis.asyncio as aioredis
 import structlog
@@ -185,7 +185,7 @@ async def generate_meta_document(
                     contributing_memory_ids=contributing_memory_ids,
                     model_used=model,
                     credits_consumed=credit_cost,
-                    generated_at=datetime.now(UTC),
+                    generated_at=datetime.utcnow(),
                 )
                 session.add(meta_doc)
                 await session.commit()

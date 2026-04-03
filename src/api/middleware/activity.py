@@ -7,7 +7,7 @@ NEVER awaited — fire-and-forget. Errors are logged and swallowed.
 """
 
 import asyncio
-from datetime import UTC, datetime
+from datetime import datetime
 
 import structlog
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -38,7 +38,7 @@ async def _update_last_active(redis_client, db_factory, user_id: str) -> None:
     try:
         from sqlalchemy import text  # noqa: PLC0415
 
-        now = datetime.now(UTC)
+        now = datetime.utcnow()
         async with db_factory() as db:
             await db.execute(
                 text("UPDATE users SET last_active_at = :ts WHERE id = :uid"),

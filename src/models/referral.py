@@ -1,5 +1,5 @@
 # src/models/referral.py
-from datetime import UTC, datetime
+from datetime import datetime
 
 from sqlmodel import Field, SQLModel
 
@@ -15,4 +15,4 @@ class ReferralTransaction(SQLModel, table=True):
     trigger_event: str = Field(
         description="signup | first_upload",
     )
-    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    created_at: datetime = Field(default_factory=lambda: datetime.utcnow())

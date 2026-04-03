@@ -1,6 +1,6 @@
 # src/models/profile.py
 import uuid
-from datetime import UTC, datetime
+from datetime import datetime
 
 from sqlmodel import Field, SQLModel
 
@@ -15,4 +15,4 @@ class SystemProfile(SQLModel, table=True):
     icon: str | None = None
     is_default: bool = Field(default=False)
     color: str | None = None
-    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    created_at: datetime = Field(default_factory=lambda: datetime.utcnow())

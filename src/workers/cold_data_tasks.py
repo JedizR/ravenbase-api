@@ -6,7 +6,7 @@ Runs Phase 1 (warning at day 150) + Phase 2 (purge at day 180) in one invocation
 Uses ColdDataService for all business logic.
 """
 
-from datetime import UTC, datetime
+from datetime import datetime
 
 import structlog
 
@@ -23,7 +23,7 @@ async def cleanup_cold_data(ctx: dict) -> dict:  # type: ignore[type-arg]  # noq
     """
     log = logger.bind(job="cleanup_cold_data")
     log.info("cold_data.run_start")
-    start = datetime.now(UTC)
+    start = datetime.utcnow()
 
     svc = ColdDataService()
     warnings_sent = 0
@@ -43,7 +43,7 @@ async def cleanup_cold_data(ctx: dict) -> dict:  # type: ignore[type-arg]  # noq
             log.error("cold_data.purge_phase_failed", error=str(exc))
             errors += 1
 
-    duration_ms = int((datetime.now(UTC) - start).total_seconds() * 1000)
+    duration_ms = int((datetime.utcnow() - start).total_seconds() * 1000)
     log.info(
         "cold_data.run_complete",
         warnings_sent=warnings_sent,

@@ -1,6 +1,6 @@
 # src/models/source.py
 import uuid
-from datetime import UTC, datetime
+from datetime import datetime
 
 from sqlalchemy import Index
 from sqlmodel import Field, SQLModel
@@ -31,7 +31,7 @@ class Source(SQLModel, table=True):
     chunk_count: int | None = None
     node_count: int | None = None
     error_message: str | None = None
-    ingested_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    ingested_at: datetime = Field(default_factory=lambda: datetime.utcnow())
     completed_at: datetime | None = None
 
 

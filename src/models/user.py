@@ -1,5 +1,5 @@
 # src/models/user.py
-from datetime import UTC, datetime
+from datetime import datetime
 
 from sqlmodel import Field, SQLModel
 

@@ -1,5 +1,5 @@
 import uuid
-from datetime import UTC, datetime
+from datetime import datetime
 from typing import Any
 
 from sqlalchemy.dialects.postgresql import JSONB
@@ -18,5 +18,5 @@ class ChatSession(SQLModel, table=True):
         sa_column=Column(JSONB),
     )
     # messages format: [{"role": "user"|"assistant", "content": str, "created_at": ISO8601}]
-    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
-    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    created_at: datetime = Field(default_factory=lambda: datetime.utcnow())
+    updated_at: datetime = Field(default_factory=lambda: datetime.utcnow())

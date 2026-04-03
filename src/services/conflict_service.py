@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import json
 import uuid
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
 
 import structlog
 from fastapi import HTTPException
@@ -455,7 +455,7 @@ class ConflictService(BaseService):
             raise_409(ErrorCode.CONFLICT_NOT_RESOLVED, "Conflict has not been resolved.")
 
         if conflict.resolved_at is None or (
-            datetime.now(UTC) - conflict.resolved_at.replace(tzinfo=UTC) > timedelta(seconds=30)
+            datetime.utcnow() - conflict.resolved_at.replace(tzinfo=UTC) > timedelta(seconds=30)
         ):
             raise_409(
                 ErrorCode.UNDO_WINDOW_EXPIRED,

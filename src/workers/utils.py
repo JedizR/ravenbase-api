@@ -1,5 +1,5 @@
 import json
-from datetime import UTC, datetime
+from datetime import datetime
 
 import redis.asyncio as aioredis
 import structlog
@@ -44,7 +44,7 @@ async def update_job_status(
         job.status = status
         job.progress_pct = progress_pct
         job.message = message
-        job.updated_at = datetime.now(UTC)
+        job.updated_at = datetime.utcnow()
         session.add(job)
         await session.commit()
         log.info("update_job_status.saved", progress_pct=progress_pct)

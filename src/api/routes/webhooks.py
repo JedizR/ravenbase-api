@@ -1,6 +1,6 @@
 # src/api/routes/webhooks.py
 import uuid
-from datetime import UTC, datetime
+from datetime import datetime
 
 import stripe
 import structlog

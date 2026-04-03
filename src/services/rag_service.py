@@ -4,7 +4,7 @@ from __future__ import annotations
 import hashlib
 import re
 import uuid as _uuid_mod
-from datetime import UTC, datetime
+from datetime import datetime
 from typing import TypedDict
 
 from structlog import get_logger
@@ -175,7 +175,7 @@ def _parse_created_at(value: object) -> datetime:
     try:
         return value.to_native().replace(tzinfo=UTC)  # type: ignore[union-attr]
     except AttributeError:
-        return datetime.now(UTC)
+        return datetime.utcnow()
 
 
 class _Candidate(TypedDict):
@@ -213,7 +213,7 @@ def merge_and_deduplicate(
                 memory_id=payload.get("memory_id"),
                 semantic_score=point.score,
                 created_at=_parse_created_at(
-                    payload.get("created_at", datetime.now(UTC).isoformat())
+                    payload.get("created_at", datetime.utcnow().isoformat())
                 ),
                 profile_id=payload.get("profile_id"),
                 page_number=payload.get("page_number"),
@@ -232,7 +232,7 @@ def merge_and_deduplicate(
                 source_id=str(source_id_val) if source_id_val else "",
                 memory_id=str(mem["memory_id"]) if mem.get("memory_id") else None,
                 semantic_score=0.0,
-                created_at=_parse_created_at(mem.get("created_at", datetime.now(UTC))),
+                created_at=_parse_created_at(mem.get("created_at", datetime.utcnow())),
                 profile_id=mem.get("profile_id"),
                 page_number=None,
                 content_hash=h,
@@ -251,7 +251,7 @@ def rerank(candidates: list[_Candidate]) -> list[RetrievedChunk]:
     if not candidates:
         return []
 
-    now = datetime.now(UTC)
+    now = datetime.utcnow()
     result: list[RetrievedChunk] = []
 
     for c in candidates:

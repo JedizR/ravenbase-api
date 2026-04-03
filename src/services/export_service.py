@@ -11,7 +11,7 @@ import io
 import json
 import zipfile
 from collections.abc import Callable
-from datetime import UTC, datetime
+from datetime import datetime
 from typing import Any
 
 import structlog
@@ -169,7 +169,7 @@ class ExportService(BaseService):
             # Write README
             readme = f"""\
 Ravenbase Data Export
-Generated: {datetime.now(UTC).isoformat()}
+Generated: {datetime.utcnow().isoformat()}
 
 Contents:
 - sources/ — Original uploaded files (from Supabase Storage)
@@ -213,7 +213,7 @@ Total storage files: {len(storage_files)}
         Returns the storage path.
         """
         log = logger.bind(user_id=user_id, step="zip_upload")
-        timestamp = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
+        timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
         path = f"exports/{user_id}/{timestamp}.zip"
 
         log.info("export.upload.started", path=path, size_bytes=len(zip_content))

@@ -1,6 +1,6 @@
 # src/models/job_status.py
 import uuid
-from datetime import UTC, datetime
+from datetime import datetime
 
 from sqlmodel import Field, SQLModel
 
@@ -15,5 +15,5 @@ class JobStatus(SQLModel, table=True):
     status: str = Field(default="queued")
     progress_pct: int = Field(default=0)
     message: str | None = None
-    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
-    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    created_at: datetime = Field(default_factory=lambda: datetime.utcnow())
+    updated_at: datetime = Field(default_factory=lambda: datetime.utcnow())

@@ -1,6 +1,6 @@
 # src/models/meta_document.py
 import uuid
-from datetime import UTC, datetime
+from datetime import datetime
 
 from sqlalchemy import Column, String
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
@@ -22,4 +22,4 @@ class MetaDocument(SQLModel, table=True):
     )
     model_used: str = Field(default="claude-sonnet")
     credits_consumed: int = Field(default=0)
-    generated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    generated_at: datetime = Field(default_factory=lambda: datetime.utcnow())

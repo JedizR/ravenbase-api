@@ -1,6 +1,6 @@
 # src/models/conflict.py
 import uuid
-from datetime import UTC, datetime
+from datetime import datetime
 
 from sqlalchemy import Index
 from sqlmodel import Field, SQLModel
@@ -36,4 +36,4 @@ class Conflict(SQLModel, table=True):
     status: str = Field(default=ConflictStatus.PENDING, index=True)
     resolution_note: str | None = None
     resolved_at: datetime | None = None
-    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    created_at: datetime = Field(default_factory=lambda: datetime.utcnow())

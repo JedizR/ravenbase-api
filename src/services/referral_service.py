@@ -1,7 +1,7 @@
 # src/services/referral_service.py
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import datetime
 
 import structlog
 from fastapi import HTTPException
@@ -33,7 +33,7 @@ class ReferralService(BaseService):
         referrer_user_id: str,
     ) -> int:
         """Return count of first_upload ReferralTransaction records this calendar month."""
-        now = datetime.now(UTC)
+        now = datetime.utcnow()
         month_start = datetime(now.year, now.month, 1, tzinfo=UTC)
 
         result = await db.exec(

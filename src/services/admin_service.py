@@ -1,5 +1,5 @@
 # src/services/admin_service.py
-from datetime import UTC, date, datetime, time
+from datetime import date, datetime, time
 
 import structlog
 from sqlalchemy import func
@@ -113,7 +113,7 @@ class AdminService(BaseService):
 
         balance_before = user.credits_balance
         user.credits_balance += amount
-        user.updated_at = datetime.now(UTC)
+        user.updated_at = datetime.utcnow()
 
         txn = CreditTransaction(
             user_id=user_id,
@@ -151,7 +151,7 @@ class AdminService(BaseService):
             raise_404(ErrorCode.TENANT_NOT_FOUND, f"User {user_id} not found")
 
         user.is_active = active
-        user.updated_at = datetime.now(UTC)
+        user.updated_at = datetime.utcnow()
         db.add(user)
         await db.commit()
 

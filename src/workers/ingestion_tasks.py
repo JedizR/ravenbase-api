@@ -5,7 +5,7 @@ import io
 import re
 import uuid
 import zipfile
-from datetime import UTC, datetime
+from datetime import datetime
 
 import structlog
 from fastapi import HTTPException
@@ -90,7 +90,7 @@ async def _set_source_completed(source_id: str, chunk_count: int) -> None:
             return
         source.status = SourceStatus.COMPLETED
         source.chunk_count = chunk_count
-        source.completed_at = datetime.now(UTC)
+        source.completed_at = datetime.utcnow()
         session.add(source)
         await session.commit()
 
@@ -216,7 +216,7 @@ async def parse_document(
         await publish_progress(source_id, 75, "Indexing in vector store...", "indexing")
 
         # ── 8. Upsert to Qdrant (tenant-scoped) ──────────────────────────────
-        now_iso = datetime.now(UTC).isoformat()
+        now_iso = datetime.utcnow().isoformat()
         points = [
             PointStruct(
                 # Deterministic UUID → safe to re-run (upsert overwrites)
@@ -343,7 +343,7 @@ async def ingest_text(
         await publish_progress(source_id, 70, "Indexing in vector store...", "indexing")
 
         # ── 5. Upsert to Qdrant (tenant-scoped, deterministic IDs) ───────────
-        now_iso = datetime.now(UTC).isoformat()
+        now_iso = datetime.utcnow().isoformat()
         points = [
             PointStruct(
                 id=str(uuid.uuid5(uuid.NAMESPACE_URL, f"{source_id}:{i}")),

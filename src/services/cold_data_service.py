@@ -1,7 +1,7 @@
 # src/services/cold_data_service.py
 """ColdDataService: STORY-037 cold-data lifecycle business logic."""
 
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
 
 import structlog
 from sqlalchemy import func
@@ -49,7 +49,7 @@ class ColdDataService(BaseService):
     async def send_inactivity_warnings(self, db: AsyncSession) -> int:
         """Phase 1: warn Free users inactive 85-90 days (5 days before purge). Returns count sent."""
         log = logger.bind(action="cold_data.warnings")
-        now = datetime.now(UTC)
+        now = datetime.utcnow()
         cutoff_150 = now - timedelta(days=_WARNING_DAYS)
         cutoff_180 = now - timedelta(days=_PURGE_DAYS)
         admin_ids = _admin_ids()
@@ -115,7 +115,7 @@ class ColdDataService(BaseService):
     async def purge_inactive_users(self, db: AsyncSession) -> int:
         """Phase 2: purge data for Free users inactive >= 90 days. Returns count purged."""
         log = logger.bind(action="cold_data.purge")
-        now = datetime.now(UTC)
+        now = datetime.utcnow()
         cutoff_180 = now - timedelta(days=_PURGE_DAYS)
         admin_ids = _admin_ids()
         purged = 0

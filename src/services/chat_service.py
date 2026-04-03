@@ -5,7 +5,7 @@ import asyncio
 import json
 import uuid
 from collections.abc import AsyncGenerator
-from datetime import UTC, datetime
+from datetime import datetime
 from typing import Any
 
 import structlog
@@ -155,12 +155,12 @@ class ChatService(BaseService):
         """
         import bleach  # noqa: PLC0415
 
-        now = datetime.now(UTC).isoformat()
+        now = datetime.utcnow().isoformat()
         session.messages = session.messages + [
             {"role": "user", "content": user_message, "created_at": now},
             {"role": "assistant", "content": bleach.clean(assistant_response), "created_at": now},
         ]
-        session.updated_at = datetime.now(UTC)
+        session.updated_at = datetime.utcnow()
         db.add(session)
         await db.commit()
 
