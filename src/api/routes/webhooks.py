@@ -230,8 +230,11 @@ async def _handle_user_created(
     db: AsyncSession,
     log: structlog.stdlib.BoundLogger,
 ) -> None:
+    from sqlmodel import select
+
     clerk_user_id: str = data["id"]
 
+    # Check by Clerk ID — exact duplicate webhook (idempotent)
     existing = await db.get(User, clerk_user_id)
     if existing is not None:
         log.info("webhook.user_already_exists", user_id=clerk_user_id)
@@ -254,7 +257,42 @@ async def _handle_user_created(
     display_name = f"{first_name} {last_name}".strip() or None
     avatar_url = data.get("image_url")
 
-    # Generate referral code: first 8 hex chars of a fresh UUID, uppercase
+    # Check if email already exists — user re-created their Clerk account
+    existing_by_email = (await db.exec(
+        select(User).where(User.email == email)
+    )).first()
+
+    if existing_by_email:
+        # Re-registration: delete old record and create fresh one with new Clerk ID
+        # (SQLAlchemy doesn't allow changing primary keys directly)
+        old_credits = existing_by_email.credits_balance
+        old_tier = existing_by_email.tier
+        old_referral_code = existing_by_email.referral_code
+        log.info(
+            "webhook.user_reregistered",
+            old_id=existing_by_email.id,
+            new_id=clerk_user_id,
+            email=email,
+        )
+        await db.delete(existing_by_email)
+        await db.flush()
+
+        user = User(
+            id=clerk_user_id,
+            email=email,
+            display_name=display_name,
+            avatar_url=avatar_url,
+            referral_code=old_referral_code or str(uuid.uuid4()).replace("-", "")[:8].upper(),
+            credits_balance=old_credits,
+            tier=old_tier,
+            last_active_at=datetime.utcnow(),
+        )
+        db.add(user)
+        await db.commit()
+        log.info("webhook.user_reregistered_ok", user_id=clerk_user_id, email=email)
+        return
+
+    # Brand new user — create fresh record
     referral_code = str(uuid.uuid4()).replace("-", "")[:8].upper()
 
     user = User(
