@@ -61,14 +61,35 @@ async def clerk_webhook(
                 "message": "Webhook signature verification failed",
             },
         ) from None
+    except Exception as exc:
+        logger.error("webhook.verification_error", error=str(exc), error_type=type(exc).__name__)
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "code": "VERIFICATION_ERROR",
+                "message": f"Webhook verification error: {type(exc).__name__}",
+            },
+        ) from None
 
     event_type = payload.get("type")
     log = logger.bind(event_type=event_type)
 
-    if event_type == "user.created":
-        await _handle_user_created(payload["data"], db, log)
-    elif event_type == "user.deleted":
-        await _handle_user_deleted(payload["data"], request, log)
+    try:
+        if event_type == "user.created":
+            await _handle_user_created(payload["data"], db, log)
+        elif event_type == "user.deleted":
+            await _handle_user_deleted(payload["data"], request, log)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error("webhook.handler_error", event_type=event_type, error=str(exc), error_type=type(exc).__name__)
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "code": "WEBHOOK_HANDLER_ERROR",
+                "message": f"Failed to process {event_type}: {type(exc).__name__}: {str(exc)[:200]}",
+            },
+        ) from None
 
     return {"status": "ok"}
 
