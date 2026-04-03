@@ -4,7 +4,7 @@ from __future__ import annotations
 import hashlib
 import re
 import uuid as _uuid_mod
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import TypedDict
 
 from structlog import get_logger

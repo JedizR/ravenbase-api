@@ -34,7 +34,7 @@ class ReferralService(BaseService):
     ) -> int:
         """Return count of first_upload ReferralTransaction records this calendar month."""
         now = datetime.utcnow()
-        month_start = datetime(now.year, now.month, 1, tzinfo=UTC)
+        month_start = datetime(now.year, now.month, 1)
 
         result = await db.exec(
             select(ReferralTransaction).where(

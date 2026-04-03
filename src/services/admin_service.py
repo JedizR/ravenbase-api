@@ -1,5 +1,5 @@
 # src/services/admin_service.py
-from datetime import date, datetime, time
+from datetime import UTC, date, datetime, time
 
 import structlog
 from sqlalchemy import func
