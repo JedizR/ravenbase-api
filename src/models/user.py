@@ -14,8 +14,8 @@ class User(SQLModel, table=True):
     tier: str = Field(default="free")
     credits_balance: int = Field(default=0)
     is_active: bool = Field(default=True)
-    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
-    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
     preferred_model: str = Field(
         default="claude-haiku-4-5-20251001",
         description=(

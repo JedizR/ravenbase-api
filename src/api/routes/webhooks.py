@@ -263,7 +263,7 @@ async def _handle_user_created(
         display_name=display_name,
         avatar_url=avatar_url,
         referral_code=referral_code,
-        last_active_at=datetime.now(UTC),
+        last_active_at=datetime.utcnow(),
     )
     db.add(user)
     try:
