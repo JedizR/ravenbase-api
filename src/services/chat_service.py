@@ -195,13 +195,19 @@ class ChatService(BaseService):
         from src.services.rag_service import RAGService  # noqa: PLC0415
 
         rag = RAGService()
+        chunks: list = []
         try:
-            chunks = await rag.retrieve(
-                prompt=user_message,
-                tenant_id=tenant_id,
-                profile_id=str(profile_id) if profile_id else None,
-                limit=8,  # fewer than Meta-Doc — chat is more focused
-            )
+            async with asyncio.timeout(15):  # 15s timeout for RAG retrieval
+                chunks = await rag.retrieve(
+                    prompt=user_message,
+                    tenant_id=tenant_id,
+                    profile_id=str(profile_id) if profile_id else None,
+                    limit=8,  # fewer than Meta-Doc — chat is more focused
+                )
+        except TimeoutError:
+            log.warning("chat_service.rag_timeout", message="RAG retrieval timed out, proceeding without context")
+        except Exception as exc:
+            log.warning("chat_service.rag_error", error=str(exc), message="RAG retrieval failed, proceeding without context")
         finally:
             rag.cleanup()
         log.info("chat_service.retrieved", chunk_count=len(chunks))
