@@ -135,3 +135,42 @@ async def health_debug() -> dict:
     results["neo4j_user"] = settings.NEO4J_USER
 
     return results
+
+
+@router.post("/health/test-graph-extraction")
+async def test_graph_extraction(
+    source_id: str = "",
+) -> dict:
+    """Manually run graph extraction for a source_id — for debugging only.
+
+    Runs in the API process (not worker), so we can see if it succeeds
+    when all services are confirmed connected via /health/debug.
+    """
+    log = get_logger()
+    if not source_id:
+        return {"error": "Pass ?source_id=<uuid> of an uploaded source"}
+
+    try:
+        # 1. Check Qdrant for chunks
+        qa = QdrantAdapter()
+        await qa.ensure_collection()
+        # Use scroll to find chunks for this source
+        chunks = await qa.scroll_by_source(source_id, tenant_id="")
+        if not chunks:
+            # Try without tenant filter — just check if source exists
+            return {"error": f"No chunks found in Qdrant for source_id={source_id}", "hint": "Upload a file first"}
+
+        tenant_id = chunks[0].get("tenant_id", "")
+        log.info("test_graph.chunks_found", count=len(chunks), tenant_id=tenant_id)
+
+        # 2. Run graph extraction
+        from src.services.graph_service import GraphService  # noqa: PLC0415
+        svc = GraphService()
+        stats = await svc.extract_and_write(
+            source_id=source_id,
+            tenant_id=tenant_id,
+        )
+        return {"status": "ok", "chunks_found": len(chunks), "tenant_id": tenant_id, **stats}
+    except Exception as exc:
+        log.error("test_graph.failed", error=str(exc), exc_info=True)
+        return {"status": "error", "error": str(exc)[:500]}
