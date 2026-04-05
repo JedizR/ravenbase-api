@@ -76,3 +76,62 @@ async def health_check() -> dict:
     }
     all_ok = all(v == "ok" for v in checks.values())
     return {"status": "healthy" if all_ok else "degraded", "checks": checks}
+
+
+@router.get("/health/debug")
+async def health_debug() -> dict:
+    """Detailed diagnostic endpoint — shows errors and config status."""
+    settings = get_settings()
+    log = get_logger()
+
+    results: dict = {}
+
+    # 1. Neo4j — detailed
+    try:
+        adapter = Neo4jAdapter()
+        ok = await adapter.verify_connectivity()
+        if ok:
+            # Try a simple query
+            rows = await adapter.run_query("RETURN 1 AS n")
+            results["neo4j"] = {"status": "ok", "test_query": "passed", "uri": settings.NEO4J_URI[:40] + "..."}
+        else:
+            results["neo4j"] = {"status": "unreachable", "uri": settings.NEO4J_URI[:40] + "...", "user": settings.NEO4J_USER}
+        adapter.cleanup()
+    except Exception as exc:
+        results["neo4j"] = {"status": "error", "error": str(exc)[:300], "uri": settings.NEO4J_URI[:40] + "...", "user": settings.NEO4J_USER}
+
+    # 2. Qdrant — check collection
+    try:
+        qa = QdrantAdapter()
+        ok = await qa.verify_connectivity()
+        if ok:
+            await qa.ensure_collection()
+            results["qdrant"] = {"status": "ok", "collection": qa.COLLECTION_NAME}
+        else:
+            results["qdrant"] = {"status": "unreachable"}
+        qa.cleanup()
+    except Exception as exc:
+        results["qdrant"] = {"status": "error", "error": str(exc)[:300]}
+
+    # 3. LLM — test entity extraction model
+    try:
+        import litellm  # noqa: PLC0415
+        resp = await litellm.acompletion(
+            model="gemini/gemini-2.5-flash",
+            messages=[{"role": "user", "content": "Say OK"}],
+            max_tokens=5,
+        )
+        results["gemini"] = {"status": "ok", "response": resp.choices[0].message.content[:50]}
+    except Exception as exc:
+        results["gemini"] = {"status": "error", "error": str(exc)[:300]}
+
+    # 4. Anthropic
+    results["anthropic_key_set"] = bool(settings.ANTHROPIC_API_KEY)
+    results["gemini_key_set"] = bool(settings.GEMINI_API_KEY)
+    results["openai_key_set"] = bool(settings.OPENAI_API_KEY)
+
+    # 5. Config summary
+    results["neo4j_uri_set"] = bool(settings.NEO4J_URI)
+    results["neo4j_user"] = settings.NEO4J_USER
+
+    return results
