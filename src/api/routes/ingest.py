@@ -69,11 +69,16 @@ async def list_sources(
     db: AsyncSession = Depends(get_db),  # noqa: B008
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
+    profile_id: str | None = Query(default=None),
 ) -> SourceListResponse:
     """List all sources for the authenticated user, newest first."""
+    filters = [Source.user_id == user["user_id"]]
+    if profile_id:
+        filters.append(Source.profile_id == profile_id)
+
     stmt = (
         select(Source)
-        .where(Source.user_id == user["user_id"])
+        .where(*filters)
         .order_by(Source.ingested_at.desc())  # type: ignore[union-attr]
         .offset(offset)
         .limit(limit)
@@ -81,7 +86,7 @@ async def list_sources(
     results = await db.exec(stmt)
     sources = list(results.all())
 
-    count_stmt = select(Source).where(Source.user_id == user["user_id"])
+    count_stmt = select(Source).where(*filters)
     count_results = await db.exec(count_stmt)
     total = len(list(count_results.all()))
 

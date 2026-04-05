@@ -292,16 +292,21 @@ class ChatService(BaseService):
         user_id: str,
         page: int,
         page_size: int,
+        profile_id: str | None = None,
     ) -> PaginatedResponse[ChatSessionSummary]:
         """Paginated list of sessions for user (AC-4), newest first."""
+        filters = [ChatSession.user_id == user_id]
+        if profile_id:
+            filters.append(ChatSession.profile_id == profile_id)
+
         count_result = await db.exec(
-            select(func.count(ChatSession.id)).where(ChatSession.user_id == user_id)  # type: ignore[arg-type]
+            select(func.count(ChatSession.id)).where(*filters)  # type: ignore[arg-type]
         )
         total = count_result.one()
 
         result = await db.exec(
             select(ChatSession)
-            .where(ChatSession.user_id == user_id)
+            .where(*filters)
             .order_by(desc(ChatSession.updated_at))
             .offset((page - 1) * page_size)
             .limit(page_size)

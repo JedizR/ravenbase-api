@@ -110,12 +110,13 @@ async def send_message(
 async def list_sessions(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
+    profile_id: str | None = Query(default=None),
     user: dict = Depends(require_user),  # type: ignore[type-arg]  # noqa: B008
     db: AsyncSession = Depends(get_db),  # noqa: B008
 ) -> PaginatedResponse[ChatSessionSummary]:
     """Paginated list of past sessions for current user (AC-4), newest first."""
     svc = ChatService()
-    return await svc.get_sessions(db, user["user_id"], page, page_size)
+    return await svc.get_sessions(db, user["user_id"], page, page_size, profile_id=profile_id)
 
 
 @router.get("/sessions/{session_id}", response_model=ChatSessionDetail)
